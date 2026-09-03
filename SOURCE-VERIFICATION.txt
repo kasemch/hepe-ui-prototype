@@ -1,0 +1,14 @@
+HEPE-IAM-08B.1 SOURCE VERIFICATION
+Date: 2026-09-03
+Environment: NON-PRODUCTION
+
+PASS — repository-root file structure present
+PASS — package.json JSON parses
+PASS — callback retains exchangeCodeForSession(code)
+PASS — missing-code and runtime-not-configured denial codes present
+PASS — runtime binding verifier pins expected Supabase project ref lztxpjsuzqvtgyasfnyj
+PASS — synthetic PKCE harness uses local S256 generation/recomputation and performs no network call
+PASS — no service-role key included
+
+LOCAL NEXT.JS BUILD: NOT VERIFIED IN THIS CONTAINER
+Reason: npm dependency installation did not complete within the execution timeout. This is not a build FAIL and must not be represented as PASS evidence. Vercel build/deployment remains required for runtime verification.

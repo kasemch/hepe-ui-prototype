@@ -1,28 +1,55 @@
 {
-  "artifact_id": "HEPE-IAM-08A.2A-SRC-001",
+  "artifact_id": "HEPE-IAM-08B.1-SRC-001",
   "artifact_type": "Controlled Source Package",
-  "version": "0.1.0",
+  "version": "0.1.1-iam08b1",
   "created_date": "2026-09-03",
   "environment": "NON-PRODUCTION",
-  "authority_scope": "HEPE-IAM-08A.2A source canonicalization and callback implementation preparation only",
-  "upstream_verified_runtime": "https://hepe-ui-prototype.vercel.app",
+  "source_snapshot_commit": "b7ca61b37d564a214c373e235f535caa055a0e3d",
   "supabase_project_ref": "lztxpjsuzqvtgyasfnyj",
-  "verification_status": "SOURCE PREPARED; NOT DEPLOYED; RUNTIME CALLBACK NOT VERIFIED",
+  "authority_scope": "HEPE-IAM-08B.1 NON-PRODUCTION controlled source write: synthetic onboarding persistence integration preparation, runtime binding verification, and synthetic PKCE harness only",
+  "explicit_exclusions": [
+    "real user creation",
+    "email send",
+    "SMTP change",
+    "HEPE authority grant",
+    "production authorization"
+  ],
+  "verification_status": "PATCHED SOURCE PREPARED; STATIC SANITY PASS; LOCAL NEXT.JS BUILD NOT VERIFIED; VERCEL BUILD/RUNTIME VERIFICATION REQUIRED",
   "files": [
     {
       "path": ".env.example",
-      "sha256": "2cd955b2fe3336e676832a8c2f2a315dc3e8a88c616151497a6ebaf623159800",
-      "bytes": 143
+      "sha256": "1f9bcab559d0ca1205c86a1e1b4256991baa0d924f481f2efcae591002788309",
+      "bytes": 229
     },
     {
       "path": "README.md",
-      "sha256": "c34a311443c0c49d74e71b44902fc6a1acf684b4d68b79f66bab3bf8de39c778",
-      "bytes": 1062
+      "sha256": "f56f43a4e3771fabba686853bc02a4631450ab003f66e1402f1ee1d13d81a4a4",
+      "bytes": 2015
+    },
+    {
+      "path": "SOURCE-VERIFICATION.txt",
+      "sha256": "ab5b67a4e58724b8c5862507463abff186242fba25c10b92d7d7b43036b7eee4",
+      "bytes": 792
+    },
+    {
+      "path": "UPLOAD-INSTRUCTIONS.txt",
+      "sha256": "884e0c0bd57098466ab38f7adde58d5f4e4e297f8572af7359fe668739be0ef2",
+      "bytes": 487
+    },
+    {
+      "path": "app/api/iam/pkce-synthetic/route.ts",
+      "sha256": "61b9cdb129e5001f2526665e6d9d21bb7a6c9ac64c49c169f12f2cc1d4bc25b2",
+      "bytes": 933
+    },
+    {
+      "path": "app/api/iam/runtime-binding/route.ts",
+      "sha256": "a8ff9260f5fa1d2fa713636dd276cd456bfcef1937b525a5eb1cfd4fc7b72bd1",
+      "bytes": 730
     },
     {
       "path": "app/auth/callback/route.ts",
-      "sha256": "3adaf4d13604415544700c04cd792458fcf06ed8c4180f5514b79931ab685350",
-      "bytes": 1993
+      "sha256": "bae0965d1c9a662cd96dcdc642ebafba697777ba637585a43e056022168d9b96",
+      "bytes": 2119
     },
     {
       "path": "app/auth/callback/status/page.tsx",
@@ -40,9 +67,19 @@
       "bytes": 565
     },
     {
+      "path": "lib/hepe/pkce.ts",
+      "sha256": "7ea89d679d82d7f4f5675d7c747b42d2e692eda559a3e2ee9a2b1ec3561efe3d",
+      "bytes": 1034
+    },
+    {
+      "path": "lib/hepe/runtime-binding.ts",
+      "sha256": "99935dc858baf9ec0f451ece4b270450b1db3231d2a16105a671eb996a7430fd",
+      "bytes": 1781
+    },
+    {
       "path": "package.json",
-      "sha256": "97bcb2afa1d9295fd2ce1c87fbb79828e5ac3de3a0ec7c86fc399c1b4f413b72",
-      "bytes": 350
+      "sha256": "766bd1947b4d894c272ca6312469d676f9b9189ac199ad736b1ae536a25f7674",
+      "bytes": 511
     }
   ]
 }

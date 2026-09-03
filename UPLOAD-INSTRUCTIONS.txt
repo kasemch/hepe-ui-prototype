@@ -1,0 +1,10 @@
+HEPE-IAM-08B.1 — NON-PRODUCTION
+
+1. Extract this ZIP.
+2. Open GitHub repo: kasemch/hepe-ui-prototype
+3. Select branch: non-production
+4. Upload ALL extracted contents to repository root (not the ZIP itself).
+5. Preserve folder paths app/... and lib/...
+6. Suggested commit message:
+   HEPE-IAM-08B1 add runtime binding verifier and synthetic PKCE harness
+7. Do not modify SMTP, create real users, grant authority, or treat a Vercel "Production" label as HEPE Production Authorization.
