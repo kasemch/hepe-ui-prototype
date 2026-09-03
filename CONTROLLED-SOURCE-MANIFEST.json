@@ -1,0 +1,48 @@
+{
+  "artifact_id": "HEPE-IAM-08A.2A-SRC-001",
+  "artifact_type": "Controlled Source Package",
+  "version": "0.1.0",
+  "created_date": "2026-09-03",
+  "environment": "NON-PRODUCTION",
+  "authority_scope": "HEPE-IAM-08A.2A source canonicalization and callback implementation preparation only",
+  "upstream_verified_runtime": "https://hepe-ui-prototype.vercel.app",
+  "supabase_project_ref": "lztxpjsuzqvtgyasfnyj",
+  "verification_status": "SOURCE PREPARED; NOT DEPLOYED; RUNTIME CALLBACK NOT VERIFIED",
+  "files": [
+    {
+      "path": ".env.example",
+      "sha256": "2cd955b2fe3336e676832a8c2f2a315dc3e8a88c616151497a6ebaf623159800",
+      "bytes": 143
+    },
+    {
+      "path": "README.md",
+      "sha256": "c34a311443c0c49d74e71b44902fc6a1acf684b4d68b79f66bab3bf8de39c778",
+      "bytes": 1062
+    },
+    {
+      "path": "app/auth/callback/route.ts",
+      "sha256": "3adaf4d13604415544700c04cd792458fcf06ed8c4180f5514b79931ab685350",
+      "bytes": 1993
+    },
+    {
+      "path": "app/auth/callback/status/page.tsx",
+      "sha256": "cc314f74d187e30485f9294d33b7db5e9ebc9f91b3e41493fced0037b1deb3b7",
+      "bytes": 670
+    },
+    {
+      "path": "app/layout.tsx",
+      "sha256": "7376706555141d892d7092d2dc0d00f975be51c466089930fcb08321baf840ca",
+      "bytes": 421
+    },
+    {
+      "path": "app/page.tsx",
+      "sha256": "0fe140ba80450117393cd73a53487d26fb14e7abc8dd22dd43aa0aec400c568a",
+      "bytes": 565
+    },
+    {
+      "path": "package.json",
+      "sha256": "97bcb2afa1d9295fd2ce1c87fbb79828e5ac3de3a0ec7c86fc399c1b4f413b72",
+      "bytes": 350
+    }
+  ]
+}
