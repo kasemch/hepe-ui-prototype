@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { getRuntimeCredentials } from "../../../lib/hepe/runtime-binding";
+import {
+  HEPE_SYNTHETIC_COOKIE,
+  isSyntheticMarkedUser,
+} from "../../../lib/hepe/synthetic-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -9,6 +13,9 @@ export async function GET(request: NextRequest) {
   const code = requestUrl.searchParams.get("code");
   const error = requestUrl.searchParams.get("error");
   const errorDescription = requestUrl.searchParams.get("error_description");
+  const syntheticRequested =
+    requestUrl.searchParams.get("hepe_synthetic") === "1" ||
+    request.cookies.get(HEPE_SYNTHETIC_COOKIE)?.value === "1";
 
   if (error) {
     const target = new URL("/auth/callback/status", requestUrl.origin);
@@ -34,11 +41,17 @@ export async function GET(request: NextRequest) {
   }
 
   const response = NextResponse.redirect(
-    new URL("/auth/callback/status?status=verified", requestUrl.origin)
+    new URL(
+      syntheticRequested
+        ? "/auth/callback/status?status=verified&scope=synthetic-pkce"
+        : "/auth/callback/status?status=verified",
+      requestUrl.origin
+    )
   );
-  response.headers.set("Cache-Control", "no-store");
+  response.headers.set("Cache-Control", "private, no-store");
 
   const supabase = createServerClient(runtime.url, runtime.publishableKey, {
+    auth: { flowType: "pkce" },
     cookies: {
       getAll() {
         return request.cookies.getAll();
@@ -57,7 +70,27 @@ export async function GET(request: NextRequest) {
     const target = new URL("/auth/callback/status", requestUrl.origin);
     target.searchParams.set("status", "hold");
     target.searchParams.set("reason", "SESSION_EXCHANGE_FAILED");
+    if (syntheticRequested) target.searchParams.set("scope", "synthetic-pkce");
     return NextResponse.redirect(target);
+  }
+
+  if (syntheticRequested) {
+    const { data: userData, error: userError } = await supabase.auth.getUser();
+    if (userError || !userData.user || !isSyntheticMarkedUser(userData.user.user_metadata)) {
+      await supabase.auth.signOut({ scope: "local" });
+      const target = new URL("/auth/callback/status", requestUrl.origin);
+      target.searchParams.set("status", "hold");
+      target.searchParams.set("reason", "SYNTHETIC_IDENTITY_MARKER_MISMATCH");
+      target.searchParams.set("scope", "synthetic-pkce");
+      return NextResponse.redirect(target);
+    }
+    response.cookies.set(HEPE_SYNTHETIC_COOKIE, "", {
+      httpOnly: true,
+      secure: true,
+      sameSite: "lax",
+      path: "/",
+      maxAge: 0,
+    });
   }
 
   return response;
