@@ -1,6 +1,6 @@
 {
   "name": "hepe-ui-prototype-canonical",
-  "version": "0.1.1-iam08b1",
+  "version": "0.1.2-iam08b2",
   "private": true,
   "scripts": {
     "dev": "next dev",

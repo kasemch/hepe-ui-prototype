@@ -81,5 +81,14 @@
       "sha256": "766bd1947b4d894c272ca6312469d676f9b9189ac199ad736b1ae536a25f7674",
       "bytes": 511
     }
+  ],
+  "packageVersion": "0.1.2-iam08b2",
+  "gate": "HEPE-IAM-08B.2",
+  "scope": "NON-PRODUCTION controlled synthetic Auth identity + PKCE code exchange + callback regression only",
+  "limitations": [
+    "Requires HEPE_IAM_08B2_SYNTHETIC_AUTH_ENABLED=true at runtime.",
+    "Requires HEPE_IAM_08B2_SYNTHETIC_PROVIDER=github or google and that provider configured in Supabase Auth.",
+    "Positive live exchange requires a dedicated synthetic external provider account; harness alone is not first-login evidence.",
+    "No real user, email send, SMTP change, HEPE authority grant, or production authorization."
   ]
 }
