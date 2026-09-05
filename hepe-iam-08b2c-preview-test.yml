@@ -1,0 +1,160 @@
+name: HEPE IAM 08B.2C.2 Protected Preview Runtime Test
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  protected-preview-runtime-test:
+    name: HEPE NON-PRODUCTION Preview Runtime Test
+    runs-on: ubuntu-latest
+
+    env:
+      HEPE_GATE: HEPE-IAM-08B.2C.2
+      HEPE_ENVIRONMENT: NON-PRODUCTION
+      HEPE_PREVIEW_HOST: hepe-ui-prototype-git-non-production-kasemch-3467s-projects.vercel.app
+      VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+
+    steps:
+      - name: Enforce non-production branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${GITHUB_REF_NAME}" != "non-production" ]; then
+            echo "PREVIEW_SCOPE_VIOLATION"
+            exit 1
+          fi
+          echo "Branch scope verified: non-production"
+
+      - name: Verify bypass secret reference is bound
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${VERCEL_AUTOMATION_BYPASS_SECRET:-}" ]; then
+            echo "BYPASS_SECRET_NOT_BOUND"
+            exit 1
+          fi
+          echo "Bypass secret reference is bound and remains masked."
+
+      - name: Verify protected Preview host
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "${HEPE_PREVIEW_HOST}" in
+            hepe-ui-prototype-git-non-production-kasemch-3467s-projects.vercel.app)
+              echo "Preview target verified."
+              ;;
+            *)
+              echo "PREVIEW_SCOPE_VIOLATION"
+              exit 1
+              ;;
+          esac
+
+      - name: Runtime binding verification
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          status="$(
+            curl --silent --show-error \
+              --output "${body}" \
+              --write-out "%{http_code}" \
+              --header "x-vercel-protection-bypass: ${VERCEL_AUTOMATION_BYPASS_SECRET}" \
+              --header "Cache-Control: no-cache" \
+              "https://${HEPE_PREVIEW_HOST}/api/iam/runtime-binding"
+          )"
+
+          echo "runtime-binding HTTP ${status}"
+
+          if [ "${status}" != "200" ]; then
+            echo "RUNTIME_BINDING_HTTP_FAIL"
+            cat "${body}"
+            exit 1
+          fi
+
+          if ! grep -q '"HEPE_RUNTIME_BINDING_VERIFIED"' "${body}"; then
+            echo "RUNTIME_BINDING_ASSERTION_FAIL"
+            cat "${body}"
+            exit 1
+          fi
+
+          echo "HEPE_RUNTIME_BINDING_VERIFIED"
+
+      - name: Callback missing-code negative control
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          status="$(
+            curl --silent --show-error \
+              --output "${body}" \
+              --write-out "%{http_code}" \
+              --header "x-vercel-protection-bypass: ${VERCEL_AUTOMATION_BYPASS_SECRET}" \
+              --header "Cache-Control: no-cache" \
+              "https://${HEPE_PREVIEW_HOST}/auth/callback"
+          )"
+
+          echo "callback missing-code HTTP ${status}"
+
+          if [ "${status}" != "400" ]; then
+            echo "CALLBACK_NEGATIVE_HTTP_FAIL"
+            cat "${body}"
+            exit 1
+          fi
+
+          if ! grep -q '"HEPE_AUTH_CALLBACK_CODE_MISSING"' "${body}"; then
+            echo "CALLBACK_NEGATIVE_ASSERTION_FAIL"
+            cat "${body}"
+            exit 1
+          fi
+
+          echo "HEPE_AUTH_CALLBACK_CODE_MISSING"
+
+      - name: Synthetic PKCE self-test
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          status="$(
+            curl --silent --show-error \
+              --output "${body}" \
+              --write-out "%{http_code}" \
+              --header "x-vercel-protection-bypass: ${VERCEL_AUTOMATION_BYPASS_SECRET}" \
+              --header "Cache-Control: no-cache" \
+              "https://${HEPE_PREVIEW_HOST}/api/iam/pkce-synthetic"
+          )"
+
+          echo "synthetic PKCE HTTP ${status}"
+
+          if [ "${status}" != "200" ]; then
+            echo "SYNTHETIC_PKCE_HTTP_FAIL"
+            cat "${body}"
+            exit 1
+          fi
+
+          if ! grep -q '"HEPE_SYNTHETIC_PKCE_SELF_TEST_PASS"' "${body}"; then
+            echo "SYNTHETIC_PKCE_ASSERTION_FAIL"
+            cat "${body}"
+            exit 1
+          fi
+
+          echo "HEPE_SYNTHETIC_PKCE_SELF_TEST_PASS"
+
+      - name: Boundary summary
+        shell: bash
+        run: |
+          cat <<'SUMMARY'
+          HEPE-IAM-08B.2C.2 runtime test completed.
+          Environment: NON-PRODUCTION
+          Production authorization: false
+          Real user used: false
+          Email sent: false
+          SMTP changed: false
+          HEPE authority granted: false
+          Anonymous Sign-In changed: false
+          Manual Linking changed: false
+          Database/schema/security configuration changed: false
+          Secret disclosed: false
+          SUMMARY
