@@ -1,8 +1,11 @@
-# HEPE Copilot Governance v1.0 — Proposed Controlled Baseline
+# HEPE Copilot Governance v1.0 — Frozen / Controlled Baseline
 
-Gate: HEPE-GOV-COPILOT-01A  
-Environment boundary: NON-PRODUCTION by default  
-Production authorization: HUMAN ONLY
+Gate: HEPE-GOV-COPILOT-01A → 01F  
+Environment boundary: NON-PRODUCTION governance baseline  
+Production authorization: HUMAN ONLY  
+Baseline effective condition: this status becomes authoritative only after this dedicated baseline-closure change is human-approved and merged to `non-production` through the governed repository process.
+
+> THIS CONTROLLED BASELINE IS NOT PRODUCTION AUTHORIZATION.
 
 ## Capability policy
 
@@ -44,7 +47,7 @@ AI must not independently:
 Default state is DENY. Each allowed MCP server/connector must have an identified owner, purpose, permitted operations, data classification, environment, and revocation path. Technical availability is not authorization.
 
 ## Agent execution model
-Human/approved gate -> bounded task -> agent branch -> implementation -> tests -> PR -> advisory AI review -> required human review -> human merge. Any production transition requires separate explicit human production authorization.
+Human/approved gate -> bounded task -> agent branch -> implementation -> tests -> PR -> advisory AI review -> required human decision -> human merge. Any production transition requires separate explicit human production authorization.
 
 ## Evidence admission
 Conversation != Audit Evidence. AI-generated material remains CONTEXT / DISCUSSION / UNVERIFIED INPUT unless it meets the HEPE Evidence Admission Requirement with provenance, authority and verification.
@@ -59,5 +62,20 @@ Conversation != Audit Evidence. AI-generated material remains CONTEXT / DISCUSSI
 - A7 AI memory/comments/generated content are not Audit Evidence by themselves.
 - A8 governance changes retain repository provenance and review/test records.
 
+## Technical closure provenance
+- HEPE-GOV-COPILOT-01A: human-approved and merged to `non-production`.
+- HEPE-GOV-COPILOT-01B: PASS WITH DOCUMENTED LIMITATION; ruleset ID `22409192` is ACTIVE for `refs/heads/non-production`, requiring PR flow and `governance-policy`, blocking deletion/non-fast-forward, with no bypass actors.
+- HEPE-GOV-COPILOT-01C: PASS after instruction hardening for test-before-acceptance, degraded/offline connector behavior, Exception Stop and evidence provenance.
+- HEPE-GOV-COPILOT-01D: PASS for proportionate path-specific governance on current repository paths.
+- HEPE-GOV-COPILOT-01E: PASS for MCP/connector default-deny governance registry.
+- HEPE-GOV-COPILOT-01F: technical PASS with explicit Human Acceptance; PR #3 merged to `non-production` at merge commit `5be205dffb8fa68b5586551b606c2ad1c9c55101` after current-head `governance-policy` run `34067135702` succeeded.
+
+## Documented limitations
+- Independent reviewer separation-of-duties has not been verified; required approving review count is `0` under the single-owner compensating-control model.
+- Required review-thread resolution is not enforced by the current ruleset.
+- These limitations do not permit AI review to substitute Human Authority and do not authorize Production.
+
 ## Baseline status
-This document is created as a **PROPOSED CONTROLLED BASELINE** by HEPE-GOV-COPILOT-01A. It becomes a Frozen/Controlled Baseline only after the required human review/approval and repository change-control process. It is not Production Authorization.
+**FROZEN / CONTROLLED BASELINE — NON-PRODUCTION GOVERNANCE BASELINE**, subject to human approval and merge of this dedicated baseline-closure change. Until that merge occurs, this branch content remains a proposed controlled change rather than the authoritative baseline.
+
+THIS CONTROLLED BASELINE IS NOT PRODUCTION AUTHORIZATION.
