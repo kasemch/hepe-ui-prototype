@@ -1,0 +1,56 @@
+name: HEPE Copilot Governance Check
+
+on:
+  pull_request:
+    branches:
+      - non-production
+    paths:
+      - '.github/**'
+      - 'docs/governance/**'
+
+permissions:
+  contents: read
+
+jobs:
+  governance-policy:
+    name: governance-policy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify required governance files
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f .github/copilot-instructions.md
+          test -f .github/CODEOWNERS
+          test -f .github/pull_request_template.md
+          test -f docs/governance/HEPE-COPILOT-GOVERNANCE-v1.0.md
+
+      - name: Verify mandatory authority boundaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -qi 'NON-PRODUCTION' .github/copilot-instructions.md
+          grep -qi 'not Audit Evidence' .github/copilot-instructions.md
+          grep -qi 'DEFAULT DENY' .github/copilot-instructions.md
+          grep -qi 'HUMAN ONLY' docs/governance/HEPE-COPILOT-GOVERNANCE-v1.0.md
+          grep -qi 'advisory only' docs/governance/HEPE-COPILOT-GOVERNANCE-v1.0.md
+          grep -qi 'Production deployment' docs/governance/HEPE-COPILOT-GOVERNANCE-v1.0.md
+
+      - name: Verify no credential-like literals in governance files
+        shell: bash
+        run: |
+          set -euo pipefail
+          files=(.github/copilot-instructions.md .github/CODEOWNERS .github/pull_request_template.md docs/governance/HEPE-COPILOT-GOVERNANCE-v1.0.md)
+          if grep -Eini '(BEGIN (RSA|OPENSSH|EC) PRIVATE KEY|gh[pousr]_[A-Za-z0-9_]{20,}|sk-[A-Za-z0-9]{20,})' "${files[@]}"; then
+            echo 'Potential credential literal found in governance files.' >&2
+            exit 1
+          fi
+
+      - name: Confirm non-production-only workflow behavior
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo 'Policy validation only. No deployment, secret write, schema write, authority grant, or production action is performed.'
