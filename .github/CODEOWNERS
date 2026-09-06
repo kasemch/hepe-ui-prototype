@@ -1,0 +1,17 @@
+# HEPE human ownership baseline
+* @kasemch
+
+# Governance and AI policy
+/.github/ @kasemch
+/docs/governance/ @kasemch
+
+# Authentication, authorization, configuration, workflows and data-access code
+/app/auth/ @kasemch
+/lib/ @kasemch
+*.yml @kasemch
+*.yaml @kasemch
+/.env* @kasemch
+
+# Production/deployment-related configuration remains human-owned
+/vercel.json @kasemch
+/supabase/ @kasemch
