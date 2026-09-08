@@ -1,0 +1,5 @@
+Drill ID: LDM-2026-09-08-R01
+Idempotency token: HEPE-LDM-2026-09-08-R01-IDEMPOTENT-001
+HEPE_SYNTHETIC_DRILL=true
+NON_PRODUCTION_ONLY=true
+Run timestamp/provenance: 2026-09-08T08:55:00+07:00 | GitHub connector | dedicated temporary branch test/hepe-ldm-2026-09-08-r01
