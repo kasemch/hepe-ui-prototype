@@ -3,7 +3,7 @@
 Gate: HEPE-GOV-COPILOT-01A → 01F  
 Environment boundary: NON-PRODUCTION governance baseline  
 Production authorization: HUMAN ONLY  
-Baseline effective condition: this status becomes authoritative only after this dedicated baseline-closure change is human-approved and merged to `non-production` through the governed repository process.
+Baseline effective condition: SATISFIED — the dedicated baseline-closure change was human-approved and merged to `non-production` through the governed repository process.
 
 > THIS CONTROLLED BASELINE IS NOT PRODUCTION AUTHORIZATION.
 
@@ -76,6 +76,6 @@ Conversation != Audit Evidence. AI-generated material remains CONTEXT / DISCUSSI
 - These limitations do not permit AI review to substitute Human Authority and do not authorize Production.
 
 ## Baseline status
-**FROZEN / CONTROLLED BASELINE — NON-PRODUCTION GOVERNANCE BASELINE**, subject to human approval and merge of this dedicated baseline-closure change. Until that merge occurs, this branch content remains a proposed controlled change rather than the authoritative baseline.
+**FROZEN / CONTROLLED BASELINE — NON-PRODUCTION GOVERNANCE BASELINE.** The dedicated baseline-closure change has been human-approved and merged through the governed repository process.
 
 THIS CONTROLLED BASELINE IS NOT PRODUCTION AUTHORIZATION.
