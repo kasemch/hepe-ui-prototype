@@ -2,7 +2,7 @@
 
 Drill ID: `LDM-2026-09-08-R01`  
 Environment: **NON-PRODUCTION ONLY**  
-Record status: **PROPOSED CONTROLLED EVIDENCE RECORD — effective only after human-approved merge to `non-production`**  
+Record status: **CONTROLLED / MERGED — human-approved PR #14 merged to `non-production` at `ea5f574dd1a5d0dcd401e054c8054c2ac14b5700`**  
 Prepared: `2026-09-08T09:32:00+07:00`  
 Authority/Owner: Human-approved HEPE gate-scoped authority / repository owner  
 Overall technical result: **PASS**  
@@ -146,7 +146,7 @@ Cleanup verification: **PASS — RETENTION MODE**.
 ## Final reconciliation
 - 02C static governance regression: **PASS**.
 - 02C live degraded-mode drill `LDM-2026-09-08-R01`: **PASS**.
-- Evidence closure record: **PROPOSED / HUMAN MERGE REQUIRED** until this PR is human-approved and merged.
+- Evidence closure record: **CONTROLLED / MERGED — PR #14 human-approved and merged at `ea5f574dd1a5d0dcd401e054c8054c2ac14b5700`**.
 - Overall governance classification after technical reconciliation: **PASS WITH DOCUMENTED LIMITATION**.
 
 This record does not authorize Production and does not claim Production Readiness.
