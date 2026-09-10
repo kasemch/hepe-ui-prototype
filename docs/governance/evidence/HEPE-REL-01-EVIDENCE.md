@@ -32,65 +32,65 @@ Implemented controls:
 
 The module has no network calls, persistence, secrets, schema access, user data, SMTP, authority mutation, deployment, or Production binding.
 
-## Failure-mode regression scope
+## Failure-mode regression result
 Synthetic harness: `scripts/hepe-rel-01-test.mjs`.
 
-Assertions implemented:
-- REL01-T01 READ timeout → bounded auto-retry disposition.
-- REL01-T02 stale/conflicting READ → revalidate.
-- REL01-T03 WRITE timeout before acknowledgement → queue only after prerequisites.
-- REL01-T04 timeout after remote success → idempotent no-op.
-- REL01-T05 duplicate retry → no second write.
-- REL01-T06 same key/different payload → conflict.
-- REL01-T07 expired queued write → deny.
-- REL01-T08 authentication failure → revalidate.
-- REL01-T09 authorization failure → revalidate.
-- REL01-T10 stale human authority → human reconfirm.
-- REL01-T11 remote 5xx READ → bounded retry disposition.
-- REL01-T12 rate-limited validated WRITE → queue disposition.
-- REL01-T13 offline/unknown destination WRITE → revalidate.
-- REL01-T14 threshold opens circuit.
-- REL01-T15 cooldown moves OPEN → HALF_OPEN.
-- REL01-T16 successful probe closes circuit.
-- REL01-T17 ADMIN replay → never queue.
-- REL01-T18 DESTRUCTIVE replay → never queue.
-- REL01-T19 Production-sensitive replay without explicit authorization → deny.
-- REL01-T20 ambiguous destination → reconciliation required.
-- REL01-T21 failed retry with unknown destination → revalidation required.
-- REL01-T22 human-gated state does not silently reauthorize.
-- REL01-T23 UNKNOWN failure is never a safe retry.
+Verified GitHub Actions execution on PR #18 head `b8feb8c1d203234b8c1a744dadafc818899d026d` completed successfully. Workflow job `governance-policy` / job id `102804945209` executed the HEPE-REL-01 regression step and reported `HEPE-REL-01 synthetic regression: 23/23 PASS`.
 
-## Expected automated evidence
-The existing `governance-policy` workflow is extended in this branch to execute the synthetic harness whenever HEPE-REL-01 implementation, tests, or governance files change. Actual PASS/FAIL must come from the GitHub Actions check on the final PR head; this proposed record does not pre-claim runtime PASS.
+Verified assertions:
+- REL01-T01 READ timeout → bounded auto-retry disposition — PASS.
+- REL01-T02 stale/conflicting READ → revalidate — PASS.
+- REL01-T03 WRITE timeout before acknowledgement → queue only after prerequisites — PASS.
+- REL01-T04 timeout after remote success → idempotent no-op — PASS.
+- REL01-T05 duplicate retry → no second write — PASS.
+- REL01-T06 same key/different payload → conflict — PASS.
+- REL01-T07 expired queued write → deny — PASS.
+- REL01-T08 authentication failure → revalidate — PASS.
+- REL01-T09 authorization failure → revalidate — PASS.
+- REL01-T10 stale human authority → human reconfirm — PASS.
+- REL01-T11 remote 5xx READ → bounded retry disposition — PASS.
+- REL01-T12 rate-limited validated WRITE → queue disposition — PASS.
+- REL01-T13 offline/unknown destination WRITE → revalidate — PASS.
+- REL01-T14 threshold opens circuit — PASS.
+- REL01-T15 cooldown moves OPEN → HALF_OPEN — PASS.
+- REL01-T16 successful probe closes circuit — PASS.
+- REL01-T17 ADMIN replay → never queue — PASS.
+- REL01-T18 DESTRUCTIVE replay → never queue — PASS.
+- REL01-T19 Production-sensitive replay without explicit authorization → deny — PASS.
+- REL01-T20 ambiguous destination → reconciliation required — PASS.
+- REL01-T21 failed retry with unknown destination → revalidation required — PASS.
+- REL01-T22 human-gated state does not silently reauthorize — PASS.
+- REL01-T23 UNKNOWN failure is never a safe retry — PASS.
+
+Because this evidence update creates a new PR head, the required GitHub Actions check must run again on the new final head before merge. Prior 23/23 results remain admissible test evidence for the tested commit but do not substitute for final-head CI.
 
 ## Security / authority assertions
-Expected outcomes:
-- retry cannot bypass authority;
-- WRITE retry requires destination/idempotency checks;
-- stale human authority cannot silently execute;
-- ADMIN and DESTRUCTIVE replay are blocked from automatic queueing;
-- Production-sensitive replay is denied absent explicit Production Authorization;
-- UNKNOWN failure requires revalidation;
-- circuit state cannot elevate authority.
+Synthetic tests support the following bounded assertions: retry paths do not automatically bypass the encoded authority preconditions; WRITE retry is blocked when destination/idempotency prerequisites fail; stale human authority cannot silently execute; ADMIN and DESTRUCTIVE replay are blocked from automatic queueing; Production-sensitive replay is denied absent explicit Production Authorization; UNKNOWN failure requires revalidation; circuit state does not itself elevate authority.
+
+These are foundation-level assertions only. No real remote connector, persistent outbox, Production path, or live authority system was exercised.
 
 ## Evidence register
-| Evidence ID | Evidence Type | Source | Version/Date | Authority/Owner | Assertion | Verification |
-|---|---|---|---|---|---|---|
-| HEPE-REL01-EVD-001 | Controlled Document source | HEPE-MCP-CONNECTOR-REGISTRY-v0.1.md | repository version at gate start | repository governance owner | approved connector classification basis | VERIFIED AS REPOSITORY SOURCE; operation availability remains per-record status |
-| HEPE-REL01-EVD-002 | Controlled Document source | HEPE-GOV-COPILOT-02C-RECOVERY-CONTRACT.md | repository version at gate start | repository governance owner | recovery/replay sequence | VERIFIED AS REPOSITORY SOURCE |
-| HEPE-REL01-EVD-003 | Verified System Evidence | GitHub Ruleset 22409192 | observed before branch creation | repository administrative authority | governance controls unchanged before work | VERIFIED |
-| HEPE-REL01-EVD-004 | Test / Regression Evidence | GitHub Actions `governance-policy` on HEPE-REL-01 PR head | pending | GitHub Actions / repository | synthetic REL01-T01..T23 | PENDING PR CHECK |
+| Evidence ID | Evidence Type | Source | Version/Date | Authority/Owner | Relevant Contract/Assertion | Expected Result | Actual Result | Verification Status |
+|---|---|---|---|---|---|---|---|---|
+| HEPE-REL01-EVD-001 | Controlled Document source | HEPE-MCP-CONNECTOR-REGISTRY-v0.1.md | repository version at gate start | repository governance owner | connector classification basis | source available and classifications preserved | source read and classifications preserved | VERIFIED SOURCE; operation availability remains per-record status |
+| HEPE-REL01-EVD-002 | Controlled Document source | HEPE-GOV-COPILOT-02C-RECOVERY-CONTRACT.md | repository version at gate start | repository governance owner | recovery/replay sequence | REL-01 remains compatible with 02C | sequence preserved | VERIFIED SOURCE |
+| HEPE-REL01-EVD-003 | Verified System Evidence | GitHub Ruleset 22409192 | observed before branch creation | repository administrative authority | governance controls unchanged before work | active; conversation resolution true; governance-policy required; no bypass | matched | PASS |
+| HEPE-REL01-EVD-004 | Test / Regression Evidence | GitHub Actions PR #18 job 102804945209 on `b8feb8c...` | 2026-09-10 | GitHub Actions / repository | synthetic REL01-T01..T23 | 23/23 PASS | 23/23 PASS | PASS FOR TESTED HEAD |
+| HEPE-REL01-EVD-005 | Test / Regression Evidence | GitHub Actions `governance-policy` on final PR #18 head | pending after evidence update | GitHub Actions / repository | final-head governance + synthetic regression | SUCCESS | pending | PENDING FINAL-HEAD CHECK |
 
 ## Known limitations
 - No real connector outage or remote connector write is exercised by this foundation.
 - Vercel, Supabase, Drive, Calendar, Gmail runtime availability is not established by this gate.
 - Google AI Studio and Microsoft/Azure connector status is unverified in the inspected controlled registry.
 - No durable outbox/queue persistence exists; adding persistence would require a separately authorized schema/data gate.
+- `lint`, standalone TypeScript typecheck, and application build are not existing scripts in the inspected `package.json`; this gate does not fabricate PASS results for them. The changed implementation is plain `.mjs` and is exercised by the Node synthetic harness in GitHub Actions.
 - Independent reviewer remains unavailable/deferred; separation-of-duties remains unverified.
 
-## Final classification before PR validation
-`HEPE-REL-01 = PROPOSED / TEST EVIDENCE PENDING`.
+## Pre-merge classification
+`HEPE-REL-01 = PASS WITH CONDITIONS — PRE-MERGE`.
 
-PASS may be assigned only after final-head GitHub Actions verification shows the synthetic regression and governance checks succeeded, the PR diff is within scope, there are no unresolved C1/C2 findings, and Human Approval authorizes merge.
+Conditions before controlled merge: final PR head must have `governance-policy = SUCCESS`, including the synthetic regression step; scoped diff must remain free of schema/Production/secret/authority mutations; no unresolved C1/C2 finding or review conversation may remain; explicit Human Approval is required.
+
+After human-approved merge and post-merge verification, the controlled foundation may be classified `PASS WITH DOCUMENTED LIMITATION` because live connector runtime and durable outbox persistence remain outside this gate.
 
 No Production Authorization. Conversation ≠ Audit Evidence. Controlled Baseline / Verified System Evidence prevail.
