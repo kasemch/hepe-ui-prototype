@@ -1,5 +1,75 @@
 import { notFound } from 'next/navigation';
+import { getHepeServerSupabase } from '../../lib/hepe/server-supabase';
+
+export const dynamic = 'force-dynamic';
+
 const moduleData:Record<string,{title:string,description:string,status:string,items:string[]}>= {
-curriculum:{title:'Curriculum Overview',description:'Programme structure, curriculum version and controlled academic baseline.',status:'CONTROLLED BASELINE AVAILABLE',items:['Programme structure','Curriculum version','Course registry','Programme outcomes']},traceability:{title:'PLO / CLO Traceability',description:'Trace academic outcomes through curriculum and course-level relationships.',status:'READ-MODEL FOUNDATION',items:['PLO registry','CLO registry','CLO → PLO links','Evidence trace']},mapping:{title:'Curriculum Mapping / I-R-M',description:'Inspect curriculum mapping and Introduce–Reinforce–Master relationships.',status:'READ-MODEL FOUNDATION',items:['PLO × Course','PLO × I-R-M','Course × CLO','Mapping provenance']},reviews:{title:'Review Queue',description:'Authority-aware academic review work queue.',status:'DATA NOT YET VERIFIED FOR PREVIEW',items:['Pending review','Reviewer scope','Due status','Decision readiness']},decisions:{title:'Approval / Decision Workspace',description:'Human-governed academic decision workspace.',status:'HUMAN AUTHORITY REQUIRED',items:['Decision context','Evidence bundle','Conflict-of-interest status','Decision provenance']},evidence:{title:'Evidence Explorer',description:'Evidence-first registry with provenance and admissibility status.',status:'CONTROLLED EVIDENCE MODEL',items:['Evidence type','Source / version','Authority / owner','Verification status']},findings:{title:'Findings & Improvement',description:'Formal findings, reconciliation and improvement tracking.',status:'NO VERIFIED OPEN COUNT DISPLAYED',items:['Findings register','Reconciliation items','Corrective action','Closure evidence']},qa:{title:'QA Readiness',description:'Quality assurance readiness without fabricated scores.',status:'METRICS NOT YET VERIFIED',items:['AUN-QA readiness','Regulatory evidence','Evidence completeness','Improvement readiness']},calendar:{title:'Academic Calendar / Tasks',description:'Academic milestones and controlled task visibility.',status:'CALENDAR INTEGRATION NOT VERIFIED BY WEB-01',items:['Academic milestones','Review deadlines','Programme tasks','Upcoming governance gates']},audit:{title:'Provenance / Audit Trail',description:'Trace controlled records, decisions and verified system evidence.',status:'EVIDENCE-FIRST',items:['Correlation ID','Source version','Authority','Verification status']},runtime:{title:'Runtime / Connector Health',description:'Operational reliability foundation and runtime readiness.',status:'REL-03 APPLICATION BINDING PENDING',items:['Connector health','Circuit state','Last verified attempt','Runtime binding']},outbox:{title:'Outbox Queue',description:'Durable connector command persistence foundation.',status:'REL-02A VERIFIED FOUNDATION',items:['Queued command state','Idempotency key','Authority revalidation','Expiry / disposition']},reconciliation:{title:'Reconciliation Workspace',description:'Human-governed resolution for ambiguous or conflicting connector states.',status:'FOUNDATION READY / LIVE RUNTIME PENDING',items:['Open reconciliation','Destination verification','Authority reconfirm','Resolution evidence']},governance:{title:'System Governance / Gate Status',description:'Controlled HEPE architecture and gate posture.',status:'NON-PRODUCTION',items:['REL-01 controlled','REL-02 controlled','REL-02A controlled','REL-03 pending','WEB-01 active']}};
+curriculum:{title:'Curriculum Overview',description:'Programme structure, curriculum version and controlled academic baseline.',status:'CONTROLLED BASELINE AVAILABLE',items:['Programme structure','Curriculum version','Course registry','Programme outcomes']},traceability:{title:'PLO / CLO Traceability',description:'Trace academic outcomes through curriculum and course-level relationships.',status:'READ-MODEL FOUNDATION',items:['PLO registry','CLO registry','CLO → PLO links','Evidence trace']},mapping:{title:'Curriculum Mapping / I-R-M',description:'Inspect curriculum mapping and Introduce–Reinforce–Master relationships.',status:'READ-MODEL FOUNDATION',items:['PLO × Course','PLO × I-R-M','Course × CLO','Mapping provenance']},reviews:{title:'Review Queue',description:'Authority-aware academic review work queue.',status:'REL-03 AUTHENTICATED READ BINDING',items:['Pending review','Reviewer scope','Due status','Decision readiness']},decisions:{title:'Approval / Decision Workspace',description:'Human-governed academic decision workspace.',status:'HUMAN AUTHORITY REQUIRED',items:['Decision context','Evidence bundle','Conflict-of-interest status','Decision provenance']},evidence:{title:'Evidence Explorer',description:'Evidence-first registry with provenance and admissibility status.',status:'REL-03 AUTHENTICATED READ BINDING',items:['Evidence type','Source / version','Authority / owner','Verification status']},findings:{title:'Findings & Improvement',description:'Formal findings, reconciliation and improvement tracking.',status:'NO VERIFIED OPEN COUNT DISPLAYED',items:['Findings register','Reconciliation items','Corrective action','Closure evidence']},qa:{title:'QA Readiness',description:'Quality assurance readiness without fabricated scores.',status:'METRICS NOT YET VERIFIED',items:['AUN-QA readiness','Regulatory evidence','Evidence completeness','Improvement readiness']},calendar:{title:'Academic Calendar / Tasks',description:'Academic milestones and controlled task visibility.',status:'CALENDAR INTEGRATION NOT VERIFIED',items:['Academic milestones','Review deadlines','Programme tasks','Upcoming governance gates']},audit:{title:'Provenance / Audit Trail',description:'Trace controlled records, decisions and verified system evidence.',status:'EVIDENCE-FIRST',items:['Correlation ID','Source version','Authority','Verification status']},runtime:{title:'Runtime / Connector Health',description:'RLS-preserving view of verified connector health snapshots.',status:'REL-03 AUTHENTICATED READ BINDING',items:['Connector health','Circuit state','Last verified attempt','Runtime binding']},outbox:{title:'Outbox Queue',description:'RLS-preserving view of the REL-02A durable connector outbox.',status:'REL-03 AUTHENTICATED READ BINDING',items:['Queued command state','Idempotency key','Authority revalidation','Expiry / disposition']},reconciliation:{title:'Reconciliation Workspace',description:'Human-governed resolution workspace backed by REL-02A reconciliation records.',status:'REL-03 AUTHENTICATED READ BINDING',items:['Open reconciliation','Destination verification','Authority reconfirm','Resolution evidence']},governance:{title:'System Governance / Gate Status',description:'Controlled HEPE architecture and gate posture.',status:'NON-PRODUCTION',items:['REL-01 controlled','REL-02 controlled','REL-02A controlled','REL-03 active','WEB-01B controlled']}};
+
 export function generateStaticParams(){return Object.keys(moduleData).map(module=>({module}))}
-export default async function ModulePage({params}:{params:Promise<{module:string}>}){const {module}=await params;const data=moduleData[module];if(!data)notFound();return <main className="workspace"><div className="module-wrap"><a className="breadcrumb" href="/">← Academic Command Center</a><section className="hero"><div className="brand-kicker">HEPE · BED-HEPE · NON-PRODUCTION</div><h1>{data.title}</h1><p>{data.description}</p></section><div className="pill">{data.status}</div><div className="grid g2">{data.items.map(item=><article className="card item-card" key={item}><div className="label">Academic workspace</div><h2>{item}</h2><p>No unverified metric is presented as fact. Authoritative data will be bound when the corresponding runtime/read model is verified.</p></article>)}</div><div className="firewall">Environment firewall · NON-PRODUCTION only · No Production authorization · No real external connector write · No real-user authority change.</div><footer className="footer-note">Evidence-first · Provenance-aware · Human academic authority preserved.</footer></div></main>}
+
+type LiveResult = {
+  state: 'NOT_APPLICABLE'|'RUNTIME_NOT_CONFIGURED'|'AUTH_REQUIRED'|'QUERY_ERROR'|'EMPTY'|'VERIFIED';
+  source?: string;
+  rows?: Record<string, unknown>[];
+};
+
+function short(value: unknown){
+  if(value===null || value===undefined || value==='') return '—';
+  const text=String(value);
+  return text.length>72?`${text.slice(0,69)}…`:text;
+}
+
+async function loadLive(module:string):Promise<LiveResult>{
+  if(!['runtime','outbox','reconciliation','evidence','reviews'].includes(module)) return {state:'NOT_APPLICABLE'};
+  const binding=await getHepeServerSupabase();
+  if(!binding.ok) return {state:'RUNTIME_NOT_CONFIGURED'};
+
+  const {data:userData,error:userError}=await binding.supabase.auth.getUser();
+  if(userError || !userData.user) return {state:'AUTH_REQUIRED'};
+
+  if(module==='runtime'){
+    const {data,error}=await binding.supabase.from('connector_health_snapshot').select('connector_id,runtime_state,circuit_state,last_success_at,last_failure_at,last_failure_class,consecutive_failures,queue_depth,pending_reconciliation_count,authority_revalidation_pending,captured_at').order('captured_at',{ascending:false}).limit(20);
+    if(error) return {state:'QUERY_ERROR',source:'connector_health_snapshot'};
+    return {state:data?.length?'VERIFIED':'EMPTY',source:'connector_health_snapshot',rows:data??[]};
+  }
+  if(module==='outbox'){
+    const {data,error}=await binding.supabase.from('connector_outbox').select('operation_id,connector_id,operation_class,state,attempt_no,created_at,expires_at,last_verified_at,failure_class,final_disposition,provenance_reference').order('created_at',{ascending:false}).limit(20);
+    if(error) return {state:'QUERY_ERROR',source:'connector_outbox'};
+    return {state:data?.length?'VERIFIED':'EMPTY',source:'connector_outbox',rows:data??[]};
+  }
+  if(module==='reconciliation'){
+    const {data,error}=await binding.supabase.from('reconciliation_item').select('reason_code,opened_at,resolved_at,resolution_status,resolution_notes,evidence_reference').order('opened_at',{ascending:false}).limit(20);
+    if(error) return {state:'QUERY_ERROR',source:'reconciliation_item'};
+    return {state:data?.length?'VERIFIED':'EMPTY',source:'reconciliation_item',rows:data??[]};
+  }
+  if(module==='evidence'){
+    const {data,error}=await binding.supabase.from('v_hepe_evidence_projection_v1').select('evidence_code,title,evidence_type_code,status_code,version_no,is_current,effective_from,effective_to,verification_result,sufficiency_result,is_stale,health_state').limit(20);
+    if(error) return {state:'QUERY_ERROR',source:'v_hepe_evidence_projection_v1'};
+    return {state:data?.length?'VERIFIED':'EMPTY',source:'v_hepe_evidence_projection_v1',rows:data??[]};
+  }
+  const {data,error}=await binding.supabase.from('v_hepe_review_queue_v1').select('programme_code,review_code,review_type_code,review_no,review_date,gate_phase,scope_summary,status_code,row_version,updated_at,reviewer_assignment_count,alternate_reviewer_count,review_item_count,has_blocking_coi').order('updated_at',{ascending:false}).limit(20);
+  if(error) return {state:'QUERY_ERROR',source:'v_hepe_review_queue_v1'};
+  return {state:data?.length?'VERIFIED':'EMPTY',source:'v_hepe_review_queue_v1',rows:data??[]};
+}
+
+function LivePanel({result}:{result:LiveResult}){
+  if(result.state==='NOT_APPLICABLE') return null;
+  const stateText:Record<LiveResult['state'],string>={
+    NOT_APPLICABLE:'',RUNTIME_NOT_CONFIGURED:'Runtime environment is not configured for this deployment.',AUTH_REQUIRED:'Authenticated HEPE session required. No privileged fallback is used.',QUERY_ERROR:'Controlled source could not be read under the current RLS/session context.',EMPTY:'Verified source returned no rows visible to the current authority scope.',VERIFIED:'Verified rows returned under the current authenticated RLS scope.'
+  };
+  return <article className="card" style={{marginTop:14}}>
+    <div className="label">Live runtime binding · {result.source??'HEPE Supabase'}</div>
+    <div className="value" style={{fontSize:17}}>{result.state}</div>
+    <p className="note">{stateText[result.state]} No service-role bypass or fabricated fallback data is used.</p>
+    {result.rows?.map((row,index)=><div key={index} style={{borderTop:'1px solid #edf0f2',padding:'11px 0'}}>{Object.entries(row).map(([key,value])=><div className="row" key={key}><span>{key}</span><span className="status">{short(value)}</span></div>)}</div>)}
+  </article>;
+}
+
+export default async function ModulePage({params}:{params:Promise<{module:string}>}){
+  const {module}=await params;
+  const data=moduleData[module];
+  if(!data)notFound();
+  const live=await loadLive(module);
+  return <main className="workspace"><div className="module-wrap"><a className="breadcrumb" href="/">← Academic Command Center</a><section className="hero"><div className="brand-kicker">HEPE · BED-HEPE · NON-PRODUCTION</div><h1>{data.title}</h1><p>{data.description}</p></section><div className="pill">{data.status}</div><LivePanel result={live}/><div className="grid g2">{data.items.map(item=><article className="card item-card" key={item}><div className="label">Academic workspace</div><h2>{item}</h2><p>Only controlled or RLS-visible verified records are presented. Missing runtime data remains explicitly unavailable rather than being inferred.</p></article>)}</div><div className="firewall">Environment firewall · NON-PRODUCTION only · Authenticated RLS reads only · No service-role client exposure · No Production authorization · No real external connector write · No real-user authority change.</div><footer className="footer-note">Evidence-first · Provenance-aware · Human academic authority preserved.</footer></div></main>
+}
