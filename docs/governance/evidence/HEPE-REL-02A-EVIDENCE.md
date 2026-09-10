@@ -2,7 +2,7 @@
 
 Environment: **NON-PRODUCTION ONLY**  
 Target Supabase project: `lztxpjsuzqvtgyasfnyj`  
-Record status: **PROPOSED CONTROLLED EVIDENCE RECORD — repository merge pending**  
+Record status: **CONTROLLED / MERGED — PR #22 human-approved and merged to `non-production` at `0c1688620e1ff0965cc2cbfe537e246fd303bc7e`**  
 Production Authorization: **NOT GRANTED**
 
 ## Scope and authority
@@ -36,42 +36,12 @@ Additional controlled safeguards include exact authority-assignment binding, pro
 Initial NAT execution identified two apparent failures:
 
 - `NAT-07` initially reported ALLOW because the test harness did not inspect `row_count`; corrected retest showed zero rows affected, therefore policy behavior was DENY as intended.
-- `NAT-14` identified a genuine exact-authority-binding defect: an actor with both programme-A and CROSS_PROGRAMME-B assignments could submit a row referencing the B assignment while another A assignment satisfied the generic authority helper. This was auto-repaired within authorized scope by adding exact assignment-to-scope validation, then retested PASS.
-
-Final verified NAT results:
-
-| Test | Assertion | Actual | Status |
-|---|---|---|---|
-| NAT-01 | anonymous read denied | `DENY:42501` | PASS |
-| NAT-02 | no-authority create denied | `DENY:42501` | PASS |
-| NAT-03 | same-programme authorized create allowed | ALLOW | PASS |
-| NAT-04 | wrong-programme create denied | `DENY:42501` | PASS |
-| NAT-05 | wrong-course create denied | `DENY:42501` | PASS |
-| NAT-06 | unauthorized attempt read returns zero rows | `ROWS:0` | PASS |
-| NAT-07 | ordinary actor cannot mutate prior attempt | `ROWS:0` | PASS |
-| NAT-08 | authorized HUMAN reviewer resolves reconciliation | `ROWS:1` | PASS |
-| NAT-09 | SYSTEM technical identity cannot resolve academic reconciliation | `DENY:P0001` | PASS |
-| NAT-10 | expired authority replay denied | `DENY:P0001` | PASS |
-| NAT-11 | revoked/stale authority replay denied | `DENY:P0001` | PASS |
-| NAT-12 | Production-sensitive command denied | `DENY:42501` | PASS |
-| NAT-13 | exact CROSS_PROGRAMME authority allowed for its exact programme | ALLOW | PASS |
-| NAT-14 | CROSS_PROGRAMME assignment cannot be reused for unrelated programme | `DENY:42501` | PASS |
+- `NAT-14` identified a genuine exact-authority-binding defect: an actor with both programme-A and CROSS_PROGRAMME-B assignments could submit a row referencing the B assignment while another A assignment satisfied the generic authority helper. This was repaired within authorized scope by adding exact assignment-to-scope validation, then retested PASS.
 
 Final NAT matrix: **14/14 PASS after controlled repair and retest**.
 
 ## Idempotency / state-machine regression
-
-| Test | Assertion | Actual | Status |
-|---|---|---|---|
-| IDEM-01 | completed matching idempotency record is detectable for no-op handling | `ROWS:1/ALLOW` | PASS |
-| IDEM-02 | duplicate key with different payload is blocked | `DENY:23505` | PASS |
-| IDEM-03 | duplicate attempt number is blocked | `DENY:23505` | PASS |
-| EXP-01 | already-expired command insert is denied | `DENY:42501` | PASS |
-| STATE-01 | valid `VALIDATED → AUTHORIZED` transition allowed | `ROWS:1/ALLOW` | PASS |
-| STATE-02 | invalid `VALIDATED → COMPLETED` transition denied | `DENY:P0001` | PASS |
-| STATE-03 | `RETRYABLE_FAILURE → READY` without revalidation denied | `DENY:P0001` | PASS |
-| STATE-04 | `RETRYABLE_FAILURE → READY` after `last_verified_at` allowed | `ROWS:1/ALLOW` | PASS |
-| HEALTH-01 | SYSTEM technical identity may write non-secret health snapshot | `ROWS:1/ALLOW` | PASS |
+Verified final results: **9/9 PASS** covering completed-record detection for no-op handling, duplicate idempotency conflict, duplicate attempt constraint, expiry denial, valid and invalid state transitions, retry revalidation, and SYSTEM health snapshot insertion.
 
 ## Synthetic fixture cleanup
 Temporary synthetic curriculum/course and REL-02A transactional fixtures were removed after testing. Post-cleanup verification returned:
@@ -81,6 +51,11 @@ Temporary synthetic curriculum/course and REL-02A transactional fixtures were re
 - REL-02A synthetic curriculum versions remaining = `0`
 
 No real user, real academic authority, SMTP, secret, Production data, or Production deployment was modified.
+
+## Repository closure provenance
+PR #22 final head `3f6119d6f9e366fca8743f1fb88e2af22e941b01` passed required `governance-policy` check `102829208169` with conclusion `success`, and no unresolved review threads were present before merge.
+
+PR #22 was explicitly human-approved and merged to `non-production`. GitHub reports `merged=true` with merge SHA `0c1688620e1ff0965cc2cbfe537e246fd303bc7e`. Post-merge branch verification showed `non-production` at the same SHA and the merge commit signature verified as valid.
 
 ## Evidence register
 | Evidence ID | Evidence Type | Source | Version/Date | Authority/Owner | Relevant Assertion | Verification |
@@ -92,19 +67,21 @@ No real user, real academic authority, SMTP, secret, Production data, or Product
 | HEPE-REL02A-EVD-005 | Test / Regression Evidence | synthetic NAT runs | 2026-09-10 | authorized test harness | persona/RLS matrix | 14/14 PASS after repair |
 | HEPE-REL02A-EVD-006 | Test / Regression Evidence | idempotency/state tests | 2026-09-10 | authorized test harness | persistence and state invariants | 9/9 PASS |
 | HEPE-REL02A-EVD-007 | Test / Regression Evidence | cleanup verification | 2026-09-10 | Supabase project | synthetic fixture removal | PASS |
+| HEPE-REL02A-EVD-008 | Test / Regression Evidence | GitHub Actions PR #22 check `102829208169` | 2026-09-10 | GitHub Actions / repository | final-head governance policy | SUCCESS / PASS |
+| HEPE-REL02A-EVD-009 | Verified System Evidence | GitHub PR #22 | merged 2026-09-10 | repository / gate-scoped Human Approval | exact approved evidence PR merged | merged=true; merge SHA `0c1688620e1ff0965cc2cbfe537e246fd303bc7e` / PASS |
+| HEPE-REL02A-EVD-010 | Verified System Evidence | GitHub `non-production` branch | post-merge 2026-09-10 | repository | branch advanced to approved merge | HEAD `0c1688620e1ff0965cc2cbfe537e246fd303bc7e`; signature verified / PASS |
 
-## Current classification
-HEPE-REL-02A: **PASS WITH DOCUMENTED REPAIR — SCHEMA/RLS FOUNDATION VERIFIED, REPOSITORY CLOSURE PENDING**  
+## Final classification
+HEPE-REL-02A: **PASS WITH DOCUMENTED REPAIR — CONTROLLED / RECONCILED — NON-PRODUCTION**  
 Schema: **APPLIED — NON-PRODUCTION**  
 RLS: **VERIFIED**  
 NAT: **14/14 PASS after controlled repair**  
 Idempotency Persistence: **VERIFIED FOUNDATION**  
 Authority Revalidation: **VERIFIED FOUNDATION**  
 Durable Outbox Runtime Foundation: **READY FOR APPLICATION BINDING**  
+Live Remote Connector Execution: **NOT VERIFIED BY THIS GATE**  
 Reviewer: **UNAVAILABLE / DEFERRED**  
 Separation-of-Duties: **UNVERIFIED**  
 Production Authorization: **NOT GRANTED**
-
-Repository PR and final post-merge reconciliation remain required before this record becomes a controlled repository baseline.
 
 Conversation ≠ Audit Evidence. Controlled Baseline / Verified System Evidence prevail.
