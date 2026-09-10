@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
   }
 
   const config = getSyntheticAuthConfig();
-  if (!config.enabled) {
+  if ("reason" in config) {
     return NextResponse.json(
       { ok: false, code: `HEPE_SYNTHETIC_AUTH_${config.reason}` },
       { status: 403, headers: { "Cache-Control": "no-store" } }
