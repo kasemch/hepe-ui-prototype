@@ -29,6 +29,9 @@ The WEB-01 branch used extensive inline styling with a functional navy/white das
 - Business-like metric emphasis: REDUCE
 - Evidence/provenance/environment signals: STRENGTHEN
 
+## UI-01A.1 preview recovery
+A controlled repository update was issued on 2026-09-10 to trigger the existing Git-integrated Preview path for branch `gov/hepe-ui-01-academic-visual-refinement`. This recovery action changes only this evidence record and does not alter Production, deployment protection, schema, RLS, secrets, SMTP, connector behavior or academic authority. Preview readiness must still be verified from Vercel system evidence before admission as PASS.
+
 ## Evidence register
 | Evidence ID | Evidence Type | Source | Date | Assertion | Expected | Actual | Status |
 |---|---|---|---|---|---|---|---|
@@ -36,6 +39,7 @@ The WEB-01 branch used extensive inline styling with a functional navy/white das
 | HEPE-UI01-EVD-002 | Controlled Implementation Record | `gov/hepe-ui-01-academic-visual-refinement` | 2026-09-10 | academic design system implemented | frontend-only | implemented | PASS — repository state |
 | HEPE-UI01-EVD-003 | Test / Regression Evidence | Vercel Preview build | 2026-09-10 | build / route generation | PASS | PENDING | PENDING |
 | HEPE-UI01-EVD-004 | Approved Decision / Human Acceptance | Human visual review | 2026-09-10 | academic credibility / clarity / modernity / consistency | PASS | NOT YET RECORDED | PENDING |
+| HEPE-UI01-EVD-005 | Controlled Implementation Record | GitHub branch update | 2026-09-10 | trigger existing Git-integrated Preview path without security weakening | branch update only | executed | PASS — repository state |
 
 ## Current classification
 HEPE-UI-01: **IMPLEMENTATION COMPLETE — PREVIEW VERIFICATION PENDING**  
