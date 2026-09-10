@@ -1,7 +1,7 @@
 # HEPE-REL-03 — Application Runtime Binding Evidence
 
 Environment: **NON-PRODUCTION ONLY**  
-Record status: **PROPOSED CONTROLLED EVIDENCE RECORD — APPLICATION READ BINDING IMPLEMENTED / PREVIEW VERIFICATION PENDING**  
+Record status: **PROPOSED CONTROLLED EVIDENCE RECORD — APPLICATION READ BINDING IMPLEMENTED / BUILD PREVIEW PENDING**  
 Production Authorization: **NOT GRANTED**
 
 ## Scope
@@ -46,6 +46,27 @@ Repository-independent database inspection verified:
 
 REL-03 does not weaken or bypass these policies.
 
+## Synthetic authenticated RLS read regression
+A database-session test was executed with `role authenticated` and synthetic JWT subject claims only. No rows were inserted, updated or deleted.
+
+Authorized synthetic PREPARER_A (`A2`, programme scope `SYN-HEPE-A`) visibility:
+- review queue: 5
+- evidence projection: 0
+- outbox: 0
+- reconciliation: 0
+- runtime health: 0
+
+Synthetic NO_AUTHORITY visibility:
+- review queue: 0
+- evidence projection: 0
+- outbox: 0
+- reconciliation: 0
+- runtime health: 0
+
+Expected result: programme-authorized synthetic actor may read only RLS-visible rows; actor without authority sees no governed rows.  
+Actual result: matched expectation.  
+Status: **PASS**.
+
 ## Application implementation
 Branch: `feat/hepe-rel-03-runtime-binding`
 
@@ -66,13 +87,15 @@ Implemented:
 | HEPE-REL03-EVD-004 | Verified System Evidence | `read_model_registry` | 2026-09-10 | Supabase project | active security-invoker read models exist | present | 5 active models verified | PASS |
 | HEPE-REL03-EVD-005 | Verified System Evidence | Supabase runtime counts | 2026-09-10 | Supabase project | current persistence/read-model row state known | inspect only | reviews=5; REL-02A runtime queues/snapshots=0; evidence_objects=0 | PASS |
 | HEPE-REL03-EVD-006 | Controlled Implementation Record | `feat/hepe-rel-03-runtime-binding` | 2026-09-10 | Repository | authenticated RLS read binding implemented | frontend/server read binding | implemented | PASS — repository state |
-| HEPE-REL03-EVD-007 | Test / Regression Evidence | GitHub/Vercel preview build | pending | CI / Preview | exact-head compile/type/build | PASS | NOT YET VERIFIED | PENDING |
-| HEPE-REL03-EVD-008 | Test / Regression Evidence | authenticated synthetic browser/runtime read | pending | NON-PRODUCTION runtime | authenticated session sees RLS-authorized records/empty states | PASS | NOT YET VERIFIED | PENDING |
+| HEPE-REL03-EVD-007 | Test / Regression Evidence | GitHub Actions governance-policy | 2026-09-10 | GitHub Actions | governance contract on runtime-binding PR | SUCCESS | SUCCESS on prior implementation head; final-head rerun required after evidence update | PASS WITH FINAL-HEAD RECHECK |
+| HEPE-REL03-EVD-008 | Test / Regression Evidence | Supabase authenticated synthetic RLS read | 2026-09-10 | Supabase NON-PRODUCTION | PREPARER_A sees programme-scoped review rows; NO_AUTHORITY sees none | scoped ALLOW / DENY | PREPARER_A review_queue=5; NO_AUTHORITY all governed reads=0 | PASS |
+| HEPE-REL03-EVD-009 | Test / Regression Evidence | Vercel/CI exact-head build | pending | CI / Preview | compile/type/build | PASS | NOT YET VERIFIED | PENDING |
 
 ## Current classification
-HEPE-REL-03: **IMPLEMENTATION IN PROGRESS — READ BINDING IMPLEMENTED / EXACT-HEAD BUILD AND AUTHENTICATED RUNTIME VERIFICATION PENDING**  
-Application Runtime Binding: **IMPLEMENTED IN SOURCE**  
-REL-02A Read Binding: **IMPLEMENTED IN SOURCE**  
+HEPE-REL-03: **PASS WITH CONDITIONS — AUTHENTICATED RLS READ BINDING IMPLEMENTED AND RLS REGRESSION PASS / EXACT-HEAD BUILD PREVIEW PENDING**  
+Application Runtime Read Binding: **IMPLEMENTED IN SOURCE**  
+RLS Synthetic Read Regression: **PASS**  
+REL-02A Persistence Read Binding: **IMPLEMENTED IN SOURCE**  
 Synthetic Connector Dispatch: **NOT EXECUTED — DATABASE WRITE AUTHORIZATION NOT INFERRED**  
 Live Remote Connector: **NOT VERIFIED / NOT AUTHORIZED**  
 Production Authorization: **NOT GRANTED**
