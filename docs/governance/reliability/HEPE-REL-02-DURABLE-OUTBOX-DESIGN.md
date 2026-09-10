@@ -1,7 +1,7 @@
 # HEPE-REL-02 — Durable Outbox / Reconciliation Persistence Design
 
 Environment: **NON-PRODUCTION ONLY**  
-Status: **PROPOSED CONTROLLED DESIGN — SCHEMA EXECUTION NOT AUTHORIZED**  
+Status: **CONTROLLED / MERGED DESIGN — PR #20 merged at `de4555674b7362b1e91beaef8aab89f43217584f`; SCHEMA EXECUTION NOT AUTHORIZED**  
 Predecessor: `HEPE-REL-01-CONNECTOR-RESILIENCE-CONTRACT.md`
 
 ## 1. Verified current-state basis
@@ -44,7 +44,7 @@ Required invariants:
 - A technical service identity does not acquire academic authority by writing or reading outbox records.
 
 ## 4. RLS / authority candidate
-Design only; not applied.
+Controlled design only; not applied.
 
 Candidate policy posture:
 - Authenticated academic actors may create an outbox record only for operations for which an active scoped `authority_assignment` and valid `command_registry` entry exist.
@@ -55,7 +55,7 @@ Candidate policy posture:
 - Service-role usage, if ever introduced, is a technical bypass surface and requires separate explicit control; it must not be treated as Human Authority.
 
 ## 5. Migration candidate posture
-The accompanying SQL artifact is **NOT AUTHORIZED FOR EXECUTION**. It is a design candidate only. It proposes new tables, constraints, indexes, RLS enablement, and placeholder policy comments. No schema tool, SQL execution, migration apply, or data write is authorized by this gate.
+The accompanying SQL artifact remains **NOT AUTHORIZED FOR EXECUTION**. It is a controlled design candidate only. It proposes new tables, constraints, indexes, RLS enablement, and placeholder policy comments. PR #20 approval authorized only the design merge and did not authorize any schema tool, SQL execution, migration apply, or data write.
 
 ## 6. Schema delta assessment
 Schema delta: **REQUIRED**.
@@ -73,5 +73,12 @@ If later authorized and applied, rollback should drop REL-02 policies/indexes fi
 - `authority_assignment_id` should be captured at validation/dispatch time for provenance but revalidated before replay.
 - Connector health metadata must remain non-secret.
 - Any future cleanup/purge mechanism must be retention-policy governed and must not silently delete audit-relevant provenance.
+
+## 9. Controlled design closure
+PR #20 final head `0e92308fc26257ea035cdc4d47f38de00c9f5195` passed the required `governance-policy` check. The workflow executed both the predecessor REL-01 regression and `Verify HEPE-REL-02 durable outbox model regression` successfully. PR #20 was then human-approved and merged to `non-production` as merge SHA `de4555674b7362b1e91beaef8aab89f43217584f`.
+
+Post-merge repository verification showed `non-production` at that merge SHA with a valid GitHub merge signature. Ruleset `22409192` remained active with review-thread resolution and the required `governance-policy`, with no bypass actors.
+
+Final design classification: **PASS / CONTROLLED — NON-PRODUCTION**. Schema delta remains **REQUIRED**, but schema execution remains **NOT AUTHORIZED**. A future `HEPE-REL-02A` gate must obtain separate explicit Schema Modification Authorization before any CREATE/ALTER/POLICY/migration/data-write action.
 
 No Production Authorization. Conversation ≠ Audit Evidence. Controlled Baseline / Verified System Evidence prevail.
