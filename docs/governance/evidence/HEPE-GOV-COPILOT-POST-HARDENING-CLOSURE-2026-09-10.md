@@ -4,7 +4,7 @@ Environment: **NON-PRODUCTION ONLY**
 Repository: `kasemch/hepe-ui-prototype`  
 Controlled target branch: `non-production`  
 Ruleset: `22409192` — `HEPE Non-Production Governance`  
-Record status: **PROPOSED CONTROLLED RECORD — effective only after human-approved merge to `non-production`**
+Record status: **CONTROLLED / MERGED — human-approved PR #16 merged to `non-production` at `47a6c82a82b587cf09f67e623f6070b2493e6c45`**
 
 ## 1. Scope
 
