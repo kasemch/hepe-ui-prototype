@@ -9,6 +9,7 @@ on:
       - 'docs/governance/**'
       - 'lib/governance/**'
       - 'scripts/hepe-rel-01-test.mjs'
+      - 'scripts/hepe-rel-02-model-test.mjs'
 
 permissions:
   contents: read
@@ -47,6 +48,13 @@ jobs:
         run: |
           set -euo pipefail
           node scripts/hepe-rel-01-test.mjs
+
+      - name: Verify HEPE-REL-02 durable outbox model regression
+        if: ${{ hashFiles('scripts/hepe-rel-02-model-test.mjs') != '' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/hepe-rel-02-model-test.mjs
 
       - name: Verify no credential-like literals in governance files
         shell: bash
