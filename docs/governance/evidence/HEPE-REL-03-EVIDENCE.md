@@ -98,9 +98,9 @@ Implemented:
 - no schema or RLS mutation.
 
 ## HEPE-REL-03B Preview acceptance attempt
-Expected source head before this evidence update: `b4ca3cf43d042bde670c039e1f784652d857d39c`.
+Expected source head before evidence updates: `b4ca3cf43d042bde670c039e1f784652d857d39c`.
 
-A controlled **PREVIEW ONLY** deployment was created from runtime-surface source files fetched verbatim from that exact head.
+A controlled **PREVIEW ONLY** deployment was created from runtime-surface source files fetched verbatim from that head.
 
 Preview evidence:
 - Deployment ID: `dpl_GfXkbzHThv5kK6FXhLiwYw7oLoU5`
@@ -116,53 +116,57 @@ Preview evidence:
 - `/runtime`: HTTP 200 request observed in serverless runtime logs
 - deployment response retained `x-robots-tag: noindex`
 
-Build output classified `/[module]` as generated paths while Vercel runtime logs confirmed a serverless GET `/runtime` execution. The gate therefore records the observed build/runtime behavior rather than inferring route mode from source alone.
-
 ### Preview provenance limitation
-This deployment was a manually submitted **controlled runtime-surface bundle** containing the application/runtime files needed for the REL-03 read surface, all fetched verbatim from exact head `b4ca3cf...`. It was **not** a Git-associated full-repository deployment and therefore cannot by itself prove full exact-head repository deployment provenance.
+This deployment was a manually submitted **controlled runtime-surface bundle** sourced from the application/runtime files of the PR head. It was **not** a Git-associated full-repository deployment and therefore cannot prove full exact-head repository deployment provenance.
 
 ### Browser/runtime acceptance blocker
-The Preview rendered `/runtime` with state:
-
-`RUNTIME_NOT_CONFIGURED`
-
-and text confirming that no service-role bypass or fabricated fallback data was used. This is a safe fail-closed state, but it does **not** satisfy the required authenticated PREPARER_A / NO_AUTHORITY browser-session acceptance because the Preview runtime environment did not expose the required `NEXT_PUBLIC_SUPABASE_URL` / publishable-key binding to the application.
-
-Secret/environment configuration mutation is outside HEPE-REL-03B and was not performed. Vercel protection also remained active; an attempted `/reviews` access without an established share/auth context was redirected through Vercel SSO.
+The Preview rendered `/runtime` with state `RUNTIME_NOT_CONFIGURED` and no service-role bypass or fabricated fallback data. This is fail-closed, but it does not satisfy authenticated PREPARER_A / NO_AUTHORITY browser-session acceptance because Preview runtime environment binding was absent.
 
 Result:
 - Preview build: **PASS WITH PROVENANCE LIMITATION**
 - unauthenticated/protected boundary: **PASS — fail closed / no governed data exposed**
 - authenticated PREPARER_A browser runtime: **HOLD — runtime binding unavailable in Preview**
 - NO_AUTHORITY browser runtime: **HOLD — same Preview binding blocker**
-- UI truth semantics: **PASS for observed `RUNTIME_NOT_CONFIGURED` state; no false health/readiness claim shown**
+- UI truth semantics: **PASS for observed `RUNTIME_NOT_CONFIGURED` state**
+
+## HEPE-REL-03C runtime-environment binding exception stop
+Date: 2026-09-10.
+
+Verified system facts:
+- Vercel project `prj_ILMW6fZGJVhOdq1M2zKaxXmzRZcH` is reachable and latest Preview remains `dpl_GfXkbzHThv5kK6FXhLiwYw7oLoU5`.
+- The available Vercel connector surface supports project/deployment inspection, preview deploy, logs and protected URL access but does **not** expose a project environment-variable mutation action.
+- Supabase project `lztxpjsuzqvtgyasfnyj` has an active modern publishable key and an active legacy anon key; key values are intentionally not copied into this evidence record.
+- Vercel documentation confirms Preview environment variables can be scoped to the `preview` target and, where needed, to a Git branch.
+
+Therefore HEPE-REL-03C reached the defined **Exception Stop** at the minimum human-only configuration boundary. No secret/environment mutation was attempted through unsupported tooling.
+
+Required human-only action before automation can resume:
+1. In Vercel project `hepe-ui-prototype`, add/reuse `NEXT_PUBLIC_SUPABASE_URL` for **Preview only** with value `https://lztxpjsuzqvtgyasfnyj.supabase.co`.
+2. Add/reuse `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` for **Preview only**, using the existing active modern publishable key from Supabase project `lztxpjsuzqvtgyasfnyj` without exposing it in repository files or chat output.
+3. Do not target Production and do not modify any other environment variable.
+
+After this binding is completed, resume REL-03C from Preview redeploy and authenticated browser acceptance. This configuration action is operational setup, not Production Authorization.
 
 ## Evidence register
 | Evidence ID | Evidence Type | Source | Version/Date | Authority/Owner | Relevant Assertion | Expected | Actual | Verification |
 |---|---|---|---|---|---|---|---|---|
 | HEPE-REL03-EVD-001 | Controlled Baseline | `non-production` | 2026-09-10 | Repository | WEB-01B/UI starting state | controlled | SHA `9a66662e...` | PASS |
-| HEPE-REL03-EVD-002 | Verified System Evidence | Supabase table inventory | 2026-09-10 | Supabase | REL-02A tables exist with RLS | present/RLS | verified | PASS |
-| HEPE-REL03-EVD-003 | Verified System Evidence | Supabase `pg_policies` | 2026-09-10 | Supabase | actor/authority scope preserved | scoped policies | verified | PASS |
-| HEPE-REL03-EVD-004 | Verified System Evidence | `read_model_registry` | 2026-09-10 | Supabase | active security-invoker models | present | 5 verified | PASS |
-| HEPE-REL03-EVD-005 | Verified System Evidence | Supabase runtime counts | 2026-09-10 | Supabase | pre-test state known | inspect | reviews=5; runtime queues/snapshots/evidence=0 | PASS |
-| HEPE-REL03-EVD-006 | Controlled Implementation Record | PR #28 branch | 2026-09-10 | Repository | runtime read binding implemented | implemented | implemented | PASS |
-| HEPE-REL03-EVD-007 | Test / Regression Evidence | GitHub Actions governance-policy | 2026-09-10 | GitHub Actions | governance checks | SUCCESS | prior head success; final-head recheck required after this evidence update | PENDING FINAL-HEAD RECHECK |
-| HEPE-REL03-EVD-008 | Test / Regression Evidence | Supabase synthetic RLS read | 2026-09-10 | Supabase | PREPARER_A ALLOW / NO_AUTHORITY DENY | scoped | matched | PASS |
-| HEPE-REL03-EVD-009 | Test / Regression Evidence | Supabase synthetic write harness | 2026-09-10 | Explicit Human gate authority / Supabase | lifecycle/idempotency/failure paths | all PASS | 12/12 PASS | PASS |
-| HEPE-REL03-EVD-010 | Test / Regression Evidence | Supabase cleanup verification | 2026-09-10 | Supabase | zero residual REL03A fixtures | zero | zero | PASS |
-| HEPE-REL03-EVD-011 | Test / Regression Evidence | Vercel Preview `dpl_GfX...` | 2026-09-10 | Vercel Preview | runtime-surface compile/type/deploy | PASS | READY; compile/type PASS | PASS WITH PROVENANCE LIMITATION |
-| HEPE-REL03-EVD-012 | Test / Regression Evidence | Vercel `/runtime` + runtime logs | 2026-09-10 | Vercel Preview | unauthenticated/protected request exposes no governed data | fail closed | `RUNTIME_NOT_CONFIGURED`; HTTP 200 serverless request; no governed data | PASS |
-| HEPE-REL03-EVD-013 | Test / Regression Evidence | authenticated browser session | 2026-09-10 | NON-PRODUCTION Preview | PREPARER_A/NO_AUTHORITY RLS-visible behavior | PASS | runtime environment binding unavailable | HOLD |
+| HEPE-REL03-EVD-002 | Verified System Evidence | Supabase table/policy inspection | 2026-09-10 | Supabase | REL-02A + RLS foundation | present/scoped | verified | PASS |
+| HEPE-REL03-EVD-003 | Verified System Evidence | `read_model_registry` | 2026-09-10 | Supabase | active security-invoker models | present | 5 verified | PASS |
+| HEPE-REL03-EVD-004 | Test / Regression Evidence | Supabase synthetic RLS read | 2026-09-10 | Supabase | PREPARER_A ALLOW / NO_AUTHORITY DENY | scoped | matched | PASS |
+| HEPE-REL03-EVD-005 | Test / Regression Evidence | Supabase synthetic write harness | 2026-09-10 | Explicit Human gate authority / Supabase | lifecycle/idempotency/failure paths | all PASS | 12/12 PASS | PASS |
+| HEPE-REL03-EVD-006 | Test / Regression Evidence | Supabase cleanup verification | 2026-09-10 | Supabase | zero residual REL03A fixtures | zero | zero | PASS |
+| HEPE-REL03-EVD-007 | Test / Regression Evidence | Vercel Preview `dpl_GfX...` | 2026-09-10 | Vercel Preview | runtime-surface compile/type/deploy | PASS | READY; compile/type PASS | PASS WITH PROVENANCE LIMITATION |
+| HEPE-REL03-EVD-008 | Test / Regression Evidence | Vercel `/runtime` + runtime logs | 2026-09-10 | Vercel Preview | unauthenticated/protected request exposes no governed data | fail closed | `RUNTIME_NOT_CONFIGURED`; HTTP 200; no governed data | PASS |
+| HEPE-REL03-EVD-009 | Verified System Evidence | Vercel connector capability + project inspection | 2026-09-10 | Vercel | can environment binding be mutated by available connector | available action required | no env-var mutation action exposed | VERIFIED LIMITATION |
+| HEPE-REL03-EVD-010 | Verified System Evidence | Supabase publishable key registry | 2026-09-10 | Supabase | active publishable key exists | active | verified without repository disclosure | PASS |
+| HEPE-REL03-EVD-011 | Test / Regression Evidence | authenticated browser session | 2026-09-10 | NON-PRODUCTION Preview | PREPARER_A/NO_AUTHORITY RLS-visible behavior | PASS | blocked pending Preview env binding | HOLD |
 
 ## Current classification
 HEPE-REL-03A: **PASS — SYNTHETIC DATABASE RUNTIME VERIFIED / CLEANUP PASS**  
 HEPE-REL-03B: **HOLD — PREVIEW BUILD VERIFIED WITH PROVENANCE LIMITATION / AUTHENTICATED BROWSER RUNTIME BLOCKED BY PREVIEW ENVIRONMENT BINDING**  
+HEPE-REL-03C: **EXCEPTION STOP — MINIMUM HUMAN-ONLY PREVIEW ENVIRONMENT BINDING REQUIRED**  
 HEPE-REL-03 overall: **PASS WITH CONDITIONS / NOT YET CONTROLLED-RECONCILED FULL PASS**  
-Application Runtime Read Binding: **IMPLEMENTED IN SOURCE**  
-RLS Synthetic Read Regression: **PASS**  
-Synthetic Outbox Lifecycle: **PASS**  
-Idempotency Regression: **PASS**  
-Synthetic Fixture Cleanup: **PASS**  
 Live Remote Connector: **NOT VERIFIED / NOT AUTHORIZED**  
 Production Authorization: **NOT GRANTED**
 
