@@ -1,14 +1,14 @@
 # HEPE-REL-01 — Connector Resilience & Failure-Mode Governance Contract
 
 Environment: **NON-PRODUCTION ONLY**  
-Status: **PROPOSED CONTROLLED CONTRACT — effective only after human-approved merge**  
+Status: **CONTROLLED / MERGED — human-approved PR #18 merged to `non-production` at `68299f0baa10c12bdfc16a184a153f85b8ad16e6`**  
 Predecessor: `HEPE-GOV-COPILOT-02C-RECOVERY-CONTRACT.md`
 
 ## 1. Evidence and authority boundary
 Conversation, AI output, cached state, or connector availability is not Audit Evidence. Verified System Evidence / Controlled Baseline prevails. Production-sensitive, destructive, admin, schema, authority-grant, secret, SMTP-send, and real-user operations remain outside this contract unless separately authorized.
 
 ## 2. Verified connector inventory basis
-The existing controlled connector registry identifies GitHub, Vercel, Supabase, Google Drive, Google Calendar, Gmail, and a future-connector deny entry. Registry verification is operation-specific: GitHub is partially verified; the other named connectors remain unverified in that registry. This contract therefore classifies resilience behavior without claiming current installation or runtime availability for unverified connectors.
+The existing controlled connector registry identifies GitHub, Vercel, Supabase, Google Drive, Google Calendar, Gmail, and a future-connector deny entry. Registry verification is operation-specific: GitHub is partially verified; the other named connectors remain unverified in that registry. This contract classifies resilience behavior without claiming current installation or runtime availability for unverified connectors.
 
 | ID | System | Purpose | Capability posture | Criticality | Verification |
 |---|---|---|---|---|---|
@@ -72,3 +72,8 @@ Preserve the controlled 02C sequence: `DETECT → CLASSIFY → RE-READ → REVAL
 
 ## 10. Implementation boundary
 `lib/governance/connector-resilience.mjs` is a non-production policy foundation only. It does not bind real connectors, persist queues, alter schema, access secrets, grant authority, send mail, or deploy Production. `scripts/hepe-rel-01-test.mjs` is a synthetic deterministic regression harness.
+
+## 11. Controlled status and limitation
+The foundation became controlled through human-approved PR #18. Verified final-head GitHub Actions reported `governance-policy=success` and the synthetic regression reported `23/23 PASS`; post-merge GitHub state showed `non-production` advanced to merge SHA `68299f0baa10c12bdfc16a184a153f85b8ad16e6` with valid merge-commit signature.
+
+Classification: **PASS WITH DOCUMENTED LIMITATION — NON-PRODUCTION**. Live remote connector availability and durable outbox persistence are outside this gate. Independent reviewer remains unavailable/deferred and separation-of-duties remains unverified. No Production Authorization is granted.
