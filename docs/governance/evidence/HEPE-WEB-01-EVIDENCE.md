@@ -1,7 +1,7 @@
-# HEPE-WEB-01 — Non-Production Preview Readiness & First Integrated Website Evidence
+# HEPE-WEB-01 — Non-Production Integrated Website Evidence
 
 Environment: **NON-PRODUCTION ONLY**  
-Record status: **PROPOSED CONTROLLED EVIDENCE RECORD — READY FOR HUMAN MERGE WITH PROTECTED-PREVIEW LIMITATION**  
+Record status: **POST-MERGE RECONCILIATION RECORD — READY FOR CONTROLLED ADMISSION**  
 Production Authorization: **NOT GRANTED**
 
 ## Controlled starting state
@@ -10,64 +10,104 @@ Production Authorization: **NOT GRANTED**
 - HEPE-REL-02A: controlled/reconciled; durable persistence and RLS foundation verified.
 - HEPE-REL-03 application runtime binding: not yet verified; WEB-01 does not present runtime E2E as complete.
 
-## Repository discovery
-Verified repository inspection showed a deployable Next.js application using Next 15 / React 19 with existing IAM callback/runtime-binding controls. The pre-WEB-01 homepage was a minimal prototype rather than an integrated academic command center.
+## Implemented website baseline
+WEB-01 introduced the Academic Command Center, persistent NON-PRODUCTION indication, Academic Year / Programme / Curriculum context, explicit unverified-data states and 14 module routes plus the homepage, yielding 15 HEPE functional views.
 
-## WEB-01 implementation
-Implemented on branch `gov/hepe-web-01-preview-readiness`:
-- Academic Command Center homepage
-- persistent NON-PRODUCTION environment indicator
-- Academic Year / Programme / Curriculum context display
-- controlled gate/readiness status panels
-- explicit `Not yet verified` states instead of fabricated operational metrics
-- 14 internal module routes plus homepage, yielding 15 HEPE functional views
-- Curriculum, Traceability, Mapping, Review, Decision, Evidence, Findings, QA, Calendar, Audit, Runtime Health, Outbox, Reconciliation and Governance views
-- explicit REL-03 application-binding-pending status where runtime is not verified
-- environment firewall language prohibiting Production and real external connector writes.
+HEPE-UI-01 subsequently refined the website into the controlled academic visual system and was human-accepted. The resulting visual baseline is recorded as:
 
-## Preview deployment evidence
-A Vercel deployment was explicitly created with `target=preview` for project `hepe-ui-prototype`.
+`HEPE Academic Interface Baseline v1.0 — FROZEN / CONTROLLED — NON-PRODUCTION`
 
-Deployment ID: `dpl_AoN4vdsbTte758G352wHMMn1jyjR`  
-Preview hostname: `hepe-ui-prototype-f2ey6gw5w-kasemch-3467s-projects.vercel.app`  
-Final Vercel state: **READY**  
-Target: **preview / non-production**
+The controlled interface preserves evidence-first language and does not fabricate Programme Health, QA readiness, Evidence Completeness, Pending Review counts, connector state or runtime readiness.
 
-Build evidence records:
-- Next.js `15.5.24`
-- optimized build compiled successfully
-- type validity check completed
-- static generation completed `18/18`
-- route inventory includes `/`, `/_not-found`, and static-generated `/[module]` paths including `/curriculum`, `/traceability`, `/mapping` and 11 additional controlled module paths
-- deployment completed successfully.
+## Preview verification
+A controlled Vercel preview was verified before repository admission.
 
-The preview remains protected by Vercel SSO/deployment protection. Automated protected-URL fetch returned a controlled redirect to Vercel SSO rather than public page content. A temporary share URL was issued for human preview access. Therefore automated HTML-level browser acceptance is **PARTIAL**, not fabricated as PASS.
+UI-01 visual deployment ID: `dpl_FUbcaGzufVZKvgA4KW5EvnbTSBuW`  
+State: **READY**  
+Build result: optimized compile success; type validity check completed; static generation `18/18`.  
+Protection: Vercel protected preview / SSO redirect / `noindex`.
 
-## Data truth rule
-No unverified numeric programme-health, QA-readiness, evidence-completeness or pending-review metric is represented as fact. Where authoritative runtime data is not yet bound, the UI displays `Not yet verified`, `Foundation ready`, or `Application binding pending`.
+This preview was a visual-surface deployment and is not evidence of full IAM/API/runtime E2E. Runtime integration remains a separate REL-03 concern.
+
+## WEB-01B repository closure
+Final PR #24 state before merge:
+- base: `non-production`
+- exact approved head: `a63b969bc3bcea88f2526ffb9edefcca4821a7ce`
+- mergeable: true
+- unresolved review threads: 0
+- changed files were limited to application UI, Academic Interface baseline, and WEB/UI evidence records.
+
+Final-head governance evidence:
+- workflow run: `34468520577`
+- job/check: `governance-policy` / `102842696669`
+- status: completed
+- conclusion: **success**
+- mandatory authority-boundary checks: PASS
+- REL-01 / REL-02 regression steps: PASS
+- credential-like literal scan in governance files: PASS
+- NON-PRODUCTION workflow behavior check: PASS.
+
+Human Authority explicitly approved PR #24 for NON-PRODUCTION repository admission.
+
+PR #24 was merged with exact-head enforcement. Merge commit:
+
+`2e854927fa5db0136c67304be730108bc9321de6`
+
+GitHub commit verification:
+- verified: true
+- reason: valid
+- committer: GitHub
+- verified_at: `2026-09-10T11:07:55Z`.
+
+Post-merge authoritative `non-production` HEAD was verified as the same merge SHA:
+
+`2e854927fa5db0136c67304be730108bc9321de6`
+
+## Governance ruleset verification
+Ruleset `22409192 — HEPE Non-Production Governance` was re-read after merge and remained unchanged for relevant controls:
+- enforcement: active
+- target: `refs/heads/non-production`
+- pull request rule active
+- required review-thread resolution: true
+- required status: `governance-policy`
+- integration id: `15368`
+- bypass actors: `[]`
+- current user can bypass: `never`.
+
+No Production authorization or ruleset weakening was performed.
+
+## Deployment boundary after merge
+No new Vercel deployment was observed in the immediate post-merge query window. Therefore this record does **not** claim a new post-merge deployment or Production deployment. The previously verified protected preview remains the visual acceptance evidence.
 
 ## Evidence register
 | Evidence ID | Evidence Type | Source | Version/Date | Authority/Owner | Relevant Assertion | Expected | Actual | Verification |
 |---|---|---|---|---|---|---|---|---|
-| HEPE-WEB01-EVD-001 | Verified System Evidence | GitHub `non-production` repository inspection | 2026-09-10 | Repository | deployable Next.js source exists; old homepage minimal | Next.js app / minimal shell | verified | PASS |
-| HEPE-WEB01-EVD-002 | Controlled Implementation Record | WEB-01 branch | 2026-09-10 | Repository | integrated command center + 14 modules | 15 HEPE views | implemented | PASS — repository state |
-| HEPE-WEB01-EVD-003 | Test / Regression Evidence | GitHub Actions check `102835094527` | 2026-09-10 | GitHub Actions | final-head governance policy | SUCCESS | SUCCESS | PASS |
-| HEPE-WEB01-EVD-004 | Verified System Evidence | Vercel Preview `dpl_AoN4vdsbTte758G352wHMMn1jyjR` | 2026-09-10 | Vercel project `hepe-ui-prototype` | preview deploy only | READY | READY | PASS |
-| HEPE-WEB01-EVD-005 | Test / Regression Evidence | Vercel build logs | 2026-09-10 | Vercel | compile/type/static-route generation | PASS | compile success; 18/18 static generation; deployment completed | PASS |
-| HEPE-WEB01-EVD-006 | Test / Regression Evidence | protected preview fetch | 2026-09-10 | Vercel protection boundary | public exposure prevented | protected / no public bypass | SSO redirect / noindex | PASS — protection boundary |
-| HEPE-WEB01-EVD-007 | Test / Regression Evidence | human browser acceptance | 2026-09-10 | Human checkpoint | visual/navigation acceptance | PASS | NOT YET RECORDED | PENDING |
+| HEPE-WEB01-EVD-001 | Verified System Evidence | GitHub repository inspection | 2026-09-10 | Repository | deployable Next.js application source exists | source verified | verified | PASS |
+| HEPE-WEB01-EVD-002 | Controlled Implementation Record | WEB-01 / UI-01 source lineage | 2026-09-10 | Repository | Academic Command Center + 14 modules + controlled visual system | 15 HEPE views | implemented | PASS |
+| HEPE-WEB01-EVD-003 | Test / Regression Evidence | GitHub Actions run `34468520577`, job `102842696669` | 2026-09-10 | GitHub Actions | final approved PR-head governance policy | SUCCESS | SUCCESS | PASS |
+| HEPE-WEB01-EVD-004 | Verified System Evidence | Vercel Preview `dpl_FUbcaGzufVZKvgA4KW5EvnbTSBuW` | 2026-09-10 | Vercel | controlled visual preview | READY | READY | PASS |
+| HEPE-WEB01-EVD-005 | Test / Regression Evidence | Vercel build logs | 2026-09-10 | Vercel | compile/type/static-route generation | PASS | compile success; 18/18 static generation | PASS |
+| HEPE-WEB01-EVD-006 | Test / Regression Evidence | Vercel deployment protection | 2026-09-10 | Vercel | preview non-public boundary | protected | SSO redirect / noindex | PASS |
+| HEPE-WEB01-EVD-007 | Approved Decision / Human Acceptance | HEPE-UI-01 human visual acceptance | 2026-09-10 | Human Authority | integrated academic interface visual/navigation acceptance | PASS | PASS | ADMITTED / PASS |
+| HEPE-WEB01-EVD-008 | Approved Decision | Explicit PR #24 approval | 2026-09-10 | Human Authority | admit integrated website to `non-production` | APPROVE | APPROVED | ADMITTED / PASS |
+| HEPE-WEB01-EVD-009 | Verified System Evidence | GitHub PR #24 merge | 2026-09-10 | GitHub | exact approved head merged | merged | merge SHA `2e854927fa5db0136c67304be730108bc9321de6` | PASS |
+| HEPE-WEB01-EVD-010 | Verified System Evidence | `non-production` branch ref | 2026-09-10 | GitHub | post-merge authoritative branch head | merge SHA | `2e854927fa5db0136c67304be730108bc9321de6` | PASS |
+| HEPE-WEB01-EVD-011 | Verified System Evidence | Ruleset `22409192` | 2026-09-10 | GitHub | governance protection remains active | unchanged | active / no bypass / required governance-policy | PASS |
 
 ## Current classification
-HEPE-WEB-01: **PASS WITH CONDITION — FIRST INTEGRATED PREVIEW DEPLOYED; HUMAN VISUAL ACCEPTANCE PENDING**  
+HEPE-WEB-01B: **MERGE COMPLETE — POST-MERGE EVIDENCE RECONCILIATION PENDING CONTROLLED MERGE**  
+Integrated Website: **ADMITTED TO `non-production`**  
+Academic Interface Baseline: **v1.0 FROZEN / CONTROLLED**  
 Application Shell: **IMPLEMENTED**  
-Integrated Command Center: **IMPLEMENTED**  
-Core Views: **15 HEPE views implemented / build-verified**  
-Preview Deployment: **READY — PROTECTED**  
-Verified-data labeling: **IMPLEMENTED**  
-Browser Automation: **PARTIAL — SSO protection prevents automated content fetch**  
-Human Visual Acceptance: **PENDING**  
-Runtime Integration: **PARTIAL — REL-03 NOT YET VERIFIED**  
+Core Views: **15 HEPE views implemented / build-verified for visual surface**  
+Human Visual Acceptance: **PASS**  
+Final-head Governance: **PASS**  
+Repository Admission: **PASS**  
+Runtime Integration: **PARTIAL — HEPE-REL-03 PENDING**  
+Live Remote Connector: **NOT VERIFIED / NOT AUTHORIZED**  
 Environment: **NON-PRODUCTION**  
 Production Authorization: **NOT GRANTED**
+
+Final `CONTROLLED / RECONCILED — PASS` classification is reserved until this post-merge reconciliation record itself is admitted through the protected `non-production` PR path.
 
 Conversation ≠ Audit Evidence. Controlled Baseline / Verified System Evidence prevail.
