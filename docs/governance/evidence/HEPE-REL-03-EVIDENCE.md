@@ -1,52 +1,36 @@
 # HEPE-REL-03 — Application Runtime Binding Evidence
 
 Environment: **NON-PRODUCTION ONLY**  
-Record status: **PROPOSED CONTROLLED EVIDENCE RECORD — READ BINDING + SYNTHETIC WRITE REGRESSION VERIFIED / PREVIEW RUNTIME ACCEPTANCE HOLD**  
-Production Authorization: **NOT GRANTED**
+Record status: **CONTROLLED EVIDENCE RECONCILIATION CANDIDATE — STAGE 1 TECHNICAL ACCEPTANCE PASS / FINAL GOVERNANCE CHECK PENDING**  
+Production Authorization: **NOT GRANTED**  
+PR #28 Merge Authorization: **NOT GRANTED**
 
 ## Scope
-This gate binds the controlled HEPE interface to authenticated, RLS-preserving reads from the authoritative NON-PRODUCTION Supabase project and the REL-02A persistence foundation. HEPE-REL-03A received explicit Human Authority for a **SYNTHETIC DATABASE WRITE TEST ONLY**. HEPE-REL-03B authorizes PREVIEW build/runtime acceptance only. None of these gates authorize Production, schema/RLS modification, secret/environment mutation, SMTP, real-user authority change, or real external connector writes.
+HEPE-REL-03 binds the controlled HEPE interface to authenticated, RLS-preserving reads from the authoritative NON-PRODUCTION Supabase project and the REL-02A persistence foundation. It does not authorize Production deployment, schema/RLS changes, real-user authority changes, SMTP changes, privileged application fallback, live connector writes, or PR merge.
 
-## Controlled starting point
+## Controlled baseline
 - Repository: `kasemch/hepe-ui-prototype`
-- Authoritative branch: `non-production`
-- Starting SHA: `9a66662e08b3cbcd89d42f2f4cc52ca4549623e4`
-- HEPE-WEB-01B: CONTROLLED / RECONCILED — PASS — NON-PRODUCTION
-- HEPE Academic Interface Baseline v1.0: FROZEN / CONTROLLED
-- HEPE-REL-02A: CONTROLLED / RECONCILED — PASS — NON-PRODUCTION
+- Base branch: `non-production`
+- Controlled starting SHA: `9a66662e08b3cbcd89d42f2f4cc52ca4549623e4`
+- Authoritative Supabase project: `lztxpjsuzqvtgyasfnyj`
+- Vercel project: `hepe-ui-prototype`
+- REL-02A persistence foundation and RLS: previously verified PASS
+- WEB-01B: previously controlled/reconciled PASS — NON-PRODUCTION
 
-## Verified database foundation
-Authoritative Supabase project: `lztxpjsuzqvtgyasfnyj`.
+## Runtime implementation under test
+Branch: `feat/hepe-rel-03-runtime-binding`
 
-Verified RLS-enabled REL-02A persistence tables:
-- `connector_outbox`
-- `connector_attempt`
-- `idempotency_record`
-- `reconciliation_item`
-- `connector_health_snapshot`
+Application behavior:
+- server-side Supabase client uses the configured publishable key and request cookies only;
+- no service-role fallback in the application read path;
+- authenticated reads for `/runtime`, `/outbox`, `/reconciliation`, `/evidence`, `/reviews`;
+- truthful states: `RUNTIME_NOT_CONFIGURED`, `AUTH_REQUIRED`, `QUERY_ERROR`, `EMPTY`, `VERIFIED`;
+- no fabricated fallback metrics;
+- no schema/RLS mutation from REL-03.
 
-Verified read-model sources include:
-- `v_hepe_review_queue_v1`
-- `v_hepe_evidence_projection_v1`
-- `read_model_registry`
-
-The read-model registry contains five active SECURITY_INVOKER models: `RM_REVIEW_QUEUE`, `RM_EVIDENCE_HEALTH`, `RM_PROGRAMME_DASHBOARD`, `RM_CPRR`, and `RM_COMMAND_AVAILABILITY`.
-
-## Verified RLS posture
-- `connector_outbox` SELECT requires scoped A0 authority and coherent scope.
-- `connector_outbox` INSERT/UPDATE requires scoped A1 authority and excludes PRODUCTION-SENSITIVE inserts.
-- `connector_attempt` SELECT/INSERT is scoped through the owning outbox and current actor authority.
-- `reconciliation_item` SELECT is scoped through outbox authority; human resolution requires HUMAN actor plus A3 authority.
-- `connector_health_snapshot` SELECT requires an authenticated mapped actor; INSERT requires SYSTEM role-class authority.
-- `reviews` and `evidence_objects` SELECT are programme-scoped through current actor A0 authority.
-- `read_model_registry` is authenticated-select only.
-
-REL-03/03A did not weaken or bypass these policies.
-
-## Synthetic authenticated RLS read regression
-Database-session test with synthetic JWT claims only:
-
-Authorized PREPARER_A (`A2`, programme scope `SYN-HEPE-A`):
+## Prior verified foundation
+### Synthetic database RLS regression
+PREPARER_A, scoped to programme `SYN-HEPE-A`:
 - review queue = 5
 - evidence projection = 0
 - outbox = 0
@@ -60,114 +44,148 @@ NO_AUTHORITY:
 - reconciliation = 0
 - runtime health = 0
 
-Expected: scoped ALLOW for authorized actor and DENY/no governed rows for actor without authority.  
-Actual: matched expectation.  
 Status: **PASS**.
 
-## HEPE-REL-03A synthetic database write regression
-Authorization scope: explicit Human Authority for `HEPE-REL-03A SYNTHETIC DATABASE WRITE TEST` only.
+### REL-03A synthetic database write regression
+Synthetic lifecycle, idempotency, conflict/reconciliation, retry/revalidation, denied/expired paths, system health snapshot and cleanup were verified. Final cleanup showed zero residual REL-03A fixtures.
 
-All writes used synthetic identities and connector id `SYNTHETIC_REL03A`; all acknowledgement references were explicitly synthetic and no remote connector was called.
+Status: **PASS — SYNTHETIC DATABASE RUNTIME VERIFIED / CLEANUP PASS**.
 
-| Test ID | Expected | Actual | Status |
-|---|---|---|---|
-| REL03A-W01 | RLS-scoped synthetic outbox insert ALLOW | inserted | PASS |
-| REL03A-W02 | idempotency record insert ALLOW | inserted | PASS |
-| REL03A-W03 | `CREATED→VALIDATED→AUTHORIZED→READY→DISPATCHED→ACKNOWLEDGED→VERIFIED→COMPLETED` | COMPLETED | PASS |
-| REL03A-W04 | `DISPATCHED→CONFLICT` opens reconciliation | CONFLICT + OPEN reconciliation | PASS |
-| REL03A-W05 | `RETRYABLE_FAILURE→READY` requires revalidation | revalidated READY then ABORTED | PASS |
-| REL03A-W06 | `CREATED→DENIED` allowed | DENIED | PASS |
-| REL03A-W07 | expired command can transition to EXPIRED | EXPIRED | PASS |
-| REL03A-W08 | SYSTEM actor can insert synthetic health snapshot | 1 synthetic snapshot | PASS |
-| REL03A-I01 | duplicate same key rejected | unique_violation | PASS |
-| REL03A-I02 | same key conflicting payload rejected | unique_violation | PASS |
-| REL03A-R01 | PREPARER_A reads only own scoped synthetic outbox rows | 5 rows | PASS |
-| REL03A-CLEANUP | zero residual REL-03A fixtures | zero residual | PASS |
+## Preview/runtime blocker lineage and reconciliation
+Earlier Preview attempts correctly failed closed at successive boundaries: missing runtime environment binding, missing GitHub Actions secret references, unavailable Auth Admin invocation surfaces, Preview transport failure, SSR session-cookie recognition failure, and finally a mismatched Preview publishable-key binding.
 
-Synthetic ACK used: `SYNTHETIC-ACK-REL03A-MAIN`. This is not evidence of a live remote connector acknowledgement.
+These intermediate failures are retained as historical diagnostic evidence only; they do not override the later verified closure evidence below.
 
-## Application implementation
-Branch: `feat/hepe-rel-03-runtime-binding`
+### D.3F masked Actions secret binding verification
+GitHub Actions run `34565416865` verified the presence of the two required masked NON-PRODUCTION bindings without revealing values:
+- Supabase Auth Admin binding: PRESENT
+- Vercel automation bypass binding: PRESENT
 
-Implemented:
-- `lib/hepe/server-supabase.ts`: server-side Supabase client using the existing runtime-binding contract and request cookies; publishable key only; no service-role fallback.
-- `app/[module]/page.tsx`: authenticated RLS reads for `/runtime`, `/outbox`, `/reconciliation`, `/evidence`, `/reviews`.
-- explicit states: `RUNTIME_NOT_CONFIGURED`, `AUTH_REQUIRED`, `QUERY_ERROR`, `EMPTY`, `VERIFIED`.
-- no fabricated fallback metrics.
-- no auth mutation in Server Components.
-- no schema or RLS mutation.
+No secret values were admitted to this evidence record.
 
-## HEPE-REL-03B Preview acceptance attempt
-Expected source head before evidence updates: `b4ca3cf43d042bde670c039e1f784652d857d39c`.
+Status: **PASS**.
 
-A controlled **PREVIEW ONLY** deployment was created from runtime-surface source files fetched verbatim from that head.
+### D.3G.1 transport repair
+A Git-associated protected Preview became directly reachable through the authorized automation bypass path. `/runtime` returned HTTP 200 and no longer returned `RUNTIME_NOT_CONFIGURED`.
 
-Preview evidence:
-- Deployment ID: `dpl_GfXkbzHThv5kK6FXhLiwYw7oLoU5`
-- Hostname: `hepe-ui-prototype-dt73fsyy9-kasemch-3467s-projects.vercel.app`
-- Target: Preview / no Production target
-- State: READY
-- Next.js: 15.5.24
-- dependency install: PASS
-- compile: PASS
-- type validity check: PASS
-- serverless functions created: PASS
-- deployment completed: PASS
-- `/runtime`: HTTP 200 request observed in serverless runtime logs
-- deployment response retained `x-robots-tag: noindex`
+Status: **PASS**.
 
-### Preview provenance limitation
-This deployment was a manually submitted **controlled runtime-surface bundle** sourced from the application/runtime files of the PR head. It was **not** a Git-associated full-repository deployment and therefore cannot prove full exact-head repository deployment provenance.
+### D.3G.2 SSR cookie diagnostic
+Verified diagnostic facts:
+- Supabase SSR client created one auth cookie for the authoritative project;
+- the same cookie name reached the Next.js server;
+- server-side session decoding showed a session and session user;
+- `auth.getUser()` still rejected the session at that time;
+- key-fingerprint comparison showed the Preview runtime publishable-key binding did not match the current controlled publishable key used to create the session;
+- synthetic diagnostic Auth residual after cleanup = 0.
 
-### Browser/runtime acceptance blocker
-The Preview rendered `/runtime` with state `RUNTIME_NOT_CONFIGURED` and no service-role bypass or fabricated fallback data. This is fail-closed, but it does not satisfy authenticated PREPARER_A / NO_AUTHORITY browser-session acceptance because Preview runtime environment binding was absent.
+Reconciliation: the blocker was reclassified from cookie transport failure to **stale/mismatched Vercel Preview runtime publishable-key binding**. No IAM/RLS/schema repair was made.
 
-Result:
-- Preview build: **PASS WITH PROVENANCE LIMITATION**
-- unauthenticated/protected boundary: **PASS — fail closed / no governed data exposed**
-- authenticated PREPARER_A browser runtime: **HOLD — runtime binding unavailable in Preview**
-- NO_AUTHORITY browser runtime: **HOLD — same Preview binding blocker**
-- UI truth semantics: **PASS for observed `RUNTIME_NOT_CONFIGURED` state**
+Status: **VERIFIED ROOT CAUSE / CLEANUP PASS**.
 
-## HEPE-REL-03C runtime-environment binding exception stop
-Date: 2026-09-10.
+## D.3G.3 fresh Preview after runtime-key correction
+A fresh Git-associated Preview was triggered only after the Preview-scoped environment binding was corrected.
 
-Verified system facts:
-- Vercel project `prj_ILMW6fZGJVhOdq1M2zKaxXmzRZcH` is reachable and latest Preview remains `dpl_GfXkbzHThv5kK6FXhLiwYw7oLoU5`.
-- The available Vercel connector surface supports project/deployment inspection, preview deploy, logs and protected URL access but does **not** expose a project environment-variable mutation action.
-- Supabase project `lztxpjsuzqvtgyasfnyj` has an active modern publishable key and an active legacy anon key; key values are intentionally not copied into this evidence record.
-- Vercel documentation confirms Preview environment variables can be scoped to the `preview` target and, where needed, to a Git branch.
+Verified Preview provenance:
+- Deployment ID: `dpl_SwfgsrFhy5bCNHVyGqig4RtfPD1C`
+- Hostname: `hepe-ui-prototype-hik8bpx6x-kasemch-3467s-projects.vercel.app`
+- Git commit SHA: `002f37ceec773a67d66e3eae7db68b0e1c0f0e08`
+- Git branch: `feat/hepe-rel-03-runtime-binding`
+- Git PR: `28`
+- `githubDeployment`: `1`
+- source: `git`
+- state: `READY`
+- Production target: none
 
-Therefore HEPE-REL-03C reached the defined **Exception Stop** at the minimum human-only configuration boundary. No secret/environment mutation was attempted through unsupported tooling.
+Status: **PASS — FRESH GIT-ASSOCIATED NON-PRODUCTION PREVIEW**.
 
-Required human-only action before automation can resume:
-1. In Vercel project `hepe-ui-prototype`, add/reuse `NEXT_PUBLIC_SUPABASE_URL` for **Preview only** with value `https://lztxpjsuzqvtgyasfnyj.supabase.co`.
-2. Add/reuse `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` for **Preview only**, using the existing active modern publishable key from Supabase project `lztxpjsuzqvtgyasfnyj` without exposing it in repository files or chat output.
-3. Do not target Production and do not modify any other environment variable.
+## D.3G.3 authenticated persona E2E
+GitHub Actions run: `34571133277`  
+Job: `authenticated-e2e`  
+Conclusion: **SUCCESS**.
 
-After this binding is completed, resume REL-03C from Preview redeploy and authenticated browser acceptance. This configuration action is operational setup, not Production Authorization.
+The test used exactly two ephemeral synthetic Auth principals and temporarily rebound only `actors.external_identity_subject` for the existing PREPARER_A and NO_AUTHORITY actors. Genuine Supabase sessions and SSR auth cookies were used; no forged JWT/cookie path and no service-role application read path were used.
+
+### PREPARER_A actual result
+- `/reviews`: **PASS — 5 rows / VERIFIED**
+- all visible review rows were programme `SYN-HEPE-A`
+- `/evidence`: **PASS — 0 rows / EMPTY**
+- `/outbox`: **PASS — 0 rows / EMPTY**
+- `/reconciliation`: **PASS — 0 rows / EMPTY**
+- `/runtime`: **PASS — 0 rows / EMPTY**
+
+### NO_AUTHORITY actual result
+- `/reviews`: **PASS — 0 rows / EMPTY**
+- `/evidence`: **PASS — 0 rows / EMPTY**
+- `/outbox`: **PASS — 0 rows / EMPTY**
+- `/reconciliation`: **PASS — 0 rows / EMPTY**
+- `/runtime`: **PASS — 0 rows / EMPTY**
+
+Required negative assertions were satisfied for the tested authenticated paths:
+- no `AUTH_REQUIRED` after valid session;
+- no `RUNTIME_NOT_CONFIGURED`;
+- no `QUERY_ERROR`;
+- no cross-programme review exposure for PREPARER_A;
+- no governed rows for NO_AUTHORITY;
+- no fabricated data fallback.
+
+Status: **PASS — AUTHENTICATED RLS APPLICATION E2E**.
+
+## Mandatory rollback and cleanup
+GitHub Actions run `34571133277` verified after the authenticated E2E:
+- PREPARER_A original subject restored: PASS
+- PREPARER_A authority assignment count: 1
+- NO_AUTHORITY original subject restored: PASS
+- NO_AUTHORITY authority assignment count: 0
+- synthetic Auth residual: 0
+- mandatory cleanup: PASS
+
+Independent post-run Supabase verification reconfirmed:
+- PREPARER_A subject = `10000000-0000-0000-0000-000000000001`
+- PREPARER_A authority assignment count = 1
+- NO_AUTHORITY subject = `10000000-0000-0000-0000-000000000006`
+- NO_AUTHORITY authority assignment count = 0
+- D.3G.3 synthetic Auth residual = 0
+
+Temporary D.3G.3 workflow and redeploy-trigger scaffolding were removed after evidence capture.
+
+Status: **PASS — ZERO RESIDUAL / AUTHORITY POSTURE RESTORED**.
 
 ## Evidence register
-| Evidence ID | Evidence Type | Source | Version/Date | Authority/Owner | Relevant Assertion | Expected | Actual | Verification |
+| Evidence ID | Evidence Type | Source | Version/Date | Authority/Owner | Relevant assertion | Expected | Actual | Verification |
 |---|---|---|---|---|---|---|---|---|
-| HEPE-REL03-EVD-001 | Controlled Baseline | `non-production` | 2026-09-10 | Repository | WEB-01B/UI starting state | controlled | SHA `9a66662e...` | PASS |
-| HEPE-REL03-EVD-002 | Verified System Evidence | Supabase table/policy inspection | 2026-09-10 | Supabase | REL-02A + RLS foundation | present/scoped | verified | PASS |
-| HEPE-REL03-EVD-003 | Verified System Evidence | `read_model_registry` | 2026-09-10 | Supabase | active security-invoker models | present | 5 verified | PASS |
-| HEPE-REL03-EVD-004 | Test / Regression Evidence | Supabase synthetic RLS read | 2026-09-10 | Supabase | PREPARER_A ALLOW / NO_AUTHORITY DENY | scoped | matched | PASS |
-| HEPE-REL03-EVD-005 | Test / Regression Evidence | Supabase synthetic write harness | 2026-09-10 | Explicit Human gate authority / Supabase | lifecycle/idempotency/failure paths | all PASS | 12/12 PASS | PASS |
-| HEPE-REL03-EVD-006 | Test / Regression Evidence | Supabase cleanup verification | 2026-09-10 | Supabase | zero residual REL03A fixtures | zero | zero | PASS |
-| HEPE-REL03-EVD-007 | Test / Regression Evidence | Vercel Preview `dpl_GfX...` | 2026-09-10 | Vercel Preview | runtime-surface compile/type/deploy | PASS | READY; compile/type PASS | PASS WITH PROVENANCE LIMITATION |
-| HEPE-REL03-EVD-008 | Test / Regression Evidence | Vercel `/runtime` + runtime logs | 2026-09-10 | Vercel Preview | unauthenticated/protected request exposes no governed data | fail closed | `RUNTIME_NOT_CONFIGURED`; HTTP 200; no governed data | PASS |
-| HEPE-REL03-EVD-009 | Verified System Evidence | Vercel connector capability + project inspection | 2026-09-10 | Vercel | can environment binding be mutated by available connector | available action required | no env-var mutation action exposed | VERIFIED LIMITATION |
-| HEPE-REL03-EVD-010 | Verified System Evidence | Supabase publishable key registry | 2026-09-10 | Supabase | active publishable key exists | active | verified without repository disclosure | PASS |
-| HEPE-REL03-EVD-011 | Test / Regression Evidence | authenticated browser session | 2026-09-10 | NON-PRODUCTION Preview | PREPARER_A/NO_AUTHORITY RLS-visible behavior | PASS | blocked pending Preview env binding | HOLD |
+| HEPE-REL03-EVD-001 | Controlled Baseline | `non-production` | 2026-09-10 | Repository | controlled starting state | controlled | SHA `9a66662e...` | PASS |
+| HEPE-REL03-EVD-002 | Verified System Evidence | Supabase | 2026-09-10 | Supabase | REL-02A + RLS foundation | present/scoped | verified | PASS |
+| HEPE-REL03-EVD-003 | Test / Regression Evidence | Supabase synthetic RLS read | 2026-09-10 | Supabase | PREPARER_A scoped ALLOW / NO_AUTHORITY DENY | scoped | matched | PASS |
+| HEPE-REL03-EVD-004 | Test / Regression Evidence | REL-03A synthetic write harness | 2026-09-10 | Explicit Human gate authority / Supabase | lifecycle/idempotency/failure paths | PASS | verified | PASS |
+| HEPE-REL03-EVD-005 | Test / Regression Evidence | REL-03A cleanup | 2026-09-10 | Supabase | zero residual | zero | zero | PASS |
+| HEPE-REL03-EVD-006 | Verified System Evidence | GitHub Actions run `34565416865` | 2026-09-11 | GitHub Actions | required masked bindings present | both present | both present | PASS |
+| HEPE-REL03-EVD-007 | Test / Regression Evidence | D.3G.1 protected Preview | 2026-09-11 | Vercel/GitHub Actions | Preview transport + runtime configured | reachable | HTTP 200; runtime configured | PASS |
+| HEPE-REL03-EVD-008 | Test / Regression Evidence | D.3G.2 SSR diagnostic | 2026-09-11 | GitHub Actions/Vercel | isolate cookie vs runtime-key cause | provenance-resolvable | cookie arrived; session decoded; runtime key mismatch isolated | PASS / ROOT CAUSE VERIFIED |
+| HEPE-REL03-EVD-009 | Verified System Evidence | Vercel deployment `dpl_SwfgsrFhy5bCNHVyGqig4RtfPD1C` | 2026-09-11 | Vercel | fresh Git-associated Preview after binding correction | READY / PR #28 / exact SHA | READY / PR #28 / SHA `002f37ce...` | PASS |
+| HEPE-REL03-EVD-010 | Test / Regression Evidence | GitHub Actions run `34571133277` | 2026-09-11 | GitHub Actions | PREPARER_A authenticated RLS behavior | scoped rows only | reviews 5; remaining four modules 0 | PASS |
+| HEPE-REL03-EVD-011 | Test / Regression Evidence | GitHub Actions run `34571133277` | 2026-09-11 | GitHub Actions | NO_AUTHORITY authenticated denial | zero governed rows | zero across five modules | PASS |
+| HEPE-REL03-EVD-012 | Test / Regression Evidence | GitHub Actions run `34571133277` | 2026-09-11 | GitHub Actions | rollback/cleanup | restore + zero residual | restored; counts 1/0; residual 0 | PASS |
+| HEPE-REL03-EVD-013 | Verified System Evidence | Supabase post-run verification | 2026-09-11 | Supabase | independent cleanup confirmation | original subjects, authority 1/0, residual 0 | matched | PASS |
 
-## Current classification
-HEPE-REL-03A: **PASS — SYNTHETIC DATABASE RUNTIME VERIFIED / CLEANUP PASS**  
-HEPE-REL-03B: **HOLD — PREVIEW BUILD VERIFIED WITH PROVENANCE LIMITATION / AUTHENTICATED BROWSER RUNTIME BLOCKED BY PREVIEW ENVIRONMENT BINDING**  
-HEPE-REL-03C: **EXCEPTION STOP — MINIMUM HUMAN-ONLY PREVIEW ENVIRONMENT BINDING REQUIRED**  
-HEPE-REL-03 overall: **PASS WITH CONDITIONS / NOT YET CONTROLLED-RECONCILED FULL PASS**  
-Live Remote Connector: **NOT VERIFIED / NOT AUTHORIZED**  
-Production Authorization: **NOT GRANTED**
+## Stage 1 technical acceptance
+Required runtime/auth/RLS assertions for the controlled NON-PRODUCTION Preview were satisfied with genuine authenticated sessions and mandatory rollback/cleanup.
+
+**HEPE-REL-03 Stage 1 Technical Acceptance = PASS**.
+
+## Stage 2 governance closure status
+This evidence reconciliation commit must itself pass the final-head governance controls before HEPE-REL-03 is classified CONTROLLED / RECONCILED full PASS. Required after this commit:
+- exact PR #28 head identified;
+- `governance-policy` completed successfully;
+- unresolved review threads = 0;
+- `HEPE Non-Production Governance` ruleset remains active.
+
+Until those final-head assertions are verified, the overall classification remains:
+
+**HEPE-REL-03 = STAGE 1 PASS / STAGE 2 FINAL GOVERNANCE CHECK PENDING**.
+
+Live Remote Connector: **NOT VERIFIED / NOT AUTHORIZED**.  
+Production Authorization: **NOT GRANTED**.  
+PR #28 Merge Authorization: **NOT GRANTED**.
 
 Conversation ≠ Audit Evidence. Controlled Baseline / Verified System Evidence prevail.
