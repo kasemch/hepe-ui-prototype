@@ -15,6 +15,19 @@ export async function GET() {
     return NextResponse.json({ status: 'AUTH_REQUIRED' }, { status: 401 });
   }
 
+  const { data: programmeAccess, error: programmeAccessError } = await supabase
+    .from('programmes')
+    .select('programme_id,programme_code')
+    .eq('programme_code', PROGRAMME_CODE)
+    .maybeSingle();
+
+  if (programmeAccessError || !programmeAccess) {
+    return NextResponse.json(
+      { status: 'READ_MODEL_DENIED_OR_UNAVAILABLE', programmeAccess: 'DENIED' },
+      { status: 403 },
+    );
+  }
+
   const [summaryResult, importResult] = await Promise.all([
     supabase
       .from('v_hepe_ingest_validation_summary')
@@ -31,7 +44,7 @@ export async function GET() {
       .limit(5),
   ]);
 
-  if (summaryResult.error || importResult.error) {
+  if (summaryResult.error || importResult.error || !summaryResult.data) {
     return NextResponse.json(
       {
         status: 'READ_MODEL_DENIED_OR_UNAVAILABLE',
