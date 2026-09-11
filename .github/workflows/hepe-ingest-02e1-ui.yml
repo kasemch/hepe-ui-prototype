@@ -24,8 +24,13 @@ jobs:
           node-version: '24'
       - name: Install dependencies
         run: npm install --no-audit --no-fund
-      - name: TypeScript
-        run: npx tsc --noEmit
+      - name: TypeScript project check
+        run: |
+          if [ -f tsconfig.json ]; then
+            npx tsc --noEmit
+          else
+            echo "TS_CONFIG_ABSENT_NEXT_BUILD_OWNS_TYPECHECK"
+          fi
       - name: Build
         env:
           NEXT_PUBLIC_SUPABASE_URL: https://lztxpjsuzqvtgyasfnyj.supabase.co
