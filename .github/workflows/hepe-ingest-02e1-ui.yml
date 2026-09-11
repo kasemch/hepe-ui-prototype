@@ -1,0 +1,37 @@
+name: HEPE INGEST 02E.1 UI Quality Gate
+
+on:
+  pull_request:
+    branches:
+      - feat/hepe-ingest-02b-real-readonly
+    paths:
+      - 'app/**'
+      - 'lib/hepe/**'
+      - 'package*.json'
+      - '.github/workflows/hepe-ingest-02e1-ui.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - name: Deterministic install
+        run: npm ci
+      - name: TypeScript
+        run: npx tsc --noEmit
+      - name: Build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://lztxpjsuzqvtgyasfnyj.supabase.co
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_nonsecret_build_placeholder
+        run: npm run build
+      - name: Environment boundary scan
+        run: |
+          ! grep -R "PRODUCTION_DEPLOY\|service_role\|SUPABASE_SERVICE_ROLE" app lib/hepe || exit 1
+          grep -R "NON-PRODUCTION" app/curriculum-import app/\[module\] >/dev/null
