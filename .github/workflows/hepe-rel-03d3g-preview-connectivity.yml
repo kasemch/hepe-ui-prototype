@@ -18,37 +18,32 @@ jobs:
       VERCEL_BYPASS: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
       PREVIEW_URL: https://hepe-ui-prototype-ci2pphyal-kasemch-3467s-projects.vercel.app
     steps:
-      - name: Diagnose exact Git Preview protection without revealing tokens
+      - name: Verify exact Git Preview through direct automation bypass
         shell: bash
         run: |
           set -euo pipefail
           test -n "${VERCEL_BYPASS:-}" || exit 78
           code=$(curl --silent --show-error --max-time 20 --output /tmp/runtime.html --dump-header /tmp/headers.txt --write-out '%{http_code}' \
             --header "x-vercel-protection-bypass: ${VERCEL_BYPASS}" \
-            --header 'x-vercel-set-bypass-cookie: true' \
             "${PREVIEW_URL}/runtime")
           echo "PREVIEW_HTTP_STATUS=${code}"
-          python3 - <<'PY'
+          if [ "$code" = "200" ]; then
+            grep -q 'AUTH_REQUIRED' /tmp/runtime.html
+            ! grep -q 'RUNTIME_NOT_CONFIGURED' /tmp/runtime.html
+            echo 'DIRECT_AUTOMATION_BYPASS_PASS'
+          else
+            python3 - <<'PY'
           from urllib.parse import urlsplit
           loc=''
           with open('/tmp/headers.txt','r',errors='ignore') as f:
               for line in f:
                   if line.lower().startswith('location:'):
-                      loc=line.split(':',1)[1].strip()
-                      break
+                      loc=line.split(':',1)[1].strip(); break
           if loc:
-              p=urlsplit(loc)
-              print('REDIRECT_HOST='+p.hostname if p.hostname else 'REDIRECT_HOST=RELATIVE')
-              print('REDIRECT_PATH='+p.path)
-          else:
-              print('REDIRECT_HOST=NONE')
+              p=urlsplit(loc); print('REDIRECT_HOST='+str(p.hostname or 'RELATIVE')); print('REDIRECT_PATH='+p.path)
+          else: print('REDIRECT_HOST=NONE')
           PY
-          if [ "$code" = "200" ]; then
-            grep -q 'AUTH_REQUIRED' /tmp/runtime.html
-            ! grep -q 'RUNTIME_NOT_CONFIGURED' /tmp/runtime.html
-            echo 'EXACT_PREVIEW_CONNECTIVITY_PASS'
-          else
-            echo 'EXACT_PREVIEW_CONNECTIVITY_HOLD'
+            echo 'DIRECT_AUTOMATION_BYPASS_HOLD'
             exit 1
           fi
 
