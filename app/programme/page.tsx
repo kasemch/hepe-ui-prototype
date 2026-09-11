@@ -18,8 +18,13 @@ async function loadProgramme(){
   ['v_hepe_outcome_registry_v1','programme_code,course_code,outcome_type,canonical_code,version_no,statement_th,statement_en,version_status_code,is_current']
  ] as const;
  const sections:Section[]=[];
- for(const [source,select] of specs){const {data,error}=await sb.from(source).select(select).limit(30);if(error)return {state:'QUERY_ERROR' as State,sections:[...sections,{state:'QUERY_ERROR',source,rows:[]}]};sections.push({state:data?.length?'VERIFIED':'EMPTY',source,rows:(data??[]) as Record<string,unknown>[]});}
- return {state:'VERIFIED' as State,sections};
+ for(const [source,select] of specs){
+  const {data,error}=await sb.from(source).select(select).limit(30);
+  if(error)return {state:'QUERY_ERROR' as State,sections:[...sections,{state:'QUERY_ERROR',source,rows:[]}]};
+  sections.push({state:data?.length?'VERIFIED':'EMPTY',source,rows:(data??[]) as Record<string,unknown>[]});
+ }
+ const visibleRowCount=sections.reduce((sum,section)=>sum+section.rows.length,0);
+ return {state:(visibleRowCount>0?'VERIFIED':'EMPTY') as State,sections};
 }
 function short(value:unknown){if(value===null||value===undefined||value==='')return '—';const t=String(value);return t.length>84?`${t.slice(0,81)}…`:t}
 const stateText:Record<State,string>={RUNTIME_NOT_CONFIGURED:'Preview runtime binding is unavailable. No fallback data is shown.',AUTH_REQUIRED:'Authenticated HEPE session required. Programme data remains fail-closed.',QUERY_ERROR:'A controlled programme read model could not be read under the current RLS/session context.',EMPTY:'Controlled source returned no rows visible to the current authority scope.',VERIFIED:'Controlled SECURITY_INVOKER read models returned RLS-visible academic context.'};
