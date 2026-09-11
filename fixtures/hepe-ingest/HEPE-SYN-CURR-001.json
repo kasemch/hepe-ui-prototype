@@ -1,0 +1,38 @@
+{
+  "fixture_id": "HEPE-SYN-CURR-001",
+  "classification": "SYNTHETIC TEST DATA — NOT A REAL CURRICULUM",
+  "programme": {
+    "programme_code": "SYN-HEPE",
+    "programme_name_th": "หลักสูตรสังเคราะห์สุขศึกษาและพลศึกษา",
+    "programme_name_en": "Synthetic Health and Physical Education Programme",
+    "curriculum_version": "2569-SYN-v1",
+    "total_credits": 130
+  },
+  "plos": [
+    {"plo_code": "PLO1", "statement_th": "ข้อความสังเคราะห์ PLO1"},
+    {"plo_code": "PLO2", "statement_th": "ข้อความสังเคราะห์ PLO2"},
+    {"plo_code": "PLO3", "statement_th": "ข้อความสังเคราะห์ PLO3"},
+    {"plo_code": "PLO4", "statement_th": "ข้อความสังเคราะห์ PLO4"}
+  ],
+  "courses": [
+    {"course_code": "SYN1001", "course_name_th": "รายวิชาสังเคราะห์ 1", "credit_notation": "3(3-0-6)"},
+    {"course_code": "SYN1002", "course_name_th": "รายวิชาสังเคราะห์ 2", "credit_notation": "3(2-2-5)"},
+    {"course_code": "SYN2001", "course_name_th": "รายวิชาสังเคราะห์ 3", "credit_notation": "3(3-0-6)"},
+    {"course_code": "SYN2002", "course_name_th": "รายวิชาสังเคราะห์ 4", "credit_notation": "3(2-2-5)"},
+    {"course_code": "SYN3001", "course_name_th": "รายวิชาสังเคราะห์ 5", "credit_notation": "3(3-0-6)"},
+    {"course_code": "SYN4001", "course_name_th": "รายวิชาสังเคราะห์ 6", "credit_notation": "3(3-0-6)"}
+  ],
+  "irm": [
+    {"course_code": "SYN1001", "plo_code": "PLO1", "level": "I"},
+    {"course_code": "SYN2001", "plo_code": "PLO1", "level": "R"},
+    {"course_code": "SYN4001", "plo_code": "PLO1", "level": "M"}
+  ],
+  "study_plan": [
+    {"year": 1, "semester": "1", "course_code": "SYN1001", "credits": 3},
+    {"year": 1, "semester": "2", "course_code": "SYN1002", "credits": 3},
+    {"year": 2, "semester": "1", "course_code": "SYN2001", "credits": 3},
+    {"year": 2, "semester": "2", "course_code": "SYN2002", "credits": 3},
+    {"year": 3, "semester": "1", "course_code": "SYN3001", "credits": 3},
+    {"year": 4, "semester": "1", "course_code": "SYN4001", "credits": 3}
+  ]
+}
