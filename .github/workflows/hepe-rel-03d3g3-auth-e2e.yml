@@ -51,7 +51,7 @@ jobs:
 
           const fail=(m)=>{throw new Error(m)};
           async function actor(actorId){const {data,error}=await admin.from('actors').select('actor_id,external_identity_subject').eq('actor_id',actorId).single(); if(error) fail('ACTOR_READ_FAILED'); return data;}
-          async function authorityCount(actorId){const {count,error}=await admin.from('authority_assignment').select('*',{count:'exact',head:true}).eq('actor_id',actorId); if(error) fail('AUTHORITY_COUNT_FAILED'); return count??0;}
+          async function authorityCount(actorId){const {count,error}=await admin.from('authority_assignments').select('*',{count:'exact',head:true}).eq('actor_id',actorId); if(error) fail('AUTHORITY_COUNT_FAILED'); return count??0;}
           function page(path,cookieHeader){const marker='__HEPE_HTTP__'; const out=execFileSync('curl',['--silent','--show-error','--max-time','30','-H',`x-vercel-protection-bypass: ${E.VERCEL_BYPASS}`,'-H',`Cookie: ${cookieHeader}`,'-w',`${marker}%{http_code}`,`${E.PREVIEW_URL}${path}`],{encoding:'utf8',maxBuffer:8*1024*1024}); const i=out.lastIndexOf(marker); if(i<0) fail('HTTP_MARKER_MISSING'); return {html:out.slice(0,i),code:out.slice(i+marker.length).trim()};}
           function state(html){for(const s of ['RUNTIME_NOT_CONFIGURED','AUTH_REQUIRED','QUERY_ERROR','VERIFIED','EMPTY']) if(html.includes(`>${s}<`)||html.includes(s)) return s; return 'UNKNOWN';}
 
