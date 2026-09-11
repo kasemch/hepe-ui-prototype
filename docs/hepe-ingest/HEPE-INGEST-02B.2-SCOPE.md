@@ -29,14 +29,16 @@ Not allowed:
 
 Target controlled source:
 - Title: มคอ.2 หลักสูตรศึกษาศาสตรบัณฑิต สาขาสุขศึกษาและพลศึกษา (4 ปี) (หลักสูตรปรับปรุง พ.ศ.2567).pdf
-- File Library reference: file_0000000034e4820b91cb824a711da702
-- Pages observed by File Library parser: 157
-- Programme code observed: 25510071103503
+- Google Drive file ID verified in HEPE-INGEST-02B.3: `1tCG4mCxW7DaPBJaAofb76ibEv-K5_9Ud`
+- Binary pages verified: 157
+- Binary byte length verified: 6,796,526
+- Binary SHA-256 verified: `f580fec8bb661181cbc0dff3c58473563c4b723f2dde5e863d91667ea4ec3557`
+- Programme code observed and binary-verified: 25510071103503
 - Programme: Bachelor of Education Program in Health and Physical Education
 - Institution: Ramkhamhaeng University
 
 Binary admission precondition:
-The E2E run MUST receive the actual PDF byte stream or a connector-provided file mount. Parsed text, File Library snippets, conversation content, or manually reconstructed text MUST NOT be substituted for PDF binary input.
+SATISFIED by HEPE-INGEST-02B.3 exact Source-B binary retrieval and hash verification. Parsed text, File Library snippets, conversation content, manually reconstructed text, spreadsheets or DOCX records remain prohibited substitutes for PDF binary input.
 
 Mandatory assertions:
 1. Input is PDF binary and has %PDF signature.
@@ -44,31 +46,13 @@ Mandatory assertions:
 3. Parser source ref preserves binary checksum and page-level locator.
 4. Programme code 25510071103503 is extractable with provenance.
 5. Total programme credits 151 are extractable with provenance.
-6. Approval metadata from curriculum document is represented as candidate/unverified data, not authority granted by parser.
+6. Approval metadata from curriculum document is represented as candidate/controlled document content; parser does not grant authority.
 7. Any blank/unavailable external approval field remains NOT_PROVIDED/UNVERIFIED; no fabrication.
-8. Comparison against QMS reference is read-only.
+8. Comparison against controlled references is read-only.
 9. Differences become review/conflict items; no silent overwrite.
-10. Human-review package is produced.
+10. Human-review package / controlled run record is produced.
 11. canonicalWriteAttempted = false.
 12. No database/schema/RLS/IAM/production action occurs.
 
-## HEPE-INGEST-02B.3 continuation status — 2026-09-11
-
-File Library search and controlled-record reconciliation confirm that a 157-page curriculum specification is registered for this programme, including programme code `25510071103503`, 151 credits, later effective-term context and University Council approval metadata. However, the exact 157-page PDF binary has not been exposed to this execution surface as a directly hashable byte stream or mounted connector file.
-
-Therefore the Source-B binary assertions remain:
-- SHA-256: NOT YET VERIFIED
-- byte length: NOT YET VERIFIED
-- binary page count: NOT YET VERIFIED
-- binary parser E2E: NOT EXECUTED
-
-No proposal PDF, spreadsheet, DOCX registry, File Library text snippet, 86-page edited PDF or conversation summary may substitute for the exact Source-B binary.
-
-Current classifications:
-- `HEPE-INGEST-02B.2 = PASS WITH SOURCE-RECONCILIATION CONDITION` for Source-A binary parser mechanics only.
-- `HEPE-INGEST-02B.3 = EXCEPTION STOP — SOURCE-B BINARY PROVENANCE REQUIRED`.
-
 Evidence rule:
-This gate SHALL NOT be marked PASS for Source B until an executed binary run records input hash, parser version, expected result, actual result, and PASS/FAIL for each mandatory assertion.
-
-Conversation is not admitted as Audit Evidence.
+The Source-A 86-page run remains historical Test / Regression Evidence for parser mechanics. Source-B exact-binary verification is recorded separately in `docs/hepe-ingest/runs/HEPE-INGEST-02B.3-SOURCE-B-BINARY-E2E-20260911.md` and the reconciliation record. Canonical admission/import remains a separate Human Authority gate.
