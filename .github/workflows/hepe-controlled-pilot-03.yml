@@ -32,10 +32,10 @@ jobs:
           grep -q 'NOT ACTIVE' 'app/[module]/page.tsx'
           grep -q 'NOT PUBLISHED' 'app/[module]/page.tsx'
           grep -q 'INSUFFICIENT VERIFIED EVIDENCE' 'app/[module]/page.tsx'
-          grep -q 'AI ADVISORY' 'app/[module]/page.tsx
-          grep -q '99 approved Course→PLO relationships' 'app/[module]/page.tsx
-          grep -q '54 logical study-plan rows' 'app/[module]/page.tsx
-          grep -q 'No fabricated course' 'app/[module]/page.tsx
+          grep -q 'AI ADVISORY' 'app/[module]/page.tsx'
+          grep -q '99 approved Course→PLO relationships' 'app/[module]/page.tsx'
+          grep -q '54 logical study-plan rows' 'app/[module]/page.tsx'
+          grep -q 'No fabricated course' 'app/[module]/page.tsx'
           ! grep -R -E 'CANONICAL_ACTIVATE|PRODUCTION_DEPLOY|AUTO_ADMIT_EVIDENCE' app --exclude-dir=api
           echo 'CONTROLLED_PILOT_STATIC_GOVERNANCE_PASS'
       - name: Boundary summary
