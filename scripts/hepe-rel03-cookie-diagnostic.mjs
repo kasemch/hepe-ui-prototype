@@ -1,0 +1,69 @@
+import crypto from 'node:crypto';
+import { execFileSync } from 'node:child_process';
+import { createClient } from '@supabase/supabase-js';
+import { createServerClient } from '@supabase/ssr';
+
+const E = process.env;
+const admin = createClient(E.SUPABASE_URL, E.SUPABASE_ADMIN, { auth: { persistSession: false, autoRefreshToken: false } });
+let uid = null;
+
+try {
+  const tag = `${E.GITHUB_RUN_ID}-${crypto.randomBytes(5).toString('hex')}`;
+  const email = `hepe-rel03-cookie-${tag}@example.invalid`;
+  const password = crypto.randomBytes(32).toString('base64url');
+  const { data: created, error: createError } = await admin.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+    user_metadata: { hepe_synthetic_test: true, hepe_gate: 'HEPE-REL-03D.3G.2-DIAG' },
+  });
+  if (createError || !created.user) throw new Error('AUTH_CREATE_FAILED');
+  uid = created.user.id;
+
+  const jar = new Map();
+  const ssr = createServerClient(E.SUPABASE_URL, E.SUPABASE_PUBLISHABLE_KEY, {
+    cookies: {
+      getAll() { return [...jar].map(([name, value]) => ({ name, value })); },
+      setAll(xs) { for (const x of xs) jar.set(x.name, x.value); },
+    },
+  });
+  const { data, error } = await ssr.auth.signInWithPassword({ email, password });
+  if (error || !data.session || !data.user) throw new Error('SESSION_CREATE_FAILED');
+  const { data: verified, error: verifyError } = await ssr.auth.getUser();
+  if (verifyError || verified.user?.id !== uid) throw new Error('LOCAL_GETUSER_FAILED');
+
+  const meta = [...jar].map(([name, value]) => ({ name, length: value.length, chunk: /\.\d+$/.test(name) }));
+  console.log('COOKIE_COUNT=' + meta.length);
+  console.log('COOKIE_NAMES=' + meta.map(x => x.name).join(','));
+  console.log('COOKIE_CHUNK_COUNT=' + meta.filter(x => x.chunk).length);
+  console.log('COOKIE_TOTAL_LENGTH=' + meta.reduce((n, x) => n + x.length, 0));
+
+  const cookieHeader = [...jar].map(([k, v]) => `${k}=${v}`).join('; ');
+  const marker = '__HEPE_HTTP__';
+  const out = execFileSync('curl', [
+    '--silent', '--show-error', '--max-time', '30',
+    '-H', `x-vercel-protection-bypass: ${E.VERCEL_BYPASS}`,
+    '-H', 'x-hepe-rel03-diagnostic: 1',
+    '-H', `Cookie: ${cookieHeader}`,
+    '-H', 'user-agent: HEPE-REL-03D.3G.2-DIAG',
+    '-w', `${marker}%{http_code}`,
+    `${E.PREVIEW_URL}/api/iam/rel03-cookie-diagnostic`,
+  ], { encoding: 'utf8', maxBuffer: 4 * 1024 * 1024 });
+  const idx = out.lastIndexOf(marker);
+  if (idx < 0) throw new Error('HTTP_MARKER_MISSING');
+  const body = out.slice(0, idx);
+  const code = out.slice(idx + marker.length).trim();
+  console.log('DIAGNOSTIC_HTTP=' + code);
+  let parsed = {};
+  try { parsed = JSON.parse(body); } catch {}
+  for (const key of ['cookieCount','cookieNames','sessionPresent','sessionUserPresent','sessionErrorPresent','authErrorPresent','authErrorCode','userPresent','keyFingerprintMatch','code']) {
+    const value = Array.isArray(parsed[key]) ? parsed[key].join(',') : parsed[key];
+    console.log(`SERVER_${key.toUpperCase()}=${String(value ?? 'UNKNOWN')}`);
+  }
+} finally {
+  if (uid) await admin.auth.admin.deleteUser(uid);
+  const { data } = await admin.auth.admin.listUsers({ page: 1, perPage: 100 });
+  const residual = (data?.users ?? []).filter(u => u.user_metadata?.hepe_gate === 'HEPE-REL-03D.3G.2-DIAG').length;
+  console.log('DIAG_AUTH_RESIDUAL=' + residual);
+  if (residual !== 0) process.exitCode = 2;
+}
