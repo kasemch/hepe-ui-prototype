@@ -1,0 +1,35 @@
+name: HEPE-INGEST-02A Synthetic Parser Acceptance
+
+on:
+  pull_request:
+    branches:
+      - non-production
+    paths:
+      - 'lib/ingest/**'
+      - 'fixtures/hepe-ingest/**'
+      - 'scripts/hepe-ingest-02a-tests.mjs'
+      - '.github/workflows/hepe-ingest-02a.yml'
+  push:
+    branches:
+      - feat/hepe-ingest-02a-synthetic-parser
+
+permissions:
+  contents: read
+
+jobs:
+  synthetic-parser-acceptance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Confirm non-production synthetic boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f docs/hepe-ingest/HEPE-INGEST-02A-SCOPE.md
+          grep -q 'Synthetic fixtures only' docs/hepe-ingest/HEPE-INGEST-02A-SCOPE.md
+          grep -q 'No canonical registry write' docs/hepe-ingest/HEPE-INGEST-02A-SCOPE.md
+          echo 'HEPE_INGEST_SCOPE_BOUNDARY_PASS'
+      - name: Execute synthetic parser acceptance matrix
+        run: node scripts/hepe-ingest-02a-tests.mjs
