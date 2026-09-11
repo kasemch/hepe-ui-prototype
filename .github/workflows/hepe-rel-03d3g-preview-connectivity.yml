@@ -18,20 +18,29 @@ jobs:
       VERCEL_BYPASS: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
       PREVIEW_URL: https://hepe-ui-prototype-ci2pphyal-kasemch-3467s-projects.vercel.app
     steps:
-      - name: Verify exact Git Preview through automation bypass
+      - name: Diagnose exact Git Preview protection without revealing tokens
         shell: bash
         run: |
           set -euo pipefail
           test -n "${VERCEL_BYPASS:-}" || exit 78
-          code=$(curl --silent --show-error --location --max-time 20 --output /tmp/runtime.html --write-out '%{http_code}' \
+          code=$(curl --silent --show-error --max-time 20 --output /tmp/runtime.html --dump-header /tmp/headers.txt --write-out '%{http_code}' \
             --header "x-vercel-protection-bypass: ${VERCEL_BYPASS}" \
             --header 'x-vercel-set-bypass-cookie: true' \
             "${PREVIEW_URL}/runtime")
           echo "PREVIEW_HTTP_STATUS=${code}"
-          test "$code" = "200"
-          grep -q 'AUTH_REQUIRED' /tmp/runtime.html
-          ! grep -q 'RUNTIME_NOT_CONFIGURED' /tmp/runtime.html
-          echo 'EXACT_PREVIEW_CONNECTIVITY_PASS'
+          if grep -qi '^location: https://vercel.com/sso-api' /tmp/headers.txt; then
+            echo 'VERCEL_SSO_REDIRECT_PRESENT'
+          else
+            echo 'VERCEL_SSO_REDIRECT_ABSENT'
+          fi
+          if [ "$code" = "200" ]; then
+            grep -q 'AUTH_REQUIRED' /tmp/runtime.html
+            ! grep -q 'RUNTIME_NOT_CONFIGURED' /tmp/runtime.html
+            echo 'EXACT_PREVIEW_CONNECTIVITY_PASS'
+          else
+            echo 'EXACT_PREVIEW_CONNECTIVITY_HOLD'
+            exit 1
+          fi
 
       - name: Confirm boundary
         if: always()
