@@ -24,6 +24,8 @@ jobs:
     steps:
       - name: Checkout exact PR head
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Verify masked bindings
         shell: bash
@@ -34,7 +36,7 @@ jobs:
           echo 'MASKED_BINDINGS_READY'
 
       - name: Install controlled dependencies
-        run: npm ci --ignore-scripts
+        run: npm install --ignore-scripts --no-audit --no-fund
 
       - name: Execute synthetic Auth E2E with mandatory rollback
         shell: bash
@@ -139,7 +141,7 @@ jobs:
             return { userId: data.user.id, accessToken: data.session.access_token, cookie };
           }
 
-          async function userRlsClient(accessToken) {
+          function userRlsClient(accessToken) {
             return createClient(SUPABASE_URL, SUPABASE_ADMIN, {
               auth: { persistSession: false, autoRefreshToken: false },
               global: { headers: { Authorization: `Bearer ${accessToken}` } }
@@ -165,7 +167,7 @@ jobs:
           }
 
           async function assertPreparer(session) {
-            const userClient = await userRlsClient(session.accessToken);
+            const userClient = userRlsClient(session.accessToken);
             const { data: expectedRows, error } = await userClient
               .from('v_hepe_review_queue_v1')
               .select('programme_code,review_code');
@@ -188,7 +190,7 @@ jobs:
           }
 
           async function assertNoAuthority(session) {
-            const userClient = await userRlsClient(session.accessToken);
+            const userClient = userRlsClient(session.accessToken);
             for (const table of ['v_hepe_review_queue_v1','v_hepe_evidence_projection_v1','connector_outbox','reconciliation_item','connector_health_snapshot']) {
               const { data, error } = await userClient.from(table).select('*').limit(1);
               if (error) fail(`NOAUTH_RLS_QUERY_FAILED:${table}`);
