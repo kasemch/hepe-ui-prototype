@@ -1,0 +1,157 @@
+name: HEPE PILOT 03N 03O Browser Accessibility
+
+on:
+  push:
+    branches: [feat/hepe-controlled-pilot-03]
+    paths: ['.github/workflows/hepe-pilot-03n-03o-browser-a11y.yml']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hepe-pilot-03n-03o-browser-a11y
+  cancel-in-progress: false
+
+jobs:
+  browser-a11y:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      HEPE_ENVIRONMENT: NON-PRODUCTION
+      PREVIEW_URL: https://hepe-ui-prototype-git-feat-hepe-c-7fa6ff-kasemch-3467s-projects.vercel.app
+      VERCEL_BYPASS: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify protected exact-SHA Preview
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${VERCEL_BYPASS:-}" || { echo 'VERCEL_BYPASS_BINDING_UNAVAILABLE'; exit 72; }
+          ok=0
+          for i in $(seq 1 36); do
+            body="$(mktemp)"
+            code="$(curl --silent --show-error --max-time 20 --output "$body" --write-out '%{http_code}' -H "x-vercel-protection-bypass: ${VERCEL_BYPASS}" -H 'Cache-Control: no-cache' "${PREVIEW_URL}/api/pilot-build-meta" || true)"
+            if [ "$code" = '200' ] && grep -q "${GITHUB_SHA}" "$body"; then ok=1; rm -f "$body"; break; fi
+            rm -f "$body"
+            sleep 10
+          done
+          test "$ok" = '1' || { echo 'EXACT_SHA_PREVIEW_NOT_READY'; exit 73; }
+          echo "EXACT_SHA_PREVIEW_PASS application_sha=${GITHUB_SHA}"
+
+      - name: Install browser test dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --ignore-scripts --no-audit --no-fund
+          npm install --no-save --ignore-scripts --no-audit --no-fund playwright @axe-core/playwright
+          npx playwright install --with-deps chromium
+
+      - name: Execute responsive and accessibility acceptance
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import { chromium } from 'playwright';
+          import AxeBuilder from '@axe-core/playwright';
+
+          const E = process.env;
+          const routes = [
+            '/', '/pilot', '/programme', '/curriculum', '/study-plan', '/traceability',
+            '/mapping', '/evidence', '/qa', '/reviews', '/calendar', '/audit', '/ai', '/governance'
+          ];
+          const viewports = [
+            {name:'desktop-1440', width:1440, height:1000},
+            {name:'laptop-1024', width:1024, height:900},
+            {name:'tablet-768', width:768, height:1024},
+            {name:'mobile-390', width:390, height:844},
+          ];
+
+          const browser = await chromium.launch({headless:true});
+          let failed = false;
+          const fail = (msg) => { failed = true; console.error(`FAIL ${msg}`); };
+          try {
+            for (const vp of viewports) {
+              const context = await browser.newContext({
+                viewport: {width:vp.width, height:vp.height},
+                extraHTTPHeaders: {
+                  'x-vercel-protection-bypass': E.VERCEL_BYPASS,
+                  'Cache-Control': 'no-cache',
+                },
+              });
+              const page = await context.newPage();
+              for (const route of routes) {
+                const response = await page.goto(`${E.PREVIEW_URL}${route}`, {waitUntil:'networkidle', timeout:30000});
+                if (!response || response.status() !== 200) { fail(`${vp.name} ${route} HTTP=${response?.status()}`); continue; }
+                const bodyText = await page.locator('body').innerText();
+                if (!bodyText.includes('NON-PRODUCTION')) fail(`${vp.name} ${route} NON_PRODUCTION_MARKER_MISSING`);
+                const overflow = await page.evaluate(() => ({scrollWidth:document.documentElement.scrollWidth, clientWidth:document.documentElement.clientWidth}));
+                if (overflow.scrollWidth > overflow.clientWidth + 2) fail(`${vp.name} ${route} PAGE_HORIZONTAL_OVERFLOW ${overflow.scrollWidth}>${overflow.clientWidth}`);
+                const mainCount = await page.locator('main').count();
+                if (mainCount !== 1) fail(`${vp.name} ${route} MAIN_LANDMARK_COUNT=${mainCount}`);
+                console.log(`03N_PASS viewport=${vp.name} route=${route} width=${vp.width}`);
+              }
+              await context.close();
+            }
+
+            for (const vp of [viewports[0], viewports[3]]) {
+              const context = await browser.newContext({
+                viewport:{width:vp.width,height:vp.height},
+                extraHTTPHeaders:{'x-vercel-protection-bypass':E.VERCEL_BYPASS,'Cache-Control':'no-cache'},
+              });
+              const page = await context.newPage();
+              for (const route of routes) {
+                await page.goto(`${E.PREVIEW_URL}${route}`, {waitUntil:'networkidle', timeout:30000});
+                const results = await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze();
+                const blockers = results.violations.filter(v => ['serious','critical'].includes(v.impact ?? ''));
+                if (blockers.length) {
+                  for (const v of blockers) console.error(`AXE ${vp.name} ${route} ${v.id} impact=${v.impact} nodes=${v.nodes.length}`);
+                  fail(`${vp.name} ${route} AXE_SERIOUS_CRITICAL=${blockers.length}`);
+                } else console.log(`03O_AXE_PASS viewport=${vp.name} route=${route}`);
+              }
+
+              await page.goto(`${E.PREVIEW_URL}/curriculum`, {waitUntil:'networkidle', timeout:30000});
+              const controls = page.locator('a[href],button,input,select');
+              const count = await controls.count();
+              if (count < 1) fail(`${vp.name} INTERACTIVE_CONTROLS_MISSING`);
+              await page.keyboard.press('Tab');
+              const focusState = await page.evaluate(() => {
+                const el = document.activeElement;
+                if (!el || el === document.body) return {tag:'BODY', outlineStyle:'none', outlineWidth:'0px'};
+                const s = getComputedStyle(el);
+                return {tag:el.tagName, outlineStyle:s.outlineStyle, outlineWidth:s.outlineWidth};
+              });
+              if (focusState.tag === 'BODY' || focusState.outlineStyle === 'none' || focusState.outlineWidth === '0px') fail(`${vp.name} KEYBOARD_FOCUS_NOT_VISIBLE ${JSON.stringify(focusState)}`);
+              else console.log(`03O_KEYBOARD_FOCUS_PASS viewport=${vp.name} ${JSON.stringify(focusState)}`);
+
+              const unlabeled = await page.evaluate(() => [...document.querySelectorAll('input,select,textarea')].filter((el) => {
+                const id = el.getAttribute('id');
+                const aria = el.getAttribute('aria-label') || el.getAttribute('aria-labelledby');
+                const wrapped = el.closest('label');
+                const explicit = id ? document.querySelector(`label[for="${CSS.escape(id)}"]`) : null;
+                return !aria && !wrapped && !explicit;
+              }).length);
+              if (unlabeled) fail(`${vp.name} UNLABELED_FORM_CONTROLS=${unlabeled}`);
+              else console.log(`03O_LABEL_PASS viewport=${vp.name}`);
+              await context.close();
+            }
+          } finally {
+            await browser.close();
+          }
+          if (failed) process.exit(1);
+          console.log('HEPE_PILOT_03N_RESPONSIVE_PASS');
+          console.log('HEPE_PILOT_03O_ACCESSIBILITY_AUTOMATED_ACCEPTANCE_PASS');
+          NODE
+
+      - name: Boundary summary
+        run: |
+          echo "APPLICATION_SHA=${GITHUB_SHA}"
+          echo 'ENVIRONMENT=NON-PRODUCTION'
+          echo '03N_SCOPE=1440_1024_768_390_NO_PAGE_OVERFLOW'
+          echo '03O_SCOPE=AUTOMATED_WCAG_A_AA_SERIOUS_CRITICAL_ZERO_PLUS_KEYBOARD_FOCUS_AND_LABELS'
+          echo 'FULL_WCAG_CONFORMANCE=NOT_CLAIMED'
+          echo 'CANONICAL_ACTIVATION=NOT_ATTEMPTED'
+          echo 'PUBLICATION=NOT_ATTEMPTED'
+          echo 'AUDIT_EVIDENCE_ADMISSION=NOT_ATTEMPTED'
+          echo 'PRODUCTION=NOT_TOUCHED'
+          echo 'PR_MERGE=NOT_ATTEMPTED'
