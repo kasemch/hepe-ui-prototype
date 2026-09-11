@@ -34,27 +34,37 @@ export default async function CurriculumImportStudio() {
     if (!authData.user) {
       authStatus = 'AUTH_REQUIRED';
     } else {
-      const [{ data: summaryData, error: summaryError }, { data: importData, error: importError }] = await Promise.all([
-        supabase
-          .from('v_hepe_ingest_validation_summary')
-          .select('*')
-          .eq('programme_code', source.programmeCode)
-          .eq('version_code', source.versionCode)
-          .maybeSingle(),
-        supabase
-          .from('v_hepe_ingest_import_status')
-          .select('*')
-          .eq('programme_code', source.programmeCode)
-          .eq('version_code', source.versionCode)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle(),
-      ]);
-      if (summaryError || importError) authStatus = 'AUTHORITY_DENIED_OR_READ_MODEL_UNAVAILABLE';
-      else {
-        authStatus = 'AUTHENTICATED_VALIDATION_READ';
-        summary = summaryData as Record<string, unknown> | null;
-        importState = importData as Record<string, unknown> | null;
+      const { data: programmeAccess, error: programmeAccessError } = await supabase
+        .from('programmes')
+        .select('programme_id,programme_code')
+        .eq('programme_code', source.programmeCode)
+        .maybeSingle();
+
+      if (programmeAccessError || !programmeAccess) {
+        authStatus = 'AUTHORITY_DENIED_OR_READ_MODEL_UNAVAILABLE';
+      } else {
+        const [{ data: summaryData, error: summaryError }, { data: importData, error: importError }] = await Promise.all([
+          supabase
+            .from('v_hepe_ingest_validation_summary')
+            .select('*')
+            .eq('programme_code', source.programmeCode)
+            .eq('version_code', source.versionCode)
+            .maybeSingle(),
+          supabase
+            .from('v_hepe_ingest_import_status')
+            .select('*')
+            .eq('programme_code', source.programmeCode)
+            .eq('version_code', source.versionCode)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle(),
+        ]);
+        if (summaryError || importError || !summaryData) authStatus = 'AUTHORITY_DENIED_OR_READ_MODEL_UNAVAILABLE';
+        else {
+          authStatus = 'AUTHENTICATED_VALIDATION_READ';
+          summary = summaryData as Record<string, unknown>;
+          importState = importData as Record<string, unknown> | null;
+        }
       }
     }
   }
