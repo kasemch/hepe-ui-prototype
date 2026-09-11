@@ -1,0 +1,120 @@
+name: HEPE WEB-02R Integrated Academic Workflow Regression
+
+on:
+  push:
+    branches: [feat/hepe-rel-03-runtime-binding]
+    paths: ['.github/workflows/hepe-web-02r-regression.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      SUPABASE_URL: https://lztxpjsuzqvtgyasfnyj.supabase.co
+      SUPABASE_PUBLISHABLE_KEY: sb_publishable_7bv5GR0-ksXJn91sRHV0Mg_k4nblIGI
+      SUPABASE_ADMIN: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      VERCEL_BYPASS: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+      PREVIEW_URL: https://hepe-ui-prototype-j776c2ghg-kasemch-3467s-projects.vercel.app
+      PREPARER_ACTOR_ID: dd73e0bc-c07d-4df7-8a50-c2103f0a9c6d
+      NOAUTH_ACTOR_ID: 9ad6c5a4-ad1e-4985-971d-39770a02dd0c
+      PREPARER_ORIGINAL_SUBJECT: 10000000-0000-0000-0000-000000000001
+      NOAUTH_ORIGINAL_SUBJECT: 10000000-0000-0000-0000-000000000006
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify WEB-02 source and security boundaries
+        run: |
+          set -euo pipefail
+          test -n "${SUPABASE_ADMIN:-}" || exit 78
+          test -n "${VERCEL_BYPASS:-}" || exit 78
+          grep -q "v_hepe_outcome_mapping_v1" 'app/[module]/page.tsx'
+          grep -q "v_hepe_cprr_projection_v1" 'app/[module]/page.tsx'
+          grep -q "v_hepe_review_queue_v1" 'app/[module]/page.tsx'
+          grep -q "NOT_YET_VERIFIED" 'app/[module]/page.tsx'
+          grep -q "AI ADVISORY ONLY" 'app/[module]/page.tsx'
+          grep -q "Conversation ≠ Audit Evidence" 'app/[module]/page.tsx'
+          grep -q "v_hepe_curriculum_context_v1" app/programme/page.tsx
+          if grep -q "service_role" 'app/[module]/page.tsx' app/programme/page.tsx lib/hepe/server-supabase.ts; then exit 2; fi
+          echo 'WEB02_STATIC_SECURITY_BOUNDARY=PASS'
+      - name: Install dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Build and type-check
+        run: npm run build
+      - name: Execute authenticated WEB-02 regression with synthetic fixture and mandatory cleanup
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import crypto from 'node:crypto';
+          import { execFileSync } from 'node:child_process';
+          import { createClient } from '@supabase/supabase-js';
+          import { createServerClient } from '@supabase/ssr';
+          const E=process.env;
+          const admin=createClient(E.SUPABASE_URL,E.SUPABASE_ADMIN,{auth:{persistSession:false,autoRefreshToken:false}});
+          const personas=[{name:'PREPARER_A',actorId:E.PREPARER_ACTOR_ID,original:E.PREPARER_ORIGINAL_SUBJECT,authority:1},{name:'NO_AUTHORITY',actorId:E.NOAUTH_ACTOR_ID,original:E.NOAUTH_ORIGINAL_SUBJECT,authority:0}];
+          const createdUsers=[]; const ids={};
+          const fail=m=>{throw new Error(m)};
+          const uuid=()=>crypto.randomUUID();
+          async function actor(id){const {data,error}=await admin.from('actors').select('external_identity_subject').eq('actor_id',id).single();if(error)fail('ACTOR_READ_FAILED');return data}
+          async function ac(id){const {count,error}=await admin.from('authority_assignments').select('*',{head:true,count:'exact'}).eq('actor_id',id).eq('status','ACTIVE');if(error)fail('AUTHORITY_READ_FAILED');return count??0}
+          function fetchPage(path,cookie=''){const mark='__HTTP__';const args=['--silent','--show-error','--max-time','30','-H',`x-vercel-protection-bypass: ${E.VERCEL_BYPASS}`];if(cookie)args.push('-H',`Cookie: ${cookie}`);args.push('-w',`${mark}%{http_code}`,`${E.PREVIEW_URL}${path}`);const out=execFileSync('curl',args,{encoding:'utf8',maxBuffer:10*1024*1024});const i=out.lastIndexOf(mark);return {html:out.slice(0,i),code:out.slice(i+mark.length).trim()}}
+          function state(html){for(const s of ['RUNTIME_NOT_CONFIGURED','AUTH_REQUIRED','QUERY_ERROR','VERIFIED','EMPTY','NOT_YET_VERIFIED','DATA_NOT_AVAILABLE'])if(html.includes(s))return s;return 'UNKNOWN'}
+          async function insertFixture(){
+            const {data:p,error:pe}=await admin.from('programmes').select('programme_id').eq('programme_code','SYN-HEPE-A').single();if(pe||!p)fail('PROGRAMME_A_MISSING');
+            ids.programme=p.programme_id; ids.cv=uuid(); ids.c1=uuid(); ids.c2=uuid(); ids.plo1=uuid(); ids.plo2=uuid(); ids.clo1=uuid(); ids.clo2=uuid(); ids.ov1=uuid(); ids.ov2=uuid(); ids.ov3=uuid(); ids.ov4=uuid(); ids.om1=uuid(); ids.om2=uuid(); ids.mv1=uuid(); ids.mv2=uuid();
+            let r=await admin.from('curriculum_versions').insert({curriculum_version_id:ids.cv,programme_id:ids.programme,version_code:'HEPE-WEB-02R-SYNTHETIC-CV',version_label:'HEPE-WEB-02R-SYNTHETIC fixture',status_code:'DRAFT',is_current:true,created_by:E.PREPARER_ACTOR_ID});if(r.error)fail('FIXTURE_CV');
+            r=await admin.from('courses').insert([{course_id:ids.c1,course_code:'SYN-WEB02R-01',title_th:'HEPE-WEB-02R-SYNTHETIC วิชา 1',title_en:'HEPE-WEB-02R-SYNTHETIC Course 1',credit_value:3,status_code:'DRAFT',created_by:E.PREPARER_ACTOR_ID},{course_id:ids.c2,course_code:'SYN-WEB02R-02',title_th:'HEPE-WEB-02R-SYNTHETIC วิชา 2',title_en:'HEPE-WEB-02R-SYNTHETIC Course 2',credit_value:3,status_code:'DRAFT',created_by:E.PREPARER_ACTOR_ID}]);if(r.error)fail('FIXTURE_COURSES');
+            r=await admin.from('curriculum_courses').insert([{curriculum_version_id:ids.cv,course_id:ids.c1,course_role:'REQUIRED',recommended_year:1,recommended_term:1,display_order:1,is_active:true},{curriculum_version_id:ids.cv,course_id:ids.c2,course_role:'REQUIRED',recommended_year:1,recommended_term:2,display_order:2,is_active:true}]);if(r.error)fail('FIXTURE_CURRICULUM_COURSES');
+            r=await admin.from('outcomes').insert([{outcome_id:ids.plo1,programme_id:ids.programme,course_id:null,outcome_type:'PLO',canonical_code:'SYN-R-PLO-01',status_code:'DRAFT'},{outcome_id:ids.plo2,programme_id:ids.programme,course_id:null,outcome_type:'PLO',canonical_code:'SYN-R-PLO-02',status_code:'DRAFT'},{outcome_id:ids.clo1,programme_id:ids.programme,course_id:ids.c1,outcome_type:'CLO',canonical_code:'SYN-R-CLO-01',status_code:'DRAFT'},{outcome_id:ids.clo2,programme_id:ids.programme,course_id:ids.c2,outcome_type:'CLO',canonical_code:'SYN-R-CLO-02',status_code:'DRAFT'}]);if(r.error)fail('FIXTURE_OUTCOMES');
+            r=await admin.from('outcome_versions').insert([{outcome_version_id:ids.ov1,outcome_id:ids.plo1,version_no:1,statement_th:'HEPE-WEB-02R-SYNTHETIC PLO 1',statement_en:'HEPE-WEB-02R-SYNTHETIC PLO 1',status_code:'DRAFT',is_current:true},{outcome_version_id:ids.ov2,outcome_id:ids.plo2,version_no:1,statement_th:'HEPE-WEB-02R-SYNTHETIC PLO 2',statement_en:'HEPE-WEB-02R-SYNTHETIC PLO 2',status_code:'DRAFT',is_current:true},{outcome_version_id:ids.ov3,outcome_id:ids.clo1,version_no:1,statement_th:'HEPE-WEB-02R-SYNTHETIC CLO 1',statement_en:'HEPE-WEB-02R-SYNTHETIC CLO 1',status_code:'DRAFT',is_current:true},{outcome_version_id:ids.ov4,outcome_id:ids.clo2,version_no:1,statement_th:'HEPE-WEB-02R-SYNTHETIC CLO 2',statement_en:'HEPE-WEB-02R-SYNTHETIC CLO 2',status_code:'DRAFT',is_current:true}]);if(r.error)fail('FIXTURE_OUTCOME_VERSIONS');
+            r=await admin.from('outcome_mappings').insert([{outcome_mapping_id:ids.om1,curriculum_version_id:ids.cv,source_outcome_id:ids.clo1,target_outcome_id:ids.plo1,mapping_kind:'CLO_TO_PLO',status_code:'DRAFT'},{outcome_mapping_id:ids.om2,curriculum_version_id:ids.cv,source_outcome_id:ids.clo2,target_outcome_id:ids.plo2,mapping_kind:'CLO_TO_PLO',status_code:'DRAFT'}]);if(r.error)fail('FIXTURE_MAPPINGS');
+            r=await admin.from('mapping_versions').insert([{mapping_version_id:ids.mv1,outcome_mapping_id:ids.om1,version_no:1,irm_level:'I',rationale:'HEPE-WEB-02R-SYNTHETIC I-R-M',status_code:'DRAFT',is_current:true},{mapping_version_id:ids.mv2,outcome_mapping_id:ids.om2,version_no:1,irm_level:'R',rationale:'HEPE-WEB-02R-SYNTHETIC I-R-M',status_code:'DRAFT',is_current:true}]);if(r.error)fail('FIXTURE_MAPPING_VERSIONS');
+            console.log('WEB02_SYNTHETIC_FIXTURE_CREATED=PASS');
+          }
+          async function cleanupFixture(){
+            if(ids.mv1)await admin.from('mapping_versions').delete().in('mapping_version_id',[ids.mv1,ids.mv2]);
+            if(ids.om1)await admin.from('outcome_mappings').delete().in('outcome_mapping_id',[ids.om1,ids.om2]);
+            if(ids.ov1)await admin.from('outcome_versions').delete().in('outcome_version_id',[ids.ov1,ids.ov2,ids.ov3,ids.ov4]);
+            if(ids.plo1)await admin.from('outcomes').delete().in('outcome_id',[ids.plo1,ids.plo2,ids.clo1,ids.clo2]);
+            if(ids.cv)await admin.from('curriculum_courses').delete().eq('curriculum_version_id',ids.cv);
+            if(ids.c1)await admin.from('courses').delete().in('course_id',[ids.c1,ids.c2]);
+            if(ids.cv)await admin.from('curriculum_versions').delete().eq('curriculum_version_id',ids.cv);
+          }
+          try{
+            const unauth=fetchPage('/mapping');if(unauth.code!=='200'||state(unauth.html)!=='AUTH_REQUIRED')fail('UNAUTH_MAPPING_FAIL_CLOSED');console.log('WEB02_UNAUTH_FAIL_CLOSED=PASS');
+            for(const p of personas){const a=await actor(p.actorId);if(a.external_identity_subject!==p.original)fail(`${p.name}_SUBJECT_PRE`);if(await ac(p.actorId)!==p.authority)fail(`${p.name}_AUTHORITY_PRE`)}
+            const {data:pre}=await admin.auth.admin.listUsers({page:1,perPage:200});if((pre?.users??[]).some(u=>u.user_metadata?.hepe_gate==='HEPE-WEB-02R'))fail('AUTH_PRE_RESIDUAL');
+            await insertFixture();
+            for(const p of personas){const tag=`${E.GITHUB_RUN_ID}-${p.name}-${crypto.randomBytes(4).toString('hex')}`;p.email=`hepe-web02r-${tag}@example.invalid`;p.password=crypto.randomBytes(32).toString('base64url');const {data,error}=await admin.auth.admin.createUser({email:p.email,password:p.password,email_confirm:true,user_metadata:{hepe_synthetic_test:true,hepe_gate:'HEPE-WEB-02R',hepe_persona:p.name}});if(error||!data.user)fail(`${p.name}_CREATE`);p.uid=data.user.id;createdUsers.push(p.uid);const {error:ue}=await admin.from('actors').update({external_identity_subject:p.uid}).eq('actor_id',p.actorId);if(ue)fail(`${p.name}_REBIND`)}
+            for(const p of personas){const jar=new Map();const ssr=createServerClient(E.SUPABASE_URL,E.SUPABASE_PUBLISHABLE_KEY,{cookies:{getAll(){return [...jar].map(([name,value])=>({name,value}))},setAll(xs){for(const x of xs)jar.set(x.name,x.value)}}});const {data,error}=await ssr.auth.signInWithPassword({email:p.email,password:p.password});if(error||!data.session)fail(`${p.name}_SIGNIN`);const cookie=[...jar].map(([k,v])=>`${k}=${v}`).join('; ');
+              const pages=['programme','curriculum','traceability','mapping','evidence','qa','tasks','ai'];
+              for(const mod of pages){const r=fetchPage('/'+mod,cookie);if(r.code!=='200')fail(`${p.name}_${mod}_HTTP_${r.code}`);const s=state(r.html);if(['AUTH_REQUIRED','RUNTIME_NOT_CONFIGURED','QUERY_ERROR','UNKNOWN'].includes(s))fail(`${p.name}_${mod}_${s}`);if(!r.html.includes('NON-PRODUCTION')||!r.html.includes('TEST DATA ONLY'))fail(`${p.name}_${mod}_BOUNDARY`);
+                if(p.name==='PREPARER_A'&&['programme','curriculum','traceability','mapping'].includes(mod)&&s!=='VERIFIED')fail(`PREPARER_${mod}_NOT_VERIFIED`);
+                if(p.name==='PREPARER_A'&&mod==='mapping'&&(!r.html.includes('SYN-R-CLO-01')||!r.html.includes('CLO_TO_PLO')||!r.html.includes('I')))fail('PREPARER_MAPPING_CONTENT');
+                if(p.name==='PREPARER_A'&&mod==='ai'&&!r.html.includes('AI ADVISORY ONLY'))fail('AI_AUTHORITY_BOUNDARY');
+                if(p.name==='PREPARER_A'&&mod==='evidence'&&!r.html.includes('NOT_YET_VERIFIED')&&s==='VERIFIED')fail('EVIDENCE_PROVENANCE_STATE');
+                if(p.name==='NO_AUTHORITY'&&['programme','curriculum','traceability','mapping','evidence','qa','tasks','ai'].includes(mod)&&s!=='EMPTY')fail(`NOAUTH_${mod}_NOT_EMPTY_${s}`);
+                console.log(`${p.name}_${mod.toUpperCase()}=${s}`)}
+            }
+            console.log('HEPE_WEB02R_INTEGRATED_REGRESSION=PASS');
+          }finally{
+            for(const p of personas)await admin.from('actors').update({external_identity_subject:p.original}).eq('actor_id',p.actorId);
+            for(const id of createdUsers)await admin.auth.admin.deleteUser(id);
+            await cleanupFixture();
+            let ok=true;for(const p of personas){const a=await actor(p.actorId);const n=await ac(p.actorId);if(a.external_identity_subject!==p.original||n!==p.authority)ok=false;console.log(`${p.name}_CLEANUP=${a.external_identity_subject===p.original&&n===p.authority?'PASS':'FAIL'}`)}
+            const {data:post}=await admin.auth.admin.listUsers({page:1,perPage:200});const authResidual=(post?.users??[]).filter(u=>u.user_metadata?.hepe_gate==='HEPE-WEB-02R').length;
+            const checks=await Promise.all([
+              admin.from('curriculum_versions').select('*',{head:true,count:'exact'}).like('version_code','HEPE-WEB-02R-SYNTHETIC%'),
+              admin.from('courses').select('*',{head:true,count:'exact'}).like('course_code','SYN-WEB02R-%'),
+              admin.from('outcomes').select('*',{head:true,count:'exact'}).like('canonical_code','SYN-R-%'),
+              admin.from('mapping_versions').select('*',{head:true,count:'exact'}).like('rationale','HEPE-WEB-02R-SYNTHETIC%')
+            ]);
+            const fixtureResidual=checks.reduce((s,x)=>s+(x.count??0),0);
+            console.log('WEB02R_AUTH_RESIDUAL='+authResidual);console.log('WEB02R_FIXTURE_RESIDUAL='+fixtureResidual);console.log('WEB02R_MANDATORY_CLEANUP='+(ok&&authResidual===0&&fixtureResidual===0?'PASS':'FAIL'));if(!ok||authResidual!==0||fixtureResidual!==0)process.exitCode=2;
+          }
+          NODE
+      - name: Gate boundary
+        if: always()
+        run: echo 'HEPE-WEB-02R NON-PRODUCTION only; no Production or PR merge authorization.'
