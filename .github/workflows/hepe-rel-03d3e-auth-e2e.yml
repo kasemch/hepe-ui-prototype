@@ -1,4 +1,4 @@
-name: HEPE REL-03D.3F Masked Binding Verification
+name: HEPE REL-03D.3G Authenticated Synthetic E2E
 
 on:
   pull_request:
@@ -10,34 +10,268 @@ permissions:
   contents: read
 
 jobs:
-  binding-verification:
+  rel03-auth-e2e:
     if: ${{ github.event.pull_request.number == 28 && github.event.pull_request.head.ref == 'feat/hepe-rel-03-runtime-binding' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 15
+    env:
+      SUPABASE_URL: https://lztxpjsuzqvtgyasfnyj.supabase.co
+      SUPABASE_ADMIN: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      VERCEL_BYPASS: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+      PREVIEW_URL: https://hepe-ui-prototype-git-feat-hepe-r-1d9444-kasemch-3467s-projects.vercel.app
+      PREPARER_ORIGINAL: 10000000-0000-0000-0000-000000000001
+      NOAUTH_ORIGINAL: 10000000-0000-0000-0000-000000000006
     steps:
-      - name: Verify existing masked bindings without revealing values
-        env:
-          SUPABASE_ADMIN: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          VERCEL_BYPASS: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+      - name: Checkout exact PR head
+        uses: actions/checkout@v4
+
+      - name: Verify masked bindings
         shell: bash
         run: |
           set -euo pipefail
-          missing=0
-          if [ -n "${SUPABASE_ADMIN:-}" ]; then
-            echo 'SUPABASE_ADMIN_BINDING_PRESENT'
-          else
-            echo 'SECRET_BINDING_UNAVAILABLE_SUPABASE'
-            missing=1
-          fi
-          if [ -n "${VERCEL_BYPASS:-}" ]; then
-            echo 'VERCEL_BYPASS_BINDING_PRESENT'
-          else
-            echo 'SECRET_BINDING_UNAVAILABLE_VERCEL'
-            missing=1
-          fi
-          if [ "$missing" -ne 0 ]; then exit 78; fi
-          echo 'HEPE_REL_03D3F_BINDINGS_READY'
+          test -n "${SUPABASE_ADMIN:-}" || { echo 'SECRET_BINDING_UNAVAILABLE_SUPABASE'; exit 78; }
+          test -n "${VERCEL_BYPASS:-}" || { echo 'SECRET_BINDING_UNAVAILABLE_VERCEL'; exit 78; }
+          echo 'MASKED_BINDINGS_READY'
 
-      - name: Confirm gate boundary
+      - name: Install controlled dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Execute synthetic Auth E2E with mandatory rollback
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import crypto from 'node:crypto';
+          import { createClient } from '@supabase/supabase-js';
+          import { createServerClient } from '@supabase/ssr';
+
+          const {
+            SUPABASE_URL, SUPABASE_ADMIN, VERCEL_BYPASS, PREVIEW_URL,
+            PREPARER_ORIGINAL, NOAUTH_ORIGINAL, GITHUB_RUN_ID
+          } = process.env;
+
+          const fail = (m) => { throw new Error(m); };
+          const admin = createClient(SUPABASE_URL, SUPABASE_ADMIN, {
+            auth: { persistSession: false, autoRefreshToken: false }
+          });
+
+          let preparerActor = null;
+          let noauthActor = null;
+          let preparerUserId = null;
+          let noauthUserId = null;
+          let preparerExpectedProgramme = null;
+          let testFailure = null;
+
+          async function authorityCount(actorId) {
+            const { count, error } = await admin
+              .from('authority_assignments')
+              .select('*', { count: 'exact', head: true })
+              .eq('actor_id', actorId);
+            if (error) fail(`AUTHORITY_COUNT_QUERY_FAILED:${error.code ?? 'UNKNOWN'}`);
+            return count ?? 0;
+          }
+
+          async function getPersona(code) {
+            const { data, error } = await admin
+              .from('wave6_persona_fixtures')
+              .select('persona_code,actor_id,external_identity_subject,expected_programme_code')
+              .eq('persona_code', code)
+              .single();
+            if (error || !data) fail(`PERSONA_LOOKUP_FAILED:${code}`);
+            const { data: actor, error: actorError } = await admin
+              .from('actors')
+              .select('actor_id,external_identity_subject,status')
+              .eq('actor_id', data.actor_id)
+              .single();
+            if (actorError || !actor) fail(`ACTOR_LOOKUP_FAILED:${code}`);
+            return { fixture: data, actor };
+          }
+
+          async function createSynthetic(label) {
+            const suffix = `${GITHUB_RUN_ID}-${crypto.randomBytes(5).toString('hex')}`;
+            const email = `hepe-rel03-${label.toLowerCase()}-${suffix}@example.invalid`;
+            const password = crypto.randomBytes(32).toString('base64url');
+            const { data, error } = await admin.auth.admin.createUser({
+              email,
+              password,
+              email_confirm: true,
+              user_metadata: {
+                hepe_synthetic_test: true,
+                hepe_gate: 'HEPE-REL-03D.3G',
+                hepe_persona: label
+              }
+            });
+            if (error || !data.user) fail(`AUTH_CREATE_FAILED:${label}`);
+            return { id: data.user.id, email, password };
+          }
+
+          async function rebind(actorId, tempUid) {
+            const { error } = await admin
+              .from('actors')
+              .update({ external_identity_subject: tempUid })
+              .eq('actor_id', actorId);
+            if (error) fail(`ACTOR_REBIND_FAILED:${actorId}`);
+          }
+
+          async function restore(actorId, original) {
+            if (!actorId) return;
+            const { error } = await admin
+              .from('actors')
+              .update({ external_identity_subject: original })
+              .eq('actor_id', actorId);
+            if (error) throw new Error(`ACTOR_RESTORE_FAILED:${actorId}`);
+          }
+
+          async function makeSession(email, password) {
+            const jar = new Map();
+            const ssr = createServerClient(SUPABASE_URL, SUPABASE_ADMIN, {
+              cookies: {
+                getAll() { return [...jar.entries()].map(([name, value]) => ({ name, value })); },
+                setAll(items) { for (const { name, value } of items) jar.set(name, value); }
+              }
+            });
+            const { data, error } = await ssr.auth.signInWithPassword({ email, password });
+            if (error || !data.user || !data.session) fail('SESSION_CREATE_FAILED');
+            const { data: userData, error: getUserError } = await ssr.auth.getUser();
+            if (getUserError || !userData.user || userData.user.id !== data.user.id) fail('AUTH_GETUSER_VALIDATION_FAILED');
+            const cookie = [...jar.entries()].map(([k,v]) => `${k}=${v}`).join('; ');
+            if (!cookie) fail('SESSION_COOKIE_MISSING');
+            return { userId: data.user.id, accessToken: data.session.access_token, cookie };
+          }
+
+          async function userRlsClient(accessToken) {
+            return createClient(SUPABASE_URL, SUPABASE_ADMIN, {
+              auth: { persistSession: false, autoRefreshToken: false },
+              global: { headers: { Authorization: `Bearer ${accessToken}` } }
+            });
+          }
+
+          async function fetchPage(path, cookie) {
+            const res = await fetch(`${PREVIEW_URL}${path}`, {
+              redirect: 'follow',
+              headers: {
+                'x-vercel-protection-bypass': VERCEL_BYPASS,
+                'x-vercel-set-bypass-cookie': 'true',
+                'cookie': cookie,
+                'user-agent': 'HEPE-REL-03D.3G-SYNTHETIC-E2E'
+              }
+            });
+            const text = await res.text();
+            if (!res.ok) fail(`PREVIEW_HTTP_FAILED:${path}:${res.status}`);
+            if (text.includes('RUNTIME_NOT_CONFIGURED')) fail(`RUNTIME_NOT_CONFIGURED:${path}`);
+            if (text.includes('AUTH_REQUIRED')) fail(`AUTH_REQUIRED:${path}`);
+            if (text.includes('QUERY_ERROR')) fail(`QUERY_ERROR:${path}`);
+            return text;
+          }
+
+          async function assertPreparer(session) {
+            const userClient = await userRlsClient(session.accessToken);
+            const { data: expectedRows, error } = await userClient
+              .from('v_hepe_review_queue_v1')
+              .select('programme_code,review_code');
+            if (error) fail(`PREPARER_RLS_QUERY_FAILED:${error.code ?? 'UNKNOWN'}`);
+            if (!expectedRows || expectedRows.length === 0) fail('PREPARER_EXPECTED_REVIEW_ROWS_ZERO');
+            if (expectedRows.some(r => r.programme_code !== preparerExpectedProgramme)) fail('PREPARER_CROSS_SCOPE_RLS_ROW');
+
+            const pages = {};
+            for (const p of ['/reviews','/evidence','/outbox','/reconciliation','/runtime']) {
+              pages[p] = await fetchPage(p, session.cookie);
+            }
+            if (!pages['/reviews'].includes('VERIFIED')) fail('PREPARER_REVIEWS_NOT_VERIFIED');
+            for (const row of expectedRows) {
+              if (!pages['/reviews'].includes(String(row.review_code))) fail('PREPARER_REVIEW_ROW_NOT_RENDERED');
+            }
+            for (const p of ['/evidence','/outbox','/reconciliation','/runtime']) {
+              if (!pages[p].includes('EMPTY')) fail(`PREPARER_EXPECTED_EMPTY_NOT_RENDERED:${p}`);
+            }
+            console.log(`PREPARER_A_AUTHENTICATED_E2E_PASS rows=${expectedRows.length}`);
+          }
+
+          async function assertNoAuthority(session) {
+            const userClient = await userRlsClient(session.accessToken);
+            for (const table of ['v_hepe_review_queue_v1','v_hepe_evidence_projection_v1','connector_outbox','reconciliation_item','connector_health_snapshot']) {
+              const { data, error } = await userClient.from(table).select('*').limit(1);
+              if (error) fail(`NOAUTH_RLS_QUERY_FAILED:${table}`);
+              if ((data ?? []).length !== 0) fail(`NOAUTH_GOVERNED_ROW_VISIBLE:${table}`);
+            }
+            for (const p of ['/reviews','/evidence','/outbox','/reconciliation','/runtime']) {
+              const html = await fetchPage(p, session.cookie);
+              if (!html.includes('EMPTY')) fail(`NOAUTH_EXPECTED_EMPTY_NOT_RENDERED:${p}`);
+              if (html.includes('Verified rows returned under the current authenticated RLS scope.')) fail(`NOAUTH_VERIFIED_ROWS_RENDERED:${p}`);
+            }
+            console.log('NO_AUTHORITY_AUTHENTICATED_E2E_PASS rows=0');
+          }
+
+          try {
+            const prep = await getPersona('PREPARER_A');
+            const noa = await getPersona('NO_AUTHORITY');
+            preparerActor = prep.actor.actor_id;
+            noauthActor = noa.actor.actor_id;
+            preparerExpectedProgramme = prep.fixture.expected_programme_code;
+
+            if (prep.actor.external_identity_subject !== PREPARER_ORIGINAL) fail('PREPARER_BASELINE_SUBJECT_MISMATCH');
+            if (noa.actor.external_identity_subject !== NOAUTH_ORIGINAL) fail('NOAUTH_BASELINE_SUBJECT_MISMATCH');
+            if ((await authorityCount(preparerActor)) !== 1) fail('PREPARER_BASELINE_AUTHORITY_COUNT_MISMATCH');
+            if ((await authorityCount(noauthActor)) !== 0) fail('NOAUTH_BASELINE_AUTHORITY_COUNT_MISMATCH');
+            console.log('PRE_MUTATION_SNAPSHOT_PASS');
+
+            const prepAuth = await createSynthetic('PREPARER_A');
+            preparerUserId = prepAuth.id;
+            const noaAuth = await createSynthetic('NO_AUTHORITY');
+            noauthUserId = noaAuth.id;
+            console.log('TEMP_AUTH_USERS_CREATED count=2');
+
+            await rebind(preparerActor, preparerUserId);
+            await rebind(noauthActor, noauthUserId);
+            if ((await authorityCount(preparerActor)) !== 1 || (await authorityCount(noauthActor)) !== 0) fail('AUTHORITY_CHANGED_AFTER_REBIND');
+            console.log('TEMP_ACTOR_REBIND_PASS');
+
+            const prepSession = await makeSession(prepAuth.email, prepAuth.password);
+            const noaSession = await makeSession(noaAuth.email, noaAuth.password);
+            if (prepSession.userId !== preparerUserId || noaSession.userId !== noauthUserId) fail('SESSION_PRINCIPAL_MISMATCH');
+            console.log('GENUINE_AUTH_SESSIONS_PASS count=2');
+
+            await assertPreparer(prepSession);
+            await assertNoAuthority(noaSession);
+            console.log('REL03_STAGE1_BROWSER_ASSERTIONS_PASS');
+          } catch (e) {
+            testFailure = e;
+            console.error(`REL03_E2E_ASSERTION_FAIL:${e.message}`);
+          } finally {
+            const cleanupErrors = [];
+            try { await restore(preparerActor, PREPARER_ORIGINAL); } catch (e) { cleanupErrors.push(e.message); }
+            try { await restore(noauthActor, NOAUTH_ORIGINAL); } catch (e) { cleanupErrors.push(e.message); }
+            try { if (preparerUserId) await admin.auth.admin.deleteUser(preparerUserId); } catch { cleanupErrors.push('PREPARER_AUTH_DELETE_FAILED'); }
+            try { if (noauthUserId) await admin.auth.admin.deleteUser(noauthUserId); } catch { cleanupErrors.push('NOAUTH_AUTH_DELETE_FAILED'); }
+
+            try {
+              const prep = await getPersona('PREPARER_A');
+              const noa = await getPersona('NO_AUTHORITY');
+              if (prep.actor.external_identity_subject !== PREPARER_ORIGINAL) cleanupErrors.push('PREPARER_SUBJECT_NOT_RESTORED');
+              if (noa.actor.external_identity_subject !== NOAUTH_ORIGINAL) cleanupErrors.push('NOAUTH_SUBJECT_NOT_RESTORED');
+              if ((await authorityCount(prep.actor.actor_id)) !== 1) cleanupErrors.push('PREPARER_AUTHORITY_NOT_RESTORED');
+              if ((await authorityCount(noa.actor.actor_id)) !== 0) cleanupErrors.push('NOAUTH_AUTHORITY_NOT_RESTORED');
+              const { data: users, error: listError } = await admin.auth.admin.listUsers({ page: 1, perPage: 100 });
+              if (listError) cleanupErrors.push('AUTH_RESIDUAL_QUERY_FAILED');
+              else {
+                const residual = users.users.filter(u => u.user_metadata?.hepe_gate === 'HEPE-REL-03D.3G');
+                if (residual.length !== 0) cleanupErrors.push(`AUTH_RESIDUAL_COUNT_${residual.length}`);
+              }
+            } catch (e) { cleanupErrors.push(`POST_CLEANUP_VERIFY_FAILED:${e.message}`); }
+
+            if (cleanupErrors.length) {
+              console.error(`MANDATORY_CLEANUP_FAIL:${cleanupErrors.join(',')}`);
+              process.exitCode = 2;
+            } else {
+              console.log('MANDATORY_ROLLBACK_PASS');
+              console.log('AUTH_CLEANUP_PASS residual=0');
+              console.log('AUTHORITY_ASSIGNMENTS_UNCHANGED_PASS');
+            }
+          }
+
+          if (testFailure) process.exitCode = process.exitCode || 1;
+          NODE
+
+      - name: Confirm non-production firewall
         if: always()
-        run: echo 'NON-PRODUCTION binding verification only; no secret values, auth mutation, schema/RLS change, production action, or PR merge.'
+        run: echo 'NON-PRODUCTION synthetic E2E only; no Production action, no schema/RLS change, no live connector, no PR merge.'
