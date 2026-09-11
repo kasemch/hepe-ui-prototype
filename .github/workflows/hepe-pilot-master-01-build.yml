@@ -25,10 +25,7 @@ jobs:
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
-      - name: TypeScript validity
-        run: npx tsc --noEmit
-
-      - name: Next.js build
+      - name: Next.js build and type validity
         run: npm run build
 
       - name: Pilot critical-path source assertions
