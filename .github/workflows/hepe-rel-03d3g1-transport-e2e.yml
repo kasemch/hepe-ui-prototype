@@ -47,10 +47,9 @@ jobs:
         run: |
           set -euo pipefail
           body="$(mktemp)"
-          code="$(curl --silent --show-error --location --max-time 30 \
+          code="$(curl --silent --show-error --max-time 30 \
             --output "$body" --write-out '%{http_code}' \
             -H "x-vercel-protection-bypass: ${VERCEL_BYPASS}" \
-            -H 'x-vercel-set-bypass-cookie: true' \
             -H 'user-agent: HEPE-REL-03D.3G.1-PREFLIGHT' \
             "${PREVIEW_URL}/runtime")"
           echo "PREFLIGHT_HTTP=${code}"
@@ -76,111 +75,16 @@ jobs:
           const fail=m=>{throw new Error(m)};
           const admin=createClient(E.SUPABASE_URL,E.SUPABASE_ADMIN,{auth:{persistSession:false,autoRefreshToken:false}});
           let prepActor=null,noActor=null,prepUid=null,noUid=null,prepProgramme=null,failure=null;
-
-          async function persona(code){
-            const {data:f,error:fe}=await admin.from('wave6_persona_fixtures').select('actor_id,external_identity_subject,expected_programme_code').eq('persona_code',code).single();
-            if(fe||!f) fail(`PERSONA_LOOKUP_FAILED:${code}`);
-            const {data:a,error:ae}=await admin.from('actors').select('actor_id,external_identity_subject,status').eq('actor_id',f.actor_id).single();
-            if(ae||!a) fail(`ACTOR_LOOKUP_FAILED:${code}`);
-            return {f,a};
-          }
-          async function authorityCount(actorId){
-            const {count,error}=await admin.from('authority_assignments').select('*',{count:'exact',head:true}).eq('actor_id',actorId);
-            if(error) fail('AUTHORITY_COUNT_QUERY_FAILED'); return count??0;
-          }
-          async function createSynthetic(label){
-            const tag=`${E.GITHUB_RUN_ID}-${crypto.randomBytes(6).toString('hex')}`;
-            const email=`hepe-rel03-${label.toLowerCase()}-${tag}@example.invalid`;
-            const password=crypto.randomBytes(32).toString('base64url');
-            const {data,error}=await admin.auth.admin.createUser({email,password,email_confirm:true,user_metadata:{hepe_synthetic_test:true,hepe_gate:'HEPE-REL-03D.3G.1',hepe_persona:label}});
-            if(error||!data.user) fail(`AUTH_CREATE_FAILED:${label}`);
-            return {uid:data.user.id,email,password};
-          }
-          async function rebind(actorId,subject){
-            const {error}=await admin.from('actors').update({external_identity_subject:subject}).eq('actor_id',actorId);
-            if(error) fail(`ACTOR_REBIND_FAILED:${actorId}`);
-          }
-          async function makeUserSession(email,password){
-            const jar=new Map();
-            const ssr=createServerClient(E.SUPABASE_URL,E.SUPABASE_PUBLISHABLE_KEY,{cookies:{getAll(){return [...jar].map(([name,value])=>({name,value}));},setAll(xs){for(const x of xs)jar.set(x.name,x.value);}}});
-            const {data,error}=await ssr.auth.signInWithPassword({email,password});
-            if(error||!data.user||!data.session) fail('SESSION_CREATE_FAILED');
-            const {data:u,error:ue}=await ssr.auth.getUser();
-            if(ue||!u.user||u.user.id!==data.user.id) fail('AUTH_GETUSER_VALIDATION_FAILED');
-            const cookie=[...jar].map(([k,v])=>`${k}=${v}`).join('; ');
-            if(!cookie) fail('SESSION_COOKIE_MISSING');
-            return {uid:data.user.id,token:data.session.access_token,cookie};
-          }
-          function userClient(token){
-            return createClient(E.SUPABASE_URL,E.SUPABASE_PUBLISHABLE_KEY,{auth:{persistSession:false,autoRefreshToken:false},global:{headers:{Authorization:`Bearer ${token}`}}});
-          }
-          function fetchPage(path,cookie){
-            const marker=`__HEPE_HTTP__`;
-            const out=execFileSync('curl',[
-              '--silent','--show-error','--location','--max-time','30',
-              '-H',`x-vercel-protection-bypass: ${E.VERCEL_BYPASS}`,
-              '-H','x-vercel-set-bypass-cookie: true',
-              '-H',`cookie: ${cookie}`,
-              '-H','user-agent: HEPE-REL-03D.3G.1-E2E',
-              '-w',`${marker}%{http_code}`,
-              `${E.PREVIEW_URL}${path}`
-            ],{encoding:'utf8',maxBuffer:4*1024*1024});
-            const idx=out.lastIndexOf(marker); if(idx<0) fail(`HTTP_MARKER_MISSING:${path}`);
-            const html=out.slice(0,idx),code=out.slice(idx+marker.length).trim();
-            console.log(`PAGE_STATUS path=${path} http=${code}`);
-            if(code!=='200') fail(`PREVIEW_HTTP_${code}:${path}`);
-            if(html.includes('RUNTIME_NOT_CONFIGURED')) fail(`RUNTIME_NOT_CONFIGURED:${path}`);
-            if(html.includes('AUTH_REQUIRED')) fail(`AUTH_REQUIRED:${path}`);
-            if(html.includes('QUERY_ERROR')) fail(`QUERY_ERROR:${path}`);
-            return html;
-          }
-          async function assertPreparer(session){
-            const uc=userClient(session.token);
-            const {data:rows,error}=await uc.from('v_hepe_review_queue_v1').select('programme_code,review_code');
-            if(error) fail(`PREPARER_RLS_QUERY_FAILED:${error.code??'UNKNOWN'}`);
-            if(!rows||rows.length===0) fail('PREPARER_EXPECTED_REVIEW_ROWS_ZERO');
-            if(rows.some(r=>r.programme_code!==prepProgramme)) fail('PREPARER_CROSS_SCOPE_RLS_ROW');
-            const html={}; for(const p of ['/reviews','/evidence','/outbox','/reconciliation','/runtime']) html[p]=fetchPage(p,session.cookie);
-            if(!html['/reviews'].includes('VERIFIED')) fail('PREPARER_REVIEWS_NOT_VERIFIED');
-            for(const r of rows) if(!html['/reviews'].includes(String(r.review_code))) fail('PREPARER_REVIEW_ROW_NOT_RENDERED');
-            for(const p of ['/evidence','/outbox','/reconciliation','/runtime']) if(!html[p].includes('EMPTY')) fail(`PREPARER_EXPECTED_EMPTY_NOT_RENDERED:${p}`);
-            console.log(`PREPARER_A_AUTHENTICATED_E2E_PASS rows=${rows.length}`);
-          }
-          async function assertNoAuthority(session){
-            const uc=userClient(session.token);
-            for(const table of ['v_hepe_review_queue_v1','v_hepe_evidence_projection_v1','connector_outbox','reconciliation_item','connector_health_snapshot']){
-              const {data,error}=await uc.from(table).select('*').limit(1); if(error) fail(`NOAUTH_RLS_QUERY_FAILED:${table}`); if((data??[]).length!==0) fail(`NOAUTH_GOVERNED_ROW_VISIBLE:${table}`);
-            }
-            for(const p of ['/reviews','/evidence','/outbox','/reconciliation','/runtime']){const h=fetchPage(p,session.cookie); if(!h.includes('EMPTY')) fail(`NOAUTH_EXPECTED_EMPTY_NOT_RENDERED:${p}`);}
-            console.log('NO_AUTHORITY_AUTHENTICATED_E2E_PASS rows=0');
-          }
-          try{
-            const P=await persona('PREPARER_A'),N=await persona('NO_AUTHORITY'); prepActor=P.a.actor_id;noActor=N.a.actor_id;prepProgramme=P.f.expected_programme_code;
-            if(P.a.external_identity_subject!==E.PREPARER_ORIGINAL) fail('PREPARER_BASELINE_SUBJECT_MISMATCH');
-            if(N.a.external_identity_subject!==E.NOAUTH_ORIGINAL) fail('NOAUTH_BASELINE_SUBJECT_MISMATCH');
-            if(await authorityCount(prepActor)!==1) fail('PREPARER_BASELINE_AUTHORITY_COUNT_MISMATCH');
-            if(await authorityCount(noActor)!==0) fail('NOAUTH_BASELINE_AUTHORITY_COUNT_MISMATCH');
-            console.log('PRE_MUTATION_SNAPSHOT_PASS');
-            const pu=await createSynthetic('PREPARER_A'); prepUid=pu.uid; const nu=await createSynthetic('NO_AUTHORITY'); noUid=nu.uid; console.log('TEMP_AUTH_USERS_CREATED count=2');
-            await rebind(prepActor,prepUid); await rebind(noActor,noUid); if(await authorityCount(prepActor)!==1||await authorityCount(noActor)!==0) fail('AUTHORITY_CHANGED_AFTER_REBIND'); console.log('TEMP_ACTOR_REBIND_PASS');
-            const ps=await makeUserSession(pu.email,pu.password),ns=await makeUserSession(nu.email,nu.password); console.log('GENUINE_AUTH_SESSIONS_PASS count=2');
-            await assertPreparer(ps); await assertNoAuthority(ns); console.log('REL03_STAGE1_BROWSER_ASSERTIONS_PASS');
-          }catch(e){failure=e;console.error(`REL03_E2E_ASSERTION_FAIL:${e.message}`);}finally{
-            const errs=[];
-            try{if(prepActor)await rebind(prepActor,E.PREPARER_ORIGINAL)}catch{errs.push('PREPARER_RESTORE_FAILED')}
-            try{if(noActor)await rebind(noActor,E.NOAUTH_ORIGINAL)}catch{errs.push('NOAUTH_RESTORE_FAILED')}
-            try{if(prepUid)await admin.auth.admin.deleteUser(prepUid)}catch{errs.push('PREPARER_DELETE_FAILED')}
-            try{if(noUid)await admin.auth.admin.deleteUser(noUid)}catch{errs.push('NOAUTH_DELETE_FAILED')}
-            try{
-              const P=await persona('PREPARER_A'),N=await persona('NO_AUTHORITY');
-              if(P.a.external_identity_subject!==E.PREPARER_ORIGINAL)errs.push('PREPARER_SUBJECT_NOT_RESTORED');
-              if(N.a.external_identity_subject!==E.NOAUTH_ORIGINAL)errs.push('NOAUTH_SUBJECT_NOT_RESTORED');
-              if(await authorityCount(P.a.actor_id)!==1)errs.push('PREPARER_AUTHORITY_CHANGED');
-              if(await authorityCount(N.a.actor_id)!==0)errs.push('NOAUTH_AUTHORITY_CHANGED');
-              const {data,error}=await admin.auth.admin.listUsers({page:1,perPage:100}); if(error)errs.push('AUTH_RESIDUAL_QUERY_FAILED'); else if(data.users.some(u=>u.user_metadata?.hepe_gate==='HEPE-REL-03D.3G.1'))errs.push('AUTH_RESIDUAL_PRESENT');
-            }catch{errs.push('POST_CLEANUP_VERIFY_FAILED')}
-            if(errs.length){console.error(`MANDATORY_CLEANUP_FAIL:${errs.join(',')}`);process.exitCode=2}else{console.log('MANDATORY_ROLLBACK_PASS');console.log('AUTH_CLEANUP_PASS residual=0');console.log('AUTHORITY_ASSIGNMENTS_UNCHANGED_PASS');}
-          }
+          async function persona(code){const {data:f,error:fe}=await admin.from('wave6_persona_fixtures').select('actor_id,external_identity_subject,expected_programme_code').eq('persona_code',code).single();if(fe||!f)fail(`PERSONA_LOOKUP_FAILED:${code}`);const {data:a,error:ae}=await admin.from('actors').select('actor_id,external_identity_subject,status').eq('actor_id',f.actor_id).single();if(ae||!a)fail(`ACTOR_LOOKUP_FAILED:${code}`);return {f,a};}
+          async function authorityCount(actorId){const {count,error}=await admin.from('authority_assignments').select('*',{count:'exact',head:true}).eq('actor_id',actorId);if(error)fail('AUTHORITY_COUNT_QUERY_FAILED');return count??0;}
+          async function createSynthetic(label){const tag=`${E.GITHUB_RUN_ID}-${crypto.randomBytes(6).toString('hex')}`;const email=`hepe-rel03-${label.toLowerCase()}-${tag}@example.invalid`;const password=crypto.randomBytes(32).toString('base64url');const {data,error}=await admin.auth.admin.createUser({email,password,email_confirm:true,user_metadata:{hepe_synthetic_test:true,hepe_gate:'HEPE-REL-03D.3G.1',hepe_persona:label}});if(error||!data.user)fail(`AUTH_CREATE_FAILED:${label}`);return {uid:data.user.id,email,password};}
+          async function rebind(actorId,subject){const {error}=await admin.from('actors').update({external_identity_subject:subject}).eq('actor_id',actorId);if(error)fail(`ACTOR_REBIND_FAILED:${actorId}`);}
+          async function makeUserSession(email,password){const jar=new Map();const ssr=createServerClient(E.SUPABASE_URL,E.SUPABASE_PUBLISHABLE_KEY,{cookies:{getAll(){return [...jar].map(([name,value])=>({name,value}));},setAll(xs){for(const x of xs)jar.set(x.name,x.value);}}});const {data,error}=await ssr.auth.signInWithPassword({email,password});if(error||!data.user||!data.session)fail('SESSION_CREATE_FAILED');const {data:u,error:ue}=await ssr.auth.getUser();if(ue||!u.user||u.user.id!==data.user.id)fail('AUTH_GETUSER_VALIDATION_FAILED');const cookie=[...jar].map(([k,v])=>`${k}=${v}`).join('; ');if(!cookie)fail('SESSION_COOKIE_MISSING');return {uid:data.user.id,token:data.session.access_token,cookie};}
+          function userClient(token){return createClient(E.SUPABASE_URL,E.SUPABASE_PUBLISHABLE_KEY,{auth:{persistSession:false,autoRefreshToken:false},global:{headers:{Authorization:`Bearer ${token}`}}});}
+          function fetchPage(path,cookie){const marker='__HEPE_HTTP__';const out=execFileSync('curl',['--silent','--show-error','--max-time','30','-H',`x-vercel-protection-bypass: ${E.VERCEL_BYPASS}`,'-H',`cookie: ${cookie}`,'-H','user-agent: HEPE-REL-03D.3G.1-E2E','-w',`${marker}%{http_code}`,`${E.PREVIEW_URL}${path}`],{encoding:'utf8',maxBuffer:4*1024*1024});const idx=out.lastIndexOf(marker);if(idx<0)fail(`HTTP_MARKER_MISSING:${path}`);const html=out.slice(0,idx),code=out.slice(idx+marker.length).trim();console.log(`PAGE_STATUS path=${path} http=${code}`);if(code!=='200')fail(`PREVIEW_HTTP_${code}:${path}`);if(html.includes('RUNTIME_NOT_CONFIGURED'))fail(`RUNTIME_NOT_CONFIGURED:${path}`);if(html.includes('AUTH_REQUIRED'))fail(`AUTH_REQUIRED:${path}`);if(html.includes('QUERY_ERROR'))fail(`QUERY_ERROR:${path}`);return html;}
+          async function assertPreparer(session){const uc=userClient(session.token);const {data:rows,error}=await uc.from('v_hepe_review_queue_v1').select('programme_code,review_code');if(error)fail(`PREPARER_RLS_QUERY_FAILED:${error.code??'UNKNOWN'}`);if(!rows||rows.length===0)fail('PREPARER_EXPECTED_REVIEW_ROWS_ZERO');if(rows.some(r=>r.programme_code!==prepProgramme))fail('PREPARER_CROSS_SCOPE_RLS_ROW');const html={};for(const p of ['/reviews','/evidence','/outbox','/reconciliation','/runtime'])html[p]=fetchPage(p,session.cookie);if(!html['/reviews'].includes('VERIFIED'))fail('PREPARER_REVIEWS_NOT_VERIFIED');for(const r of rows)if(!html['/reviews'].includes(String(r.review_code)))fail('PREPARER_REVIEW_ROW_NOT_RENDERED');for(const p of ['/evidence','/outbox','/reconciliation','/runtime'])if(!html[p].includes('EMPTY'))fail(`PREPARER_EXPECTED_EMPTY_NOT_RENDERED:${p}`);console.log(`PREPARER_A_AUTHENTICATED_E2E_PASS rows=${rows.length}`);}
+          async function assertNoAuthority(session){const uc=userClient(session.token);for(const table of ['v_hepe_review_queue_v1','v_hepe_evidence_projection_v1','connector_outbox','reconciliation_item','connector_health_snapshot']){const {data,error}=await uc.from(table).select('*').limit(1);if(error)fail(`NOAUTH_RLS_QUERY_FAILED:${table}`);if((data??[]).length!==0)fail(`NOAUTH_GOVERNED_ROW_VISIBLE:${table}`);}for(const p of ['/reviews','/evidence','/outbox','/reconciliation','/runtime']){const h=fetchPage(p,session.cookie);if(!h.includes('EMPTY'))fail(`NOAUTH_EXPECTED_EMPTY_NOT_RENDERED:${p}`);}console.log('NO_AUTHORITY_AUTHENTICATED_E2E_PASS rows=0');}
+          try{const P=await persona('PREPARER_A'),N=await persona('NO_AUTHORITY');prepActor=P.a.actor_id;noActor=N.a.actor_id;prepProgramme=P.f.expected_programme_code;if(P.a.external_identity_subject!==E.PREPARER_ORIGINAL)fail('PREPARER_BASELINE_SUBJECT_MISMATCH');if(N.a.external_identity_subject!==E.NOAUTH_ORIGINAL)fail('NOAUTH_BASELINE_SUBJECT_MISMATCH');if(await authorityCount(prepActor)!==1)fail('PREPARER_BASELINE_AUTHORITY_COUNT_MISMATCH');if(await authorityCount(noActor)!==0)fail('NOAUTH_BASELINE_AUTHORITY_COUNT_MISMATCH');console.log('PRE_MUTATION_SNAPSHOT_PASS');const pu=await createSynthetic('PREPARER_A');prepUid=pu.uid;const nu=await createSynthetic('NO_AUTHORITY');noUid=nu.uid;console.log('TEMP_AUTH_USERS_CREATED count=2');await rebind(prepActor,prepUid);await rebind(noActor,noUid);if(await authorityCount(prepActor)!==1||await authorityCount(noActor)!==0)fail('AUTHORITY_CHANGED_AFTER_REBIND');console.log('TEMP_ACTOR_REBIND_PASS');const ps=await makeUserSession(pu.email,pu.password),ns=await makeUserSession(nu.email,nu.password);console.log('GENUINE_AUTH_SESSIONS_PASS count=2');await assertPreparer(ps);await assertNoAuthority(ns);console.log('REL03_STAGE1_BROWSER_ASSERTIONS_PASS');}catch(e){failure=e;console.error(`REL03_E2E_ASSERTION_FAIL:${e.message}`);}finally{const errs=[];try{if(prepActor)await rebind(prepActor,E.PREPARER_ORIGINAL)}catch{errs.push('PREPARER_RESTORE_FAILED')}try{if(noActor)await rebind(noActor,E.NOAUTH_ORIGINAL)}catch{errs.push('NOAUTH_RESTORE_FAILED')}try{if(prepUid)await admin.auth.admin.deleteUser(prepUid)}catch{errs.push('PREPARER_DELETE_FAILED')}try{if(noUid)await admin.auth.admin.deleteUser(noUid)}catch{errs.push('NOAUTH_DELETE_FAILED')}try{const P=await persona('PREPARER_A'),N=await persona('NO_AUTHORITY');if(P.a.external_identity_subject!==E.PREPARER_ORIGINAL)errs.push('PREPARER_SUBJECT_NOT_RESTORED');if(N.a.external_identity_subject!==E.NOAUTH_ORIGINAL)errs.push('NOAUTH_SUBJECT_NOT_RESTORED');if(await authorityCount(P.a.actor_id)!==1)errs.push('PREPARER_AUTHORITY_CHANGED');if(await authorityCount(N.a.actor_id)!==0)errs.push('NOAUTH_AUTHORITY_CHANGED');const {data,error}=await admin.auth.admin.listUsers({page:1,perPage:100});if(error)errs.push('AUTH_RESIDUAL_QUERY_FAILED');else if(data.users.some(u=>u.user_metadata?.hepe_gate==='HEPE-REL-03D.3G.1'))errs.push('AUTH_RESIDUAL_PRESENT');}catch{errs.push('POST_CLEANUP_VERIFY_FAILED')}if(errs.length){console.error(`MANDATORY_CLEANUP_FAIL:${errs.join(',')}`);process.exitCode=2}else{console.log('MANDATORY_ROLLBACK_PASS');console.log('AUTH_CLEANUP_PASS residual=0');console.log('AUTHORITY_ASSIGNMENTS_UNCHANGED_PASS');}}
           if(failure)process.exitCode=process.exitCode||1;
           NODE
 
