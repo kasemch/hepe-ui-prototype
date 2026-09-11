@@ -113,7 +113,7 @@ export default async function CurriculumImportStudio() {
           {metrics.map(([name, value, note]) => (
             <article className="card item-card" key={String(name)}>
               <div className="label">Verified read model</div>
-              <h2>{String(name)} · {String(value)}</h2>
+              <h2>{`${String(name)} · ${String(value)}`}</h2>
               <p>{String(note)}</p>
             </article>
           ))}
