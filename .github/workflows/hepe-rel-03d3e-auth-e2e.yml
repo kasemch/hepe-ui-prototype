@@ -1,0 +1,43 @@
+name: HEPE REL-03D.3F Masked Binding Verification
+
+on:
+  pull_request:
+    branches: [non-production]
+    paths:
+      - '.github/workflows/hepe-rel-03d3e-auth-e2e.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  binding-verification:
+    if: ${{ github.event.pull_request.number == 28 && github.event.pull_request.head.ref == 'feat/hepe-rel-03-runtime-binding' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verify existing masked bindings without revealing values
+        env:
+          SUPABASE_ADMIN: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          VERCEL_BYPASS: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          missing=0
+          if [ -n "${SUPABASE_ADMIN:-}" ]; then
+            echo 'SUPABASE_ADMIN_BINDING_PRESENT'
+          else
+            echo 'SECRET_BINDING_UNAVAILABLE_SUPABASE'
+            missing=1
+          fi
+          if [ -n "${VERCEL_BYPASS:-}" ]; then
+            echo 'VERCEL_BYPASS_BINDING_PRESENT'
+          else
+            echo 'SECRET_BINDING_UNAVAILABLE_VERCEL'
+            missing=1
+          fi
+          if [ "$missing" -ne 0 ]; then exit 78; fi
+          echo 'HEPE_REL_03D3F_BINDINGS_READY'
+
+      - name: Confirm gate boundary
+        if: always()
+        run: echo 'NON-PRODUCTION binding verification only; no secret values, auth mutation, schema/RLS change, production action, or PR merge.'
