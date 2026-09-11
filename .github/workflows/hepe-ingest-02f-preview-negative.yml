@@ -1,0 +1,86 @@
+name: HEPE INGEST 02F Preview Negative Acceptance
+
+on:
+  push:
+    branches:
+      - feat/hepe-ingest-02e-ui-binding
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  preview-negative:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      HEPE_ENVIRONMENT: NON-PRODUCTION
+      HEPE_PREVIEW_HOST: hepe-ui-prototype-git-feat-hepe-i-bf5b54-kasemch-3467s-projects.vercel.app
+      VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+
+    steps:
+      - name: Enforce branch boundary
+        run: |
+          set -euo pipefail
+          test "${GITHUB_REF_NAME}" = "feat/hepe-ingest-02e-ui-binding"
+          echo "NON_PRODUCTION_BRANCH_VERIFIED"
+
+      - name: Verify protected Preview bypass binding
+        run: |
+          set -euo pipefail
+          if [ -z "${VERCEL_AUTOMATION_BYPASS_SECRET:-}" ]; then
+            echo "BYPASS_SECRET_NOT_BOUND"
+            exit 1
+          fi
+          echo "MASKED_BYPASS_BINDING_READY"
+
+      - name: Wait for exact branch Preview
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 18); do
+            status=$(curl --silent --show-error --output /tmp/page --write-out "%{http_code}" \
+              --header "x-vercel-protection-bypass: ${VERCEL_AUTOMATION_BYPASS_SECRET}" \
+              --header "Cache-Control: no-cache" \
+              "https://${HEPE_PREVIEW_HOST}/curriculum-import") || true
+            echo "preview probe ${i}: HTTP ${status:-000}"
+            if [ "${status:-000}" = "200" ]; then
+              grep -q "NON-PRODUCTION" /tmp/page
+              grep -q "Controlled Curriculum Validation" /tmp/page
+              echo "PREVIEW_UI_RUNTIME_PASS"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "PREVIEW_UI_RUNTIME_TIMEOUT"
+          exit 1
+
+      - name: Unauthenticated API negative control
+        run: |
+          set -euo pipefail
+          body=$(mktemp)
+          status=$(curl --silent --show-error --output "${body}" --write-out "%{http_code}" \
+            --header "x-vercel-protection-bypass: ${VERCEL_AUTOMATION_BYPASS_SECRET}" \
+            --header "Cache-Control: no-cache" \
+            "https://${HEPE_PREVIEW_HOST}/api/curriculum-import")
+          echo "curriculum-import API HTTP ${status}"
+          if [ "${status}" != "401" ]; then
+            echo "UNAUTHENTICATED_API_NEGATIVE_FAIL"
+            cat "${body}"
+            exit 1
+          fi
+          grep -q '"AUTH_REQUIRED"' "${body}"
+          echo "UNAUTHENTICATED_API_NEGATIVE_PASS"
+
+      - name: Boundary summary
+        run: |
+          cat <<'EOF'
+          HEPE-INGEST-02F protected Preview negative acceptance complete.
+          Environment: NON-PRODUCTION
+          Production touched: false
+          Canonical activation attempted: false
+          Curriculum publication attempted: false
+          Audit Evidence admission attempted: false
+          IAM/authority changed: false
+          Secret revealed: false
+          Positive authenticated acceptance: NOT EXECUTED BY THIS NEGATIVE HARNESS
+          EOF
