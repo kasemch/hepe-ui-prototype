@@ -25,8 +25,8 @@ jobs:
       SUPABASE_PUBLISHABLE_KEY: sb_publishable_7bv5GR0-ksXJn91sRHV0Mg_k4nblIGI
       SUPABASE_ADMIN: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       VERCEL_BYPASS: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
-      PREVIEW_URL: https://hepe-ui-prototype-qwc5uarna-kasemch-3467s-projects.vercel.app
-      TESTED_APP_SHA: 2c36cc2c4f61cff071ffd8f6aeb302789dcc095c
+      PREVIEW_URL: https://hepe-ui-prototype-h7r0n9q30-kasemch-3467s-projects.vercel.app
+      TESTED_APP_SHA: 3daea2f7f3e082dd06ccd55897ddf4db5e1c6d94
     steps:
       - name: Checkout runner head
         uses: actions/checkout@v4
@@ -76,96 +76,46 @@ jobs:
           const admin = createClient(E.SUPABASE_URL, E.SUPABASE_ADMIN, {
             auth: { persistSession: false, autoRefreshToken: false },
           });
-
           const personaCodes = ['PREPARER_A', 'NO_AUTHORITY', 'REVIEWER_B'];
           const ctx = new Map();
           let failure = null;
 
           async function loadPersona(code) {
-            const { data: fixture, error: fe } = await admin
-              .from('wave6_persona_fixtures')
-              .select('persona_code,actor_id,external_identity_subject,expected_programme_code')
-              .eq('persona_code', code)
-              .single();
+            const { data: fixture, error: fe } = await admin.from('wave6_persona_fixtures').select('persona_code,actor_id,external_identity_subject,expected_programme_code').eq('persona_code', code).single();
             if (fe || !fixture) fail(`PERSONA_LOOKUP_FAILED:${code}`);
-            const { data: actor, error: ae } = await admin
-              .from('actors')
-              .select('actor_id,external_identity_subject,status')
-              .eq('actor_id', fixture.actor_id)
-              .single();
+            const { data: actor, error: ae } = await admin.from('actors').select('actor_id,external_identity_subject,status').eq('actor_id', fixture.actor_id).single();
             if (ae || !actor) fail(`ACTOR_LOOKUP_FAILED:${code}`);
-            const { count, error: ce } = await admin
-              .from('authority_assignments')
-              .select('*', { count: 'exact', head: true })
-              .eq('actor_id', actor.actor_id)
-              .eq('status', 'ACTIVE');
+            const { count, error: ce } = await admin.from('authority_assignments').select('*', { count: 'exact', head: true }).eq('actor_id', actor.actor_id).eq('status', 'ACTIVE');
             if (ce) fail(`AUTHORITY_COUNT_FAILED:${code}`);
             return { fixture, actor, authorityCount: count ?? 0 };
           }
-
           async function createSynthetic(code) {
             const tag = `${E.GITHUB_RUN_ID}-${crypto.randomBytes(6).toString('hex')}`;
             const email = `hepe-ingest-02f-${code.toLowerCase().replaceAll('_','-')}-${tag}@example.invalid`;
             const password = crypto.randomBytes(32).toString('base64url');
-            const { data, error } = await admin.auth.admin.createUser({
-              email,
-              password,
-              email_confirm: true,
-              user_metadata: {
-                hepe_synthetic_test: true,
-                hepe_gate: 'HEPE-INGEST-02F-AUTH',
-                hepe_persona: code,
-              },
-            });
+            const { data, error } = await admin.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { hepe_synthetic_test: true, hepe_gate: 'HEPE-INGEST-02F-AUTH', hepe_persona: code } });
             if (error || !data.user) fail(`AUTH_CREATE_FAILED:${code}`);
             return { uid: data.user.id, email, password };
           }
-
-          async function rebind(actorId, subject) {
-            const { error } = await admin.from('actors').update({ external_identity_subject: subject }).eq('actor_id', actorId);
-            if (error) fail(`ACTOR_REBIND_FAILED:${actorId}`);
-          }
-
+          async function rebind(actorId, subject) { const { error } = await admin.from('actors').update({ external_identity_subject: subject }).eq('actor_id', actorId); if (error) fail(`ACTOR_REBIND_FAILED:${actorId}`); }
           async function sessionFor(email, password) {
             const jar = new Map();
-            const ssr = createServerClient(E.SUPABASE_URL, E.SUPABASE_PUBLISHABLE_KEY, {
-              cookies: {
-                getAll() { return [...jar].map(([name, value]) => ({ name, value })); },
-                setAll(values) { for (const { name, value } of values) jar.set(name, value); },
-              },
-            });
+            const ssr = createServerClient(E.SUPABASE_URL, E.SUPABASE_PUBLISHABLE_KEY, { cookies: { getAll() { return [...jar].map(([name, value]) => ({ name, value })); }, setAll(values) { for (const { name, value } of values) jar.set(name, value); } } });
             const { data, error } = await ssr.auth.signInWithPassword({ email, password });
             if (error || !data.user || !data.session) fail('SESSION_CREATE_FAILED');
             const { data: verified, error: ve } = await ssr.auth.getUser();
             if (ve || verified.user?.id !== data.user.id) fail('SESSION_GETUSER_FAILED');
             const cookie = [...jar].map(([k, v]) => `${k}=${v}`).join('; ');
             if (!cookie) fail('SESSION_COOKIE_MISSING');
-            return { uid: data.user.id, token: data.session.access_token, cookie };
+            return { token: data.session.access_token, cookie };
           }
-
           function request(path, cookie) {
             const marker = '__HEPE_HTTP__';
-            const out = execFileSync('curl', [
-              '--silent', '--show-error', '--max-time', '30',
-              '-H', `x-vercel-protection-bypass: ${E.VERCEL_BYPASS}`,
-              '-H', `cookie: ${cookie}`,
-              '-H', 'Cache-Control: no-cache',
-              '-H', 'user-agent: HEPE-INGEST-02F-AUTH',
-              '-w', `${marker}%{http_code}`,
-              `${E.PREVIEW_URL}${path}`,
-            ], { encoding: 'utf8', maxBuffer: 5 * 1024 * 1024 });
-            const idx = out.lastIndexOf(marker);
-            if (idx < 0) fail(`HTTP_MARKER_MISSING:${path}`);
+            const out = execFileSync('curl', ['--silent','--show-error','--max-time','30','-H',`x-vercel-protection-bypass: ${E.VERCEL_BYPASS}`,'-H',`cookie: ${cookie}`,'-H','Cache-Control: no-cache','-H','user-agent: HEPE-INGEST-02F-AUTH','-w',`${marker}%{http_code}`,`${E.PREVIEW_URL}${path}`], { encoding: 'utf8', maxBuffer: 5 * 1024 * 1024 });
+            const idx = out.lastIndexOf(marker); if (idx < 0) fail(`HTTP_MARKER_MISSING:${path}`);
             return { body: out.slice(0, idx), code: out.slice(idx + marker.length).trim() };
           }
-
-          function userClient(token) {
-            return createClient(E.SUPABASE_URL, E.SUPABASE_PUBLISHABLE_KEY, {
-              auth: { persistSession: false, autoRefreshToken: false },
-              global: { headers: { Authorization: `Bearer ${token}` } },
-            });
-          }
-
+          function userClient(token) { return createClient(E.SUPABASE_URL, E.SUPABASE_PUBLISHABLE_KEY, { auth: { persistSession: false, autoRefreshToken: false }, global: { headers: { Authorization: `Bearer ${token}` } } }); }
           async function assertExistingAuthorityStillWorks(code, token, expectedProgramme) {
             if (code !== 'PREPARER_A') return;
             const uc = userClient(token);
@@ -175,79 +125,38 @@ jobs:
             if (data.some((r) => r.programme_code !== expectedProgramme)) fail('DIRECT_RLS_CROSS_SCOPE_ROW');
             console.log(`DIRECT_RLS_SAME_PROGRAMME_PASS rows=${data.length}`);
           }
-
           async function assertPreviewBoundary(code, session) {
             const page = request('/curriculum-import', session.cookie);
             console.log(`PAGE_STATUS persona=${code} http=${page.code}`);
             if (page.code !== '200') fail(`PAGE_HTTP_FAIL:${code}:${page.code}`);
             if (page.body.includes('AUTH_REQUIRED')) fail(`AUTH_COOKIE_NOT_RECOGNIZED:${code}`);
             if (!page.body.includes('AUTHORITY_DENIED_OR_READ_MODEL_UNAVAILABLE')) fail(`EXPECTED_SCOPE_DENIAL_MISSING:${code}`);
-
             const api = request('/api/curriculum-import', session.cookie);
             console.log(`API_STATUS persona=${code} http=${api.code}`);
             if (api.code === '401' || api.body.includes('AUTH_REQUIRED')) fail(`API_AUTH_COOKIE_NOT_RECOGNIZED:${code}`);
             if (api.code !== '403' || !api.body.includes('READ_MODEL_DENIED_OR_UNAVAILABLE')) fail(`API_EXPECTED_RLS_DENIAL_MISSING:${code}`);
             console.log(`AUTHENTICATED_PREVIEW_SCOPE_DENIAL_PASS persona=${code}`);
           }
-
           try {
-            for (const code of personaCodes) {
-              const p = await loadPersona(code);
-              if (p.actor.external_identity_subject !== p.fixture.external_identity_subject) fail(`BASELINE_SUBJECT_MISMATCH:${code}`);
-              ctx.set(code, { ...p, synthetic: null });
-            }
+            for (const code of personaCodes) { const p = await loadPersona(code); if (p.actor.external_identity_subject !== p.fixture.external_identity_subject) fail(`BASELINE_SUBJECT_MISMATCH:${code}`); ctx.set(code, { ...p, synthetic: null }); }
             if (ctx.get('PREPARER_A').authorityCount !== 1) fail('PREPARER_AUTHORITY_BASELINE_CHANGED');
             if (ctx.get('NO_AUTHORITY').authorityCount !== 0) fail('NOAUTH_AUTHORITY_BASELINE_CHANGED');
             if (ctx.get('REVIEWER_B').authorityCount !== 1) fail('REVIEWER_B_AUTHORITY_BASELINE_CHANGED');
             console.log('PRE_MUTATION_SNAPSHOT_PASS');
-
-            for (const code of personaCodes) {
-              const c = ctx.get(code);
-              c.synthetic = await createSynthetic(code);
-              await rebind(c.actor.actor_id, c.synthetic.uid);
-            }
+            for (const code of personaCodes) { const c = ctx.get(code); c.synthetic = await createSynthetic(code); await rebind(c.actor.actor_id, c.synthetic.uid); }
             console.log('TEMP_SYNTHETIC_USERS_CREATED count=3');
             console.log('TEMP_ACTOR_BINDINGS_APPLIED count=3');
-
-            for (const code of personaCodes) {
-              const c = ctx.get(code);
-              const s = await sessionFor(c.synthetic.email, c.synthetic.password);
-              console.log(`GENUINE_AUTH_SESSION_PASS persona=${code}`);
-              await assertExistingAuthorityStillWorks(code, s.token, c.fixture.expected_programme_code);
-              await assertPreviewBoundary(code, s);
-            }
-            console.log('HEPE_INGEST_02F_AUTH_EXECUTION_PASS');
-          } catch (e) {
-            failure = e;
-            console.error(`HEPE_INGEST_02F_AUTH_ASSERTION_FAIL:${e.message}`);
-          } finally {
+            for (const code of personaCodes) { const c = ctx.get(code); const s = await sessionFor(c.synthetic.email, c.synthetic.password); console.log(`GENUINE_AUTH_SESSION_PASS persona=${code}`); await assertExistingAuthorityStillWorks(code, s.token, c.fixture.expected_programme_code); await assertPreviewBoundary(code, s); }
+            console.log('HEPE_INGEST_02F_AUTH_NEGATIVE_ACCEPTANCE_PASS');
+          } catch (e) { failure = e; console.error(`HEPE_INGEST_02F_AUTH_ASSERTION_FAIL:${e.message}`); }
+          finally {
             const errors = [];
-            for (const code of personaCodes) {
-              const c = ctx.get(code);
-              if (!c) continue;
-              try { await rebind(c.actor.actor_id, c.fixture.external_identity_subject); } catch { errors.push(`RESTORE_ACTOR_FAILED:${code}`); }
-              try { if (c.synthetic?.uid) await admin.auth.admin.deleteUser(c.synthetic.uid); } catch { errors.push(`DELETE_AUTH_USER_FAILED:${code}`); }
-            }
+            for (const code of personaCodes) { const c = ctx.get(code); if (!c) continue; try { await rebind(c.actor.actor_id, c.fixture.external_identity_subject); } catch { errors.push(`RESTORE_ACTOR_FAILED:${code}`); } try { if (c.synthetic?.uid) await admin.auth.admin.deleteUser(c.synthetic.uid); } catch { errors.push(`DELETE_AUTH_USER_FAILED:${code}`); } }
             try {
-              for (const code of personaCodes) {
-                const p = await loadPersona(code);
-                if (p.actor.external_identity_subject !== p.fixture.external_identity_subject) errors.push(`SUBJECT_NOT_RESTORED:${code}`);
-                const before = ctx.get(code)?.authorityCount;
-                if (before !== undefined && p.authorityCount !== before) errors.push(`AUTHORITY_COUNT_CHANGED:${code}`);
-              }
-              const { data, error } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
-              if (error) errors.push('AUTH_RESIDUAL_QUERY_FAILED');
-              else if (data.users.some((u) => u.user_metadata?.hepe_gate === 'HEPE-INGEST-02F-AUTH')) errors.push('AUTH_RESIDUAL_PRESENT');
+              for (const code of personaCodes) { const p = await loadPersona(code); if (p.actor.external_identity_subject !== p.fixture.external_identity_subject) errors.push(`SUBJECT_NOT_RESTORED:${code}`); const before = ctx.get(code)?.authorityCount; if (before !== undefined && p.authorityCount !== before) errors.push(`AUTHORITY_COUNT_CHANGED:${code}`); }
+              const { data, error } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 }); if (error) errors.push('AUTH_RESIDUAL_QUERY_FAILED'); else if (data.users.some((u) => u.user_metadata?.hepe_gate === 'HEPE-INGEST-02F-AUTH')) errors.push('AUTH_RESIDUAL_PRESENT');
             } catch { errors.push('POST_CLEANUP_VERIFY_FAILED'); }
-
-            if (errors.length) {
-              console.error(`MANDATORY_CLEANUP_FAIL:${errors.join(',')}`);
-              process.exitCode = 2;
-            } else {
-              console.log('ACTOR_BINDINGS_RESTORED_PASS');
-              console.log('AUTHORITY_ASSIGNMENTS_UNCHANGED_PASS');
-              console.log('AUTH_CLEANUP_PASS residual=0');
-            }
+            if (errors.length) { console.error(`MANDATORY_CLEANUP_FAIL:${errors.join(',')}`); process.exitCode = 2; } else { console.log('ACTOR_BINDINGS_RESTORED_PASS'); console.log('AUTHORITY_ASSIGNMENTS_UNCHANGED_PASS'); console.log('AUTH_CLEANUP_PASS residual=0'); }
           }
           if (failure) process.exitCode = process.exitCode || 1;
           NODE
@@ -256,19 +165,14 @@ jobs:
         if: always()
         shell: bash
         run: |
-          cat <<'EOF'
-          HEPE-INGEST-02F-AUTH boundary summary
-          Environment: NON-PRODUCTION
-          Temporary synthetic users only: true
-          Real user used: false
-          Email sent: false
-          SMTP changed: false
-          Authority grant/revoke: false
-          IAM policy change: false
-          Canonical activation/publication: false
-          Audit Evidence admission: false
-          Production touched: false
-          PR merge: false
-          EOF
-
-# Trigger revision: 1
+          echo 'Environment: NON-PRODUCTION'
+          echo 'Temporary synthetic users only: true'
+          echo 'Real user used: false'
+          echo 'Email sent: false'
+          echo 'SMTP changed: false'
+          echo 'Authority grant/revoke: false'
+          echo 'IAM policy change: false'
+          echo 'Canonical activation/publication: false'
+          echo 'Audit Evidence admission: false'
+          echo 'Production touched: false'
+          echo 'PR merge: false'
