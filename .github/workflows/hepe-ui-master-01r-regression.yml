@@ -17,7 +17,7 @@ jobs:
       SUPABASE_PUBLISHABLE_KEY: sb_publishable_7bv5GR0-ksXJn91sRHV0Mg_k4nblIGI
       SUPABASE_ADMIN: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       VERCEL_BYPASS: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
-      PREVIEW_URL: https://hepe-ui-prototype-ilh0hihqs-kasemch-3467s-projects.vercel.app
+      PREVIEW_URL: https://hepe-ui-prototype-284uo44hy-kasemch-3467s-projects.vercel.app
       PREPARER_ACTOR_ID: dd73e0bc-c07d-4df7-8a50-c2103f0a9c6d
       NOAUTH_ACTOR_ID: 9ad6c5a4-ad1e-4985-971d-39770a02dd0c
       PREPARER_ORIGINAL_SUBJECT: 10000000-0000-0000-0000-000000000001
@@ -35,8 +35,12 @@ jobs:
           grep -q '@media(max-width:760px)' app/globals.css
           grep -q 'auth.getUser()' 'app/[module]/page.tsx'
           grep -q "from('v_hepe_review_queue_v1')" 'app/[module]/page.tsx'
+          grep -q "AI ADVISORY ONLY" 'app/[module]/page.tsx'
+          grep -q "NO UNVERIFIED KPI DISPLAY" 'app/[module]/page.tsx'
+          grep -q "CONTROLLED AUTH BOUNDARY" 'app/[module]/page.tsx'
           if grep -q 'service_role' 'app/[module]/page.tsx' lib/hepe/server-supabase.ts; then exit 2; fi
           echo 'STATIC_UI_SECURITY_INVARIANTS=PASS'
+          echo 'MASTER_SCREEN_FAMILY_SEMANTICS=PASS'
       - name: Install controlled dependencies
         run: npm install --ignore-scripts --no-audit --no-fund
       - name: Build current UI head
@@ -53,29 +57,26 @@ jobs:
           const E=process.env;
           const admin=createClient(E.SUPABASE_URL,E.SUPABASE_ADMIN,{auth:{persistSession:false,autoRefreshToken:false}});
           const personas=[{name:'PREPARER_A',actorId:E.PREPARER_ACTOR_ID,original:E.PREPARER_ORIGINAL_SUBJECT,authority:1},{name:'NO_AUTHORITY',actorId:E.NOAUTH_ACTOR_ID,original:E.NOAUTH_ORIGINAL_SUBJECT,authority:0}];
-          const created=[];
-          const fail=m=>{throw new Error(m)};
+          const created=[];const fail=m=>{throw new Error(m)};
           async function actor(id){const {data,error}=await admin.from('actors').select('external_identity_subject').eq('actor_id',id).single();if(error)fail('ACTOR_READ_FAILED');return data}
           async function ac(id){const {count,error}=await admin.from('authority_assignments').select('*',{head:true,count:'exact'}).eq('actor_id',id);if(error)fail('AUTHORITY_READ_FAILED');return count??0}
           function fetchPage(path,cookie=''){const mark='__HTTP__';const args=['--silent','--show-error','--max-time','30','-H',`x-vercel-protection-bypass: ${E.VERCEL_BYPASS}`];if(cookie)args.push('-H',`Cookie: ${cookie}`);args.push('-w',`${mark}%{http_code}`,`${E.PREVIEW_URL}${path}`);const out=execFileSync('curl',args,{encoding:'utf8',maxBuffer:8*1024*1024});const i=out.lastIndexOf(mark);return {html:out.slice(0,i),code:out.slice(i+mark.length).trim()}}
           function state(html){for(const s of ['RUNTIME_NOT_CONFIGURED','AUTH_REQUIRED','QUERY_ERROR','VERIFIED','EMPTY'])if(html.includes(s))return s;return 'UNKNOWN'}
           try{
-            const routes=['/','/curriculum','/traceability','/mapping','/reviews','/decisions','/evidence','/findings','/qa','/calendar','/audit','/runtime','/outbox','/reconciliation','/governance'];
+            const routes=['/','/programme','/curriculum','/traceability','/mapping','/reviews','/decisions','/evidence','/findings','/qa','/tasks','/ai','/analytics','/calendar','/audit','/runtime','/outbox','/reconciliation','/governance','/welcome'];
             for(const route of routes){const r=fetchPage(route);if(r.code!=='200')fail(`NAV_${route}_HTTP_${r.code}`);if(!r.html.includes('NON-PRODUCTION')||!r.html.includes('TEST DATA ONLY'))fail(`BOUNDARY_LABEL_MISSING_${route}`)}
-            console.log('NAVIGATION_15_ROUTES=PASS');
-            console.log('PERSISTENT_ENVIRONMENT_LABEL=PASS');
+            console.log('NAVIGATION_20_ROUTES=PASS');console.log('PERSISTENT_ENVIRONMENT_LABEL=PASS');
             const home=fetchPage('/');if(!home.html.includes('Academic Command Center')||!home.html.includes('REL-03')||!home.html.includes('CONTROLLED / RECONCILED PASS'))fail('COMMAND_CENTER_SEMANTICS_FAIL');
-            console.log('ACADEMIC_COMMAND_CENTER_SEMANTICS=PASS');
-            const unauth=fetchPage('/reviews');if(state(unauth.html)!=='AUTH_REQUIRED')fail('UNAUTH_REVIEWS_NOT_FAIL_CLOSED');
-            console.log('UNAUTHENTICATED_FAIL_CLOSED=PASS');
+            for(const [path,marker] of [['/ai','AI ADVISORY ONLY'],['/analytics','NO UNVERIFIED KPI DISPLAY'],['/welcome','CONTROLLED AUTH BOUNDARY'],['/programme','CONTROLLED PROGRAMME CONTEXT'],['/tasks','TASK COUNTS NOT YET VERIFIED']]){const r=fetchPage(path);if(!r.html.includes(marker))fail(`SEMANTIC_MARKER_FAIL_${path}`)}
+            console.log('MASTER_SCREEN_FAMILY_RENDERING=PASS');
+            const unauth=fetchPage('/reviews');if(state(unauth.html)!=='AUTH_REQUIRED')fail('UNAUTH_REVIEWS_NOT_FAIL_CLOSED');console.log('UNAUTHENTICATED_FAIL_CLOSED=PASS');
             for(const p of personas){const a=await actor(p.actorId);if(a.external_identity_subject!==p.original)fail(`${p.name}_SUBJECT_PRE`);if(await ac(p.actorId)!==p.authority)fail(`${p.name}_AUTHORITY_PRE`)}
             const {data:pre}=await admin.auth.admin.listUsers({page:1,perPage:100});if((pre?.users??[]).some(u=>u.user_metadata?.hepe_gate==='HEPE-UI-MASTER-01R'))fail('PRE_RESIDUAL');
             for(const p of personas){const tag=`${E.GITHUB_RUN_ID}-${p.name}-${crypto.randomBytes(4).toString('hex')}`;p.email=`hepe-ui-${tag}@example.invalid`;p.password=crypto.randomBytes(32).toString('base64url');const {data,error}=await admin.auth.admin.createUser({email:p.email,password:p.password,email_confirm:true,user_metadata:{hepe_synthetic_test:true,hepe_gate:'HEPE-UI-MASTER-01R',hepe_persona:p.name}});if(error||!data.user)fail(`${p.name}_CREATE`);p.uid=data.user.id;created.push(p.uid);const {error:ue}=await admin.from('actors').update({external_identity_subject:p.uid}).eq('actor_id',p.actorId);if(ue)fail(`${p.name}_REBIND`)}
             for(const p of personas){const jar=new Map();const ssr=createServerClient(E.SUPABASE_URL,E.SUPABASE_PUBLISHABLE_KEY,{cookies:{getAll(){return [...jar].map(([name,value])=>({name,value}))},setAll(xs){for(const x of xs)jar.set(x.name,x.value)}}});const {data,error}=await ssr.auth.signInWithPassword({email:p.email,password:p.password});if(error||!data.session)fail(`${p.name}_SIGNIN`);const {data:u,error:ue}=await ssr.auth.getUser();if(ue||u.user?.id!==p.uid)fail(`${p.name}_GETUSER`);const cookie=[...jar].map(([k,v])=>`${k}=${v}`).join('; ');for(const mod of ['reviews','evidence','outbox','reconciliation','runtime']){const r=fetchPage('/'+mod,cookie);if(r.code!=='200')fail(`${p.name}_${mod}_HTTP`);const s=state(r.html);if(['AUTH_REQUIRED','RUNTIME_NOT_CONFIGURED','QUERY_ERROR','UNKNOWN'].includes(s))fail(`${p.name}_${mod}_${s}`);if(p.name==='PREPARER_A'&&mod==='reviews'&&s!=='VERIFIED')fail('PREPARER_REVIEWS_NOT_VERIFIED');if(p.name==='NO_AUTHORITY'&&s!=='EMPTY')fail(`NOAUTH_${mod}_NOT_EMPTY`);if(!r.html.includes('NON-PRODUCTION')||!r.html.includes('TEST DATA ONLY'))fail(`${p.name}_${mod}_BOUNDARY_MISSING`);console.log(`${p.name}_${mod.toUpperCase()}=${s}`)}}
             console.log('AUTHENTICATED_UI_RUNTIME_REGRESSION=PASS');
           }finally{
-            for(const p of personas)await admin.from('actors').update({external_identity_subject:p.original}).eq('actor_id',p.actorId);
-            for(const id of created)await admin.auth.admin.deleteUser(id);
+            for(const p of personas)await admin.from('actors').update({external_identity_subject:p.original}).eq('actor_id',p.actorId);for(const id of created)await admin.auth.admin.deleteUser(id);
             let ok=true;for(const p of personas){const a=await actor(p.actorId);const n=await ac(p.actorId);if(a.external_identity_subject!==p.original||n!==p.authority)ok=false;console.log(`${p.name}_CLEANUP=${a.external_identity_subject===p.original&&n===p.authority?'PASS':'FAIL'}`)}
             const {data:post}=await admin.auth.admin.listUsers({page:1,perPage:100});const residual=(post?.users??[]).filter(u=>u.user_metadata?.hepe_gate==='HEPE-UI-MASTER-01R').length;console.log('UIR_AUTH_RESIDUAL='+residual);console.log('UIR_MANDATORY_CLEANUP='+(ok&&residual===0?'PASS':'FAIL'));if(!ok||residual!==0)process.exitCode=2;
           }
