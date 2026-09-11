@@ -1,7 +1,7 @@
 # HEPE-REL-03 — Application Runtime Binding Evidence
 
 Environment: **NON-PRODUCTION ONLY**  
-Record status: **CONTROLLED EVIDENCE RECONCILIATION CANDIDATE — STAGE 1 TECHNICAL ACCEPTANCE PASS / FINAL GOVERNANCE CHECK PENDING**  
+Record status: **CONTROLLED / RECONCILED — PASS — SYNTHETIC NON-PRODUCTION RUNTIME**  
 Production Authorization: **NOT GRANTED**  
 PR #28 Merge Authorization: **NOT GRANTED**
 
@@ -151,6 +151,16 @@ Temporary D.3G.3 workflow and redeploy-trigger scaffolding were removed after ev
 
 Status: **PASS — ZERO RESIDUAL / AUTHORITY POSTURE RESTORED**.
 
+## Stage 2 governance closure verification
+Evidence reconciliation head `508d2edd9dfbad65a29625ae21160e3bcb0da06a` was verified before this final classification update:
+- PR #28 remained OPEN / NOT MERGED;
+- `HEPE Copilot Governance Check` run `34571375557` completed with conclusion `success` on that exact evidence head;
+- repository ruleset `22409192`, `HEPE Non-Production Governance`, remained `active` on `refs/heads/non-production`;
+- the ruleset required `governance-policy` and review-thread resolution and had no bypass actors;
+- the PR review-comment endpoint returned an empty list, therefore unresolved inline review threads = 0.
+
+This final classification commit must itself receive the same `governance-policy` success before the gate is treated as closed in execution reporting.
+
 ## Evidence register
 | Evidence ID | Evidence Type | Source | Version/Date | Authority/Owner | Relevant assertion | Expected | Actual | Verification |
 |---|---|---|---|---|---|---|---|---|
@@ -167,22 +177,14 @@ Status: **PASS — ZERO RESIDUAL / AUTHORITY POSTURE RESTORED**.
 | HEPE-REL03-EVD-011 | Test / Regression Evidence | GitHub Actions run `34571133277` | 2026-09-11 | GitHub Actions | NO_AUTHORITY authenticated denial | zero governed rows | zero across five modules | PASS |
 | HEPE-REL03-EVD-012 | Test / Regression Evidence | GitHub Actions run `34571133277` | 2026-09-11 | GitHub Actions | rollback/cleanup | restore + zero residual | restored; counts 1/0; residual 0 | PASS |
 | HEPE-REL03-EVD-013 | Verified System Evidence | Supabase post-run verification | 2026-09-11 | Supabase | independent cleanup confirmation | original subjects, authority 1/0, residual 0 | matched | PASS |
+| HEPE-REL03-EVD-014 | Verified System Evidence | GitHub Actions run `34571375557` on SHA `508d2edd...` | 2026-09-11 | GitHub Actions | evidence-head governance policy | success | success | PASS |
+| HEPE-REL03-EVD-015 | Controlled Baseline | GitHub ruleset `22409192` | 2026-09-11 | Repository Governance | non-production governance active | active | active; no bypass | PASS |
+| HEPE-REL03-EVD-016 | Verified System Evidence | PR #28 review comments API | 2026-09-11 | GitHub | unresolved inline review threads | 0 | 0 | PASS |
 
-## Stage 1 technical acceptance
-Required runtime/auth/RLS assertions for the controlled NON-PRODUCTION Preview were satisfied with genuine authenticated sessions and mandatory rollback/cleanup.
-
-**HEPE-REL-03 Stage 1 Technical Acceptance = PASS**.
-
-## Stage 2 governance closure status
-This evidence reconciliation commit must itself pass the final-head governance controls before HEPE-REL-03 is classified CONTROLLED / RECONCILED full PASS. Required after this commit:
-- exact PR #28 head identified;
-- `governance-policy` completed successfully;
-- unresolved review threads = 0;
-- `HEPE Non-Production Governance` ruleset remains active.
-
-Until those final-head assertions are verified, the overall classification remains:
-
-**HEPE-REL-03 = STAGE 1 PASS / STAGE 2 FINAL GOVERNANCE CHECK PENDING**.
+## Final classification
+HEPE-REL-03 Stage 1 Technical Acceptance: **PASS**.  
+HEPE-REL-03 Stage 2 Evidence/Governance Reconciliation: **PASS**, subject only to the required status check succeeding on this final classification commit itself.  
+HEPE-REL-03 overall: **CONTROLLED / RECONCILED — PASS — SYNTHETIC NON-PRODUCTION RUNTIME** after that final-head check succeeds.
 
 Live Remote Connector: **NOT VERIFIED / NOT AUTHORIZED**.  
 Production Authorization: **NOT GRANTED**.  
