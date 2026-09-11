@@ -1,0 +1,87 @@
+name: HEPE REL-03D.3G.2 SSR Cookie Handoff Diagnostic
+
+on:
+  push:
+    branches:
+      - feat/hepe-rel-03-runtime-binding
+    paths:
+      - '.github/workflows/hepe-rel-03d3g2-cookie-diagnostic.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  cookie-diagnostic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      SUPABASE_URL: https://lztxpjsuzqvtgyasfnyj.supabase.co
+      SUPABASE_PUBLISHABLE_KEY: sb_publishable_7bv5GR0-ksXJn91sRHV0Mg_k4nblIGI
+      SUPABASE_ADMIN: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      VERCEL_BYPASS: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+      PREVIEW_URL: https://hepe-ui-prototype-7iu3cqrk2-kasemch-3467s-projects.vercel.app
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - name: Verify bindings
+        run: |
+          set -euo pipefail
+          test -n "${SUPABASE_ADMIN:-}" || exit 78
+          test -n "${VERCEL_BYPASS:-}" || exit 78
+      - name: Install controlled dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Diagnose cookie metadata and application recognition
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import crypto from 'node:crypto';
+          import { execFileSync } from 'node:child_process';
+          import { createClient } from '@supabase/supabase-js';
+          import { createServerClient } from '@supabase/ssr';
+          const E=process.env;
+          const admin=createClient(E.SUPABASE_URL,E.SUPABASE_ADMIN,{auth:{persistSession:false,autoRefreshToken:false}});
+          let uid=null;
+          try {
+            const tag=`${E.GITHUB_RUN_ID}-${crypto.randomBytes(5).toString('hex')}`;
+            const email=`hepe-rel03-cookie-${tag}@example.invalid`;
+            const password=crypto.randomBytes(32).toString('base64url');
+            const {data:created,error:createError}=await admin.auth.admin.createUser({email,password,email_confirm:true,user_metadata:{hepe_synthetic_test:true,hepe_gate:'HEPE-REL-03D.3G.2-DIAG'}});
+            if(createError||!created.user) throw new Error('AUTH_CREATE_FAILED');
+            uid=created.user.id;
+            const writes=[];
+            const jar=new Map();
+            const ssr=createServerClient(E.SUPABASE_URL,E.SUPABASE_PUBLISHABLE_KEY,{cookies:{getAll(){return [...jar].map(([name,value])=>({name,value}));},setAll(xs){for(const x of xs){jar.set(x.name,x.value);writes.push({name:x.name,value:x.value,options:x.options??{}});}}}});
+            const {data,error}=await ssr.auth.signInWithPassword({email,password});
+            if(error||!data.session||!data.user) throw new Error('SESSION_CREATE_FAILED');
+            const {data:verified,error:verifyError}=await ssr.auth.getUser();
+            if(verifyError||verified.user?.id!==uid) throw new Error('LOCAL_GETUSER_FAILED');
+            const meta=[...jar].map(([name,value])=>({name,length:value.length,encoding:value.startsWith('base64-')?'base64-prefix':/^[A-Za-z0-9._~-]+$/.test(value)?'url-safe':'other',chunk:/\.\d+$/.test(name)}));
+            console.log('COOKIE_COUNT='+meta.length);
+            console.log('COOKIE_NAMES='+meta.map(x=>x.name).join(','));
+            console.log('COOKIE_CHUNK_COUNT='+meta.filter(x=>x.chunk).length);
+            console.log('COOKIE_ENCODING_CLASSES='+[...new Set(meta.map(x=>x.encoding))].join(','));
+            console.log('COOKIE_TOTAL_LENGTH='+meta.reduce((n,x)=>n+x.length,0));
+            console.log('SETALL_WRITE_COUNT='+writes.length);
+            const cookieHeader=[...jar].map(([k,v])=>`${k}=${v}`).join('; ');
+            const marker='__HEPE_HTTP__';
+            const out=execFileSync('curl',['--silent','--show-error','--max-time','30','-H',`x-vercel-protection-bypass: ${E.VERCEL_BYPASS}`,'-H',`Cookie: ${cookieHeader}`,'-H','user-agent: HEPE-REL-03D.3G.2-DIAG','-w',`${marker}%{http_code}`,`${E.PREVIEW_URL}/reviews`],{encoding:'utf8',maxBuffer:4*1024*1024});
+            const idx=out.lastIndexOf(marker); if(idx<0) throw new Error('HTTP_MARKER_MISSING');
+            const html=out.slice(0,idx),code=out.slice(idx+marker.length).trim();
+            console.log('APP_HTTP='+code);
+            console.log('APP_AUTH_REQUIRED='+(html.includes('AUTH_REQUIRED')?'YES':'NO'));
+            console.log('APP_QUERY_ERROR='+(html.includes('QUERY_ERROR')?'YES':'NO'));
+            console.log('APP_EMPTY='+(html.includes('EMPTY')?'YES':'NO'));
+            console.log('APP_VERIFIED='+(html.includes('VERIFIED')?'YES':'NO'));
+          } finally {
+            if(uid){ await admin.auth.admin.deleteUser(uid); }
+            const {data}=await admin.auth.admin.listUsers({page:1,perPage:100});
+            const residual=(data?.users??[]).filter(u=>u.user_metadata?.hepe_gate==='HEPE-REL-03D.3G.2-DIAG').length;
+            console.log('DIAG_AUTH_RESIDUAL='+residual);
+            if(residual!==0) process.exitCode=2;
+          }
+          NODE
+      - name: Confirm boundary
+        if: always()
+        run: echo 'NON-PRODUCTION synthetic diagnostic only; no schema/RLS/authority/Production change.'
