@@ -1,0 +1,38 @@
+name: HEPE REL-03D.3G Exact Preview Connectivity
+
+on:
+  pull_request:
+    branches: [non-production]
+    paths:
+      - '.github/workflows/hepe-rel-03d3g-preview-connectivity.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  connectivity:
+    if: ${{ github.event.pull_request.number == 28 && github.event.pull_request.head.ref == 'feat/hepe-rel-03-runtime-binding' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      VERCEL_BYPASS: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+      PREVIEW_URL: https://hepe-ui-prototype-ci2pphyal-kasemch-3467s-projects.vercel.app
+    steps:
+      - name: Verify exact Git Preview through automation bypass
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${VERCEL_BYPASS:-}" || exit 78
+          code=$(curl --silent --show-error --location --max-time 20 --output /tmp/runtime.html --write-out '%{http_code}' \
+            --header "x-vercel-protection-bypass: ${VERCEL_BYPASS}" \
+            --header 'x-vercel-set-bypass-cookie: true' \
+            "${PREVIEW_URL}/runtime")
+          echo "PREVIEW_HTTP_STATUS=${code}"
+          test "$code" = "200"
+          grep -q 'AUTH_REQUIRED' /tmp/runtime.html
+          ! grep -q 'RUNTIME_NOT_CONFIGURED' /tmp/runtime.html
+          echo 'EXACT_PREVIEW_CONNECTIVITY_PASS'
+
+      - name: Confirm boundary
+        if: always()
+        run: echo 'Read-only NON-PRODUCTION connectivity check; no auth mutation, database write, Production action, or PR merge.'
