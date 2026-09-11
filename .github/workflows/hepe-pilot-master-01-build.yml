@@ -1,0 +1,52 @@
+name: HEPE PILOT-MASTER-01 Build Regression
+
+on:
+  push:
+    branches:
+      - feat/hepe-pilot-master-01
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: TypeScript validity
+        run: npx tsc --noEmit
+
+      - name: Next.js build
+        run: npm run build
+
+      - name: Pilot critical-path source assertions
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f app/teaching/page.tsx
+          test -f app/assessment/page.tsx
+          test -f app/plan-actual/page.tsx
+          grep -q 'NON-PRODUCTION' app/teaching/page.tsx
+          grep -q 'NO EVIDENCE' app/plan-actual/page.tsx
+          grep -q 'Human academic authority preserved' app/assessment/page.tsx
+          ! grep -R --line-number --include='*.ts' --include='*.tsx' 'service_role\|SERVICE_ROLE' app lib
+
+      - name: Boundary summary
+        run: |
+          echo 'ENVIRONMENT=NON-PRODUCTION'
+          echo 'PRODUCTION_AUTHORIZATION=NOT_GRANTED'
+          echo 'SCHEMA_RLS_CHANGE=NONE'
+          echo 'REAL_DATA_WRITE=NONE'
