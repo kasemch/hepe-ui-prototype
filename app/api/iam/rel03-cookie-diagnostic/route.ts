@@ -1,7 +1,11 @@
+import { createHash } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { getHepeServerSupabase } from "../../../../lib/hepe/server-supabase";
+import { getRuntimeCredentials } from "../../../../lib/hepe/runtime-binding";
 
 export const dynamic = "force-dynamic";
+
+const EXPECTED_PUBLISHABLE_SHA256 = "73ed5710f2f15a1c76dedcd35be270effc1f9c30d867922bc0912b1693b17a63";
 
 export async function GET(request: NextRequest) {
   if (request.headers.get("x-hepe-rel03-diagnostic") !== "1") {
@@ -9,8 +13,9 @@ export async function GET(request: NextRequest) {
   }
 
   const names = request.cookies.getAll().map(({ name }) => name);
+  const runtime = getRuntimeCredentials();
   const binding = await getHepeServerSupabase();
-  if (!binding.ok) {
+  if (!binding.ok || !runtime) {
     return NextResponse.json({
       ok: false,
       code: "RUNTIME_NOT_CONFIGURED",
@@ -20,14 +25,21 @@ export async function GET(request: NextRequest) {
     }, { status: 503, headers: { "Cache-Control": "no-store" } });
   }
 
-  const { data, error } = await binding.supabase.auth.getUser();
+  const keyFingerprintMatch = createHash("sha256").update(runtime.publishableKey).digest("hex") === EXPECTED_PUBLISHABLE_SHA256;
+  const { data: sessionData, error: sessionError } = await binding.supabase.auth.getSession();
+  const { data: userData, error: userError } = await binding.supabase.auth.getUser();
   return NextResponse.json({
-    ok: Boolean(data.user && !error),
-    code: data.user && !error ? "AUTHENTICATED" : "AUTH_REQUIRED",
+    ok: Boolean(userData.user && !userError),
+    code: userData.user && !userError ? "AUTHENTICATED" : "AUTH_REQUIRED",
     cookieCount: names.length,
     cookieNames: names,
-    authErrorCode: error && "code" in error ? String(error.code) : error ? "AUTH_ERROR" : null,
-    userPresent: Boolean(data.user),
+    sessionPresent: Boolean(sessionData.session),
+    sessionUserPresent: Boolean(sessionData.session?.user),
+    sessionErrorPresent: Boolean(sessionError),
+    authErrorPresent: Boolean(userError),
+    authErrorCode: userError && "code" in userError ? String(userError.code) : userError ? "AUTH_ERROR" : null,
+    userPresent: Boolean(userData.user),
+    keyFingerprintMatch,
     secretDisclosure: false,
   }, { status: 200, headers: { "Cache-Control": "no-store" } });
 }
