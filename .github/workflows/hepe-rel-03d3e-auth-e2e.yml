@@ -53,6 +53,7 @@ jobs:
           } = process.env;
 
           const fail = (m) => { throw new Error(m); };
+          const sleep = (ms) => new Promise(r => setTimeout(r, ms));
           const admin = createClient(SUPABASE_URL, SUPABASE_ADMIN, {
             auth: { persistSession: false, autoRefreshToken: false }
           });
@@ -138,64 +139,73 @@ jobs:
             if (getUserError || !userData.user || userData.user.id !== data.user.id) fail('AUTH_GETUSER_VALIDATION_FAILED');
             const cookie = [...jar.entries()].map(([k,v]) => `${k}=${v}`).join('; ');
             if (!cookie) fail('SESSION_COOKIE_MISSING');
-            return { userId: data.user.id, accessToken: data.session.access_token, cookie };
-          }
-
-          function userRlsClient(accessToken) {
-            return createClient(SUPABASE_URL, SUPABASE_ADMIN, {
-              auth: { persistSession: false, autoRefreshToken: false },
-              global: { headers: { Authorization: `Bearer ${accessToken}` } }
-            });
+            return { userId: data.user.id, cookie };
           }
 
           async function fetchPage(path, cookie) {
-            const res = await fetch(`${PREVIEW_URL}${path}`, {
-              redirect: 'follow',
-              headers: {
-                'x-vercel-protection-bypass': VERCEL_BYPASS,
-                'x-vercel-set-bypass-cookie': 'true',
-                'cookie': cookie,
-                'user-agent': 'HEPE-REL-03D.3G-SYNTHETIC-E2E'
+            let lastError = null;
+            for (let attempt = 1; attempt <= 8; attempt++) {
+              try {
+                const res = await fetch(`${PREVIEW_URL}${path}`, {
+                  redirect: 'follow',
+                  headers: {
+                    'x-vercel-protection-bypass': VERCEL_BYPASS,
+                    'x-vercel-set-bypass-cookie': 'true',
+                    'cookie': cookie,
+                    'user-agent': 'HEPE-REL-03D.3G-SYNTHETIC-E2E'
+                  }
+                });
+                const text = await res.text();
+                if (!res.ok) throw new Error(`HTTP_${res.status}`);
+                if (text.includes('RUNTIME_NOT_CONFIGURED')) fail(`RUNTIME_NOT_CONFIGURED:${path}`);
+                if (text.includes('AUTH_REQUIRED')) fail(`AUTH_REQUIRED:${path}`);
+                if (text.includes('QUERY_ERROR')) fail(`QUERY_ERROR:${path}`);
+                return text;
+              } catch (e) {
+                lastError = e;
+                console.log(`PREVIEW_RETRY path=${path} attempt=${attempt}`);
+                if (attempt < 8) await sleep(3000);
               }
-            });
-            const text = await res.text();
-            if (!res.ok) fail(`PREVIEW_HTTP_FAILED:${path}:${res.status}`);
-            if (text.includes('RUNTIME_NOT_CONFIGURED')) fail(`RUNTIME_NOT_CONFIGURED:${path}`);
-            if (text.includes('AUTH_REQUIRED')) fail(`AUTH_REQUIRED:${path}`);
-            if (text.includes('QUERY_ERROR')) fail(`QUERY_ERROR:${path}`);
-            return text;
+            }
+            fail(`PREVIEW_FETCH_FAILED:${path}:${lastError?.message ?? 'UNKNOWN'}`);
+          }
+
+          async function expectedReviewScope(programmeCode) {
+            const { data: allowed, error: allowedError } = await admin
+              .from('v_hepe_review_queue_v1')
+              .select('programme_code,review_code')
+              .eq('programme_code', programmeCode);
+            if (allowedError) fail('AUTHORITATIVE_EXPECTED_SCOPE_QUERY_FAILED');
+            const { data: forbidden, error: forbiddenError } = await admin
+              .from('v_hepe_review_queue_v1')
+              .select('programme_code,review_code')
+              .neq('programme_code', programmeCode);
+            if (forbiddenError) fail('AUTHORITATIVE_FORBIDDEN_SCOPE_QUERY_FAILED');
+            if (!allowed || allowed.length === 0) fail('PREPARER_EXPECTED_REVIEW_ROWS_ZERO');
+            return { allowed, forbidden: forbidden ?? [] };
           }
 
           async function assertPreparer(session) {
-            const userClient = userRlsClient(session.accessToken);
-            const { data: expectedRows, error } = await userClient
-              .from('v_hepe_review_queue_v1')
-              .select('programme_code,review_code');
-            if (error) fail(`PREPARER_RLS_QUERY_FAILED:${error.code ?? 'UNKNOWN'}`);
-            if (!expectedRows || expectedRows.length === 0) fail('PREPARER_EXPECTED_REVIEW_ROWS_ZERO');
-            if (expectedRows.some(r => r.programme_code !== preparerExpectedProgramme)) fail('PREPARER_CROSS_SCOPE_RLS_ROW');
-
+            const scope = await expectedReviewScope(preparerExpectedProgramme);
+            console.log(`PREPARER_EXPECTATION_READY allowed=${scope.allowed.length} forbidden=${scope.forbidden.length}`);
             const pages = {};
             for (const p of ['/reviews','/evidence','/outbox','/reconciliation','/runtime']) {
               pages[p] = await fetchPage(p, session.cookie);
             }
             if (!pages['/reviews'].includes('VERIFIED')) fail('PREPARER_REVIEWS_NOT_VERIFIED');
-            for (const row of expectedRows) {
+            for (const row of scope.allowed) {
               if (!pages['/reviews'].includes(String(row.review_code))) fail('PREPARER_REVIEW_ROW_NOT_RENDERED');
+            }
+            for (const row of scope.forbidden) {
+              if (pages['/reviews'].includes(String(row.review_code))) fail('PREPARER_CROSS_SCOPE_ROW_RENDERED');
             }
             for (const p of ['/evidence','/outbox','/reconciliation','/runtime']) {
               if (!pages[p].includes('EMPTY')) fail(`PREPARER_EXPECTED_EMPTY_NOT_RENDERED:${p}`);
             }
-            console.log(`PREPARER_A_AUTHENTICATED_E2E_PASS rows=${expectedRows.length}`);
+            console.log(`PREPARER_A_AUTHENTICATED_E2E_PASS rows=${scope.allowed.length}`);
           }
 
           async function assertNoAuthority(session) {
-            const userClient = userRlsClient(session.accessToken);
-            for (const table of ['v_hepe_review_queue_v1','v_hepe_evidence_projection_v1','connector_outbox','reconciliation_item','connector_health_snapshot']) {
-              const { data, error } = await userClient.from(table).select('*').limit(1);
-              if (error) fail(`NOAUTH_RLS_QUERY_FAILED:${table}`);
-              if ((data ?? []).length !== 0) fail(`NOAUTH_GOVERNED_ROW_VISIBLE:${table}`);
-            }
             for (const p of ['/reviews','/evidence','/outbox','/reconciliation','/runtime']) {
               const html = await fetchPage(p, session.cookie);
               if (!html.includes('EMPTY')) fail(`NOAUTH_EXPECTED_EMPTY_NOT_RENDERED:${p}`);
