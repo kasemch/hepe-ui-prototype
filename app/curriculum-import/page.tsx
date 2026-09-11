@@ -1,4 +1,4 @@
-import { createHepeServerClient } from '@/lib/hepe/server-supabase';
+import { createHepeServerClient } from '../../lib/hepe/server-supabase';
 
 const source = {
   title: 'หลักสูตรศึกษาศาสตรบัณฑิต สาขาวิชาสุขศึกษาและพลศึกษา (4 ปี) (หลักสูตรปรับปรุง พ.ศ. 2567)',
