@@ -1,6 +1,11 @@
 import fs from 'node:fs/promises';
 import assert from 'node:assert/strict';
-import { executeSyntheticPipeline } from '../lib/ingest/prototype.mjs';
+import {
+  applyHumanCorrection,
+  compareParserRuns,
+  evaluateSourceIntake,
+  executeSyntheticPipeline,
+} from '../lib/ingest/prototype.mjs';
 
 const fixture = JSON.parse(await fs.readFile(new URL('../fixtures/hepe-ingest/HEPE-SYN-CURR-001.json', import.meta.url), 'utf8'));
 const results = [];
@@ -39,9 +44,11 @@ test('ING-D03', 'Valid synthetic PDF source preserves provenance', () => {
   assert.ok(cleanPdf.candidates.every((c) => c.sourceRef.pageNumber !== undefined));
 });
 
-test('ING-D04', 'Cross-format semantic extraction is equivalent', () => {
-  assert.deepEqual(semantic(cleanXlsx), semantic(cleanDocx));
-  assert.deepEqual(semantic(cleanXlsx), semantic(cleanPdf));
+test('ING-D04', 'Duplicate source is detected by checksum', () => {
+  const existing = [{ sourceDocumentId: 'SRC-1', checksum: 'abc123', documentVersion: 'v1' }];
+  const out = evaluateSourceIntake(existing, { checksum: 'abc123', documentVersion: 'v1' });
+  assert.equal(out.status, 'DUPLICATE_SOURCE');
+  assert.equal(out.existingSourceId, 'SRC-1');
 });
 
 test('ING-D05', 'Unsupported XLSX template version is blocked', () => {
@@ -114,11 +121,11 @@ test('ING-D15', 'Unreadable source is blocked without fabrication', () => {
   assert.equal(out.batchStatus, 'PARTIAL_OR_BLOCKED');
 });
 
-test('ING-D16', 'Content conflict requires human reconciliation', () => {
-  const canonical = [{ entityType: 'COURSE', businessKey: 'SYN1001', fields: { course_code: 'SYN1001', course_name_th: 'Existing', credit_notation: '3(2-2-5)', curriculum_version_ref: fixture.programme.curriculum_version } }];
-  const out = executeSyntheticPipeline(structuredClone(fixture), { canonicalSnapshot: canonical });
-  assert.ok(out.conflicts.some((c) => c.type === 'CONTENT_DIFFERENCE' && c.requiresHumanReview));
-  assert.ok(out.review.some((r) => r.candidate.businessKey === 'SYN1001' && r.reviewStatus === 'REVIEW_REQUIRED'));
+test('ING-D16', 'AI-assisted extraction remains unverified', () => {
+  const out = executeSyntheticPipeline(structuredClone(fixture), { sourceFormat: 'PDF', extractionMethod: 'AI_ASSISTED_EXTRACTION' });
+  assert.ok(out.candidates.every((c) => c.verificationStatus === 'EXTRACTED'));
+  assert.ok(out.validations.some((v) => v.ruleId === 'ING-V015' && v.result === 'UNVERIFIED'));
+  assert.ok(out.review.some((r) => r.reviewStatus === 'REVIEW_REQUIRED'));
 });
 
 test('ING-D17', 'Same input is semantically idempotent', () => {
@@ -128,16 +135,25 @@ test('ING-D17', 'Same input is semantically idempotent', () => {
   assert.deepEqual(a.validations, b.validations);
 });
 
-test('ING-D18', 'Human-review package preserves raw extraction', () => {
-  const out = executeSyntheticPipeline(structuredClone(fixture));
-  const course = out.review.find((r) => r.candidate.entityType === 'COURSE');
-  assert.ok(course);
-  assert.deepEqual(course.candidate.rawFields.course_name_th, course.candidate.fields.course_name_th);
+test('ING-D18', 'Parser-version change is recorded for reprocessing comparison', () => {
+  const a = executeSyntheticPipeline(structuredClone(fixture), { parserVersion: '0.1.0', ingestionBatchId: 'PV', sourceDocumentId: 'SRC' });
+  const b = executeSyntheticPipeline(structuredClone(fixture), { parserVersion: '0.2.0', ingestionBatchId: 'PV', sourceDocumentId: 'SRC' });
+  const diff = compareParserRuns(a, b);
+  assert.equal(diff.parserVersionChanged, true);
+  assert.equal(diff.semanticChanged, false);
 });
 
-test('ING-D19', 'Synthetic fixture classification remains explicit', () => {
-  assert.match(fixture.classification, /SYNTHETIC TEST DATA/);
-  assert.doesNotMatch(JSON.stringify(fixture), /Ramkhamhaeng University|มหาวิทยาลัยรามคำแหง/);
+test('ING-D19', 'Human correction preserves extracted value and source reference', () => {
+  const course = cleanXlsx.review.find((r) => r.candidate.entityType === 'COURSE');
+  const corrected = applyHumanCorrection(course, 'course_name_th', 'ชื่อที่ตรวจแก้โดยมนุษย์', {
+    correctedBy: 'SYNTHETIC_REVIEWER',
+    correctedAt: '2026-09-11T07:00:00Z',
+    correctionReason: 'synthetic test correction',
+  });
+  assert.equal(corrected.correction.extractedValue, course.candidate.fields.course_name_th);
+  assert.equal(corrected.correction.correctedValue, 'ชื่อที่ตรวจแก้โดยมนุษย์');
+  assert.deepEqual(corrected.correction.sourceRef, course.candidate.sourceRef);
+  assert.equal(course.candidate.fields.course_name_th, course.candidate.rawFields.course_name_th);
 });
 
 test('ING-D20', 'Parser never attempts canonical write', () => {
@@ -147,12 +163,31 @@ test('ING-D20', 'Parser never attempts canonical write', () => {
   }
 });
 
+test('ING-X01', 'PDF DOCX XLSX normalized semantics are equivalent', () => {
+  assert.deepEqual(semantic(cleanXlsx), semantic(cleanDocx));
+  assert.deepEqual(semantic(cleanXlsx), semantic(cleanPdf));
+});
+
+test('ING-X02', 'Content conflict requires human reconciliation', () => {
+  const canonical = [{ entityType: 'COURSE', businessKey: 'SYN1001', fields: { course_code: 'SYN1001', course_name_th: 'Existing', credit_notation: '3(2-2-5)', curriculum_version_ref: fixture.programme.curriculum_version } }];
+  const out = executeSyntheticPipeline(structuredClone(fixture), { canonicalSnapshot: canonical });
+  assert.ok(out.conflicts.some((c) => c.type === 'CONTENT_DIFFERENCE' && c.requiresHumanReview));
+  assert.ok(out.review.some((r) => r.candidate.businessKey === 'SYN1001' && r.reviewStatus === 'REVIEW_REQUIRED'));
+});
+
+test('ING-X03', 'Synthetic fixture classification remains explicit', () => {
+  assert.match(fixture.classification, /SYNTHETIC TEST DATA/);
+  assert.doesNotMatch(JSON.stringify(fixture), /Ramkhamhaeng University|มหาวิทยาลัยรามคำแหง/);
+});
+
 const failed = results.filter((r) => r.status === 'FAIL');
 console.log(JSON.stringify({
   gate: 'HEPE-INGEST-02A',
   fixture: fixture.fixture_id,
   scope: 'NON-PRODUCTION / SYNTHETIC ONLY',
   expectedResultModel: 'Expected vs Actual with PASS/FAIL',
+  contractualTests: 20,
+  extensionTests: 3,
   testCount: results.length,
   passCount: results.length - failed.length,
   failCount: failed.length,
