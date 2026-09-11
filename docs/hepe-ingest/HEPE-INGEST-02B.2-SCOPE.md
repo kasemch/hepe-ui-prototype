@@ -52,5 +52,23 @@ Mandatory assertions:
 11. canonicalWriteAttempted = false.
 12. No database/schema/RLS/IAM/production action occurs.
 
+## HEPE-INGEST-02B.3 continuation status — 2026-09-11
+
+File Library search and controlled-record reconciliation confirm that a 157-page curriculum specification is registered for this programme, including programme code `25510071103503`, 151 credits, later effective-term context and University Council approval metadata. However, the exact 157-page PDF binary has not been exposed to this execution surface as a directly hashable byte stream or mounted connector file.
+
+Therefore the Source-B binary assertions remain:
+- SHA-256: NOT YET VERIFIED
+- byte length: NOT YET VERIFIED
+- binary page count: NOT YET VERIFIED
+- binary parser E2E: NOT EXECUTED
+
+No proposal PDF, spreadsheet, DOCX registry, File Library text snippet, 86-page edited PDF or conversation summary may substitute for the exact Source-B binary.
+
+Current classifications:
+- `HEPE-INGEST-02B.2 = PASS WITH SOURCE-RECONCILIATION CONDITION` for Source-A binary parser mechanics only.
+- `HEPE-INGEST-02B.3 = EXCEPTION STOP — SOURCE-B BINARY PROVENANCE REQUIRED`.
+
 Evidence rule:
-This gate SHALL NOT be marked PASS until an executed binary run records input hash, parser version, expected result, actual result, and PASS/FAIL for each mandatory assertion.
+This gate SHALL NOT be marked PASS for Source B until an executed binary run records input hash, parser version, expected result, actual result, and PASS/FAIL for each mandatory assertion.
+
+Conversation is not admitted as Audit Evidence.
