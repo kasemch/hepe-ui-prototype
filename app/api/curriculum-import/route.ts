@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createHepeServerClient } from '@/lib/hepe/server-supabase';
+import { createHepeServerClient } from '../../../lib/hepe/server-supabase';
 
 const PROGRAMME_CODE = '25510071103503';
 const VERSION_CODE = '2567-SOURCEB-VALIDATION';
