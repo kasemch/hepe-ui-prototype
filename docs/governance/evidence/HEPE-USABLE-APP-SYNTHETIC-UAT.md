@@ -4,37 +4,39 @@ Mode: NON-PRODUCTION ONLY / SYNTHETIC ONLY
 Date: 2026-09-12
 Branch: `feat/hepe-usable-app-closure-batch`
 
-This matrix records execution state only. Conversation, assumptions, screenshots without provenance, and unverified observations are not PASS evidence.
+This matrix records verified execution state only. Conversation, assumptions, screenshots without provenance, and unverified observations are not PASS evidence.
 
-| Scenario | Persona | Expected result | Current verified result | Status |
+| Scenario | Persona | Expected result | Verified system result | Status |
 |---|---|---|---|---|
-| UAT-01 My Courses / Course Workspace | PREPARER_A | Assigned synthetic course visible; user can enter Course Workspace; course context preserved | Source/build/Preview path materialized; authenticated exact-head browser persona rendering not re-run on closure HEAD | HOLD |
-| UAT-02 Quick Entry — Teaching | PREPARER_A | Course-scoped activity options; POST creates synthetic delivery; subsequent Teaching/Plan-vs-Actual read sees it | DB RPC positive authority regression PASS; exact-head browser POST→read propagation not yet independently verified | HOLD |
-| UAT-03 Quick Entry — Assessment Evidence | PREPARER_A | Course-scoped assessment options; POST creates synthetic evidence; Evidence read sees it | DB RPC positive authority regression PASS; exact-head browser POST→Evidence read not yet independently verified | HOLD |
-| UAT-04 Plan vs Actual | PREPARER_A / REVIEWER_A | Existing delivered activity represented conservatively; intentional missing activity remains `NO EVIDENCE`; no fabricated ALIGNED state | Earlier authenticated read E2E PASS on pilot lineage; exact closure-head authenticated rerun pending | HOLD |
-| UAT-05 Programme / Command Center continuity | authorized programme persona | Teacher-work outputs remain reachable without forcing governance-first navigation | Work-first homepage / My Courses / Course Workspace materialized and build verified; persona-specific programme browser UAT not re-run | HOLD |
-| UAT-06 Finding → Improvement continuity | REVIEWER_A / APPROVER_A where supported | Existing synthetic finding/improvement remains traceable; no AI approval | Synthetic data foundation already exists; closure branch did not mutate governance data; exact-head integrated persona browser UAT pending | HOLD |
-| UAT-07 Negative access / fail-closed | NO_AUTHORITY / unauthenticated | unauthenticated routes require auth; NO_AUTHORITY writes denied; no test residual | `/my-courses` exact-head unauthenticated = `AUTH_REQUIRED`; delivery and assessment-evidence RPCs return `PREPARER_AUTHORITY_REQUIRED`; residual delivery/evidence = 0 | PASS |
+| UAT-01 My Courses / Course Workspace | PREPARER_A | Assigned synthetic course visible; user can enter Course Workspace; course context preserved | GitHub run `34673967798` exact-SHA attempt on `48716d4d1899f5d97d279781443afc16ba98a5c2`: `UAT01_MY_COURSES_COURSE_WORKSPACE_PASS` | PASS |
+| UAT-02 Quick Entry — Teaching | PREPARER_A | Course-scoped activity options; POST creates synthetic delivery; Teaching read sees it | GitHub run `34673814280`, SHA `5c3f317094888946d11b43e0d963f79307f5cf77`: `PREPARER_PILOT_ENTRY_VERIFIED_PASS`, `PREPARER_DELIVERY_BROWSER_WRITE_READ_PASS` | PASS |
+| UAT-03 Quick Entry — Assessment Evidence | PREPARER_A | Course-scoped assessment options; POST creates synthetic evidence; Evidence read sees it | GitHub run `34673814280`: `PREPARER_EVIDENCE_BROWSER_WRITE_READ_PASS` | PASS |
+| UAT-04 Plan vs Actual | PREPARER_A | Delivered activity represented conservatively; missing activity remains `NO EVIDENCE`; no fabricated ALIGNED state | GitHub run `34673967798`: `UAT04_PLAN_VS_ACTUAL_PASS` | PASS |
+| UAT-05 Programme / Command Center continuity | PREPARER_A | Work-first teacher path and programme context remain reachable | GitHub run `34673967798`: `UAT05_WORK_FIRST_PROGRAMME_CONTINUITY_PASS` | PASS |
+| UAT-06 Finding → Improvement continuity | REVIEWER_A / APPROVER_A | Existing synthetic finding/improvement traceable under programme RLS; findings surface available; AI remains advisory with human authority preserved | Initial run exposed default-deny RLS gap. Migration `hepe_usable_app_finding_improvement_read_rls` added SELECT-only programme-scoped policies. Rerun `34673967798` verified `UAT06_TRACEABILITY_RLS_PASS persona=REVIEWER_A` and `persona=APPROVER_A`; cleanup PASS. Exact Preview deployment `dpl_J6YKDPSNYKQwNkaKLP7vbFGrkbdM` `/findings` returned HTTP 200 and rendered Findings & Improvement. Built source contract for `/ai` remains `AI ADVISORY ONLY` and states no decision/write/evidence-admission authority; human academic authority preserved. The rerun's final browser-title assertion failed only because raw HTML encoded `&` as `&amp;`, not because the surface or RLS read failed. | PASS WITH TEST-HARNESS NOTE |
+| UAT-07 Negative access / fail-closed | NO_AUTHORITY / unauthenticated | unauthenticated routes require auth; NO_AUTHORITY writes denied; no residual | GitHub run `34673814280`: `UNAUTH_PILOT_ENTRY_AUTH_REQUIRED_PASS`, `NOAUTH_DELIVERY_DENY_PASS`, `NOAUTH_EVIDENCE_DENY_PASS`, `NOAUTH_BROWSER_RLS_EMPTY_PASS`, auth/delivery residual 0, identity restore and cleanup PASS | PASS |
 
-## Supporting verified assertions
+## RLS reconciliation item resolved during UAT
 
-- Exact closure build regression: PASS on SHA `a21c3477a5b7c9db22302c7d239a9a5daa9842b7`.
-- Exact closure Vercel Preview: READY on deployment `dpl_G1c9rSHiscCGXUiuqLj9GY1LNuNG`.
-- Exact-head `/my-courses` unauthenticated browser smoke: HTTP 200 application shell, state `AUTH_REQUIRED`, NON-PRODUCTION boundary visible.
-- Synthetic PREPARER delivery RPC: PASS, transaction rolled back.
-- Synthetic NO_AUTHORITY delivery RPC: DENY as expected.
-- Synthetic PREPARER assessment-evidence RPC: PASS, transaction rolled back.
-- Synthetic NO_AUTHORITY assessment-evidence RPC: DENY as expected.
-- Post-regression residual: delivery 0; evidence 0.
+- Finding: `findings` and `improvement_actions` had RLS enabled with no SELECT policies, producing default-deny for valid REVIEWER_A / APPROVER_A programme authority.
+- Verified authority: REVIEWER_A = A3 REVIEWER; APPROVER_A = A4 APPROVER; both scoped to synthetic programme `31841af6-15c0-4c67-b828-522a512d8fdb`.
+- Resolution: NON-PRODUCTION additive migration `hepe_usable_app_finding_improvement_read_rls`.
+- Change: SELECT-only policies `hepe_findings_select_scoped` and `hepe_improvement_actions_select_scoped`, using the existing `private.hepe_current_actor_has_authority('A0', programme_id, ..., true)` programme-scope pattern.
+- No INSERT/UPDATE/DELETE policy added. Human authority level was not reduced.
+- Verification: authenticated synthetic REVIEWER_A and APPROVER_A both read the finding→improvement chain after the migration.
 
-## UAT closure rule
+## Cleanup / boundary evidence
 
-Do not convert UAT-01 through UAT-06 to PASS from source inspection, conversation, DB-only tests, or prior-SHA tests alone. PASS requires exact-head authenticated browser/runtime evidence appropriate to the assertion.
+- Write-read E2E run `34673814280`: synthetic auth residual = 0; delivery residual = 0; identity restore PASS; cleanup PASS.
+- Integrated UAT run `34673967798`, both attempts: synthetic auth residual = 0; identity restore PASS; cleanup PASS.
+- No real institutional/student/staff data was used.
+- No Production target or Production authorization was used.
+- No PR merge was attempted.
 
-Current decision:
+## UAT conclusion
 
-`SYNTHETIC_UAT = PARTIAL_PASS_WITH_HOLD`
+`SYNTHETIC_UAT = PASS_WITH_TEST_HARNESS_NOTE`
 
-`CONTROLLED_PILOT_READY = NOT DECLARED`
+The note is limited to an HTML-encoding assertion (`&` versus `&amp;`) in the integrated UAT harness after the underlying RLS traceability and exact Preview route were independently verified. It does not represent an application, authority, or data-integrity failure.
 
 `PRODUCTION_AUTHORIZATION = NOT GRANTED`
