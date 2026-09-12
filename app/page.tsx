@@ -1,5 +1,5 @@
 const teacherModules = [
-  ['pilot-entry','Quick Entry'],['teaching','Learning & Teaching'],['assessment','Assessment'],['plan-actual','Plan vs Actual'],['evidence','Evidence'],['tasks','Academic Tasks']
+  ['my-courses','My Courses'],['pilot-entry','Quick Entry'],['teaching','Learning & Teaching'],['assessment','Assessment'],['plan-actual','Plan vs Actual'],['evidence','Evidence'],['tasks','Academic Tasks']
 ];
 
 const governanceModules = [
@@ -14,16 +14,16 @@ export default function Home(){
    <nav className="nav" aria-label="HEPE teacher navigation"><a className="active" href="/">My Workspace</a><div className="nav-group">งานประจำวัน</div>{teacherModules.map(([s,l])=><a key={s} href={`/${s}`}>{l}</a>)}<div className="nav-group">Programme & Governance</div>{governanceModules.slice(0,8).map(([s,l])=><a key={s} href={`/${s}`}>{l}</a>)}</nav>
   </aside>
   <section className="workspace">
-   <header className="topline"><div><div className="eyebrow">HEPE Curriculum Governance & Development</div><h1 className="page-title">My Academic Workspace</h1><p className="page-subtitle">เปิดงานที่ต้องทำ บันทึกการสอน เพิ่มหลักฐาน และติดตามความก้าวหน้ารายวิชา โดยไม่ต้องเริ่มจากเมนู Governance</p></div><div className="contexts"><span className="chip">Academic Year · 2569</span><span className="chip">Environment · Synthetic Pilot</span></div></header>
+   <header className="topline"><div><div className="eyebrow">HEPE Curriculum Governance & Development</div><h1 className="page-title">My Academic Workspace</h1><p className="page-subtitle">เปิดรายวิชา บันทึกการสอน เพิ่มหลักฐาน และติดตามความก้าวหน้ารายวิชา โดยไม่ต้องเริ่มจากเมนู Governance</p></div><div className="contexts"><span className="chip">Academic Year · 2569</span><span className="chip">Environment · Synthetic Pilot</span></div></header>
 
-   <section className="hero-modern" aria-labelledby="today-title"><div className="brand-kicker">WORK-FIRST · ONE ENTRY → MANY OUTPUTS</div><h2 id="today-title">วันนี้เริ่มงานจากตรงนี้</h2><p>ใช้ Quick Entry เพื่อบันทึกงานหลังสอน แล้วระบบนำข้อมูลเดียวกันไปใช้กับ Teaching Record, Evidence และ Plan vs Actual โดยคง Human Authority และ RLS เดิม</p><div className="hero-actions"><a className="button" href="/pilot-entry">บันทึกหลังสอน / Quick Entry</a><a className="button secondary" href="/teaching">เปิด Teaching Record</a><a className="button secondary" href="/plan-actual">ดู Plan vs Actual</a><a className="button secondary" href="/assessment">เปิด Assessment</a></div></section>
+   <section className="hero-modern" aria-labelledby="today-title"><div className="brand-kicker">WORK-FIRST · ONE ENTRY → MANY OUTPUTS</div><h2 id="today-title">วันนี้เริ่มงานจากตรงนี้</h2><p>เปิด My Courses เพื่อเลือกรายวิชา หรือใช้ Quick Entry เพื่อบันทึกงานหลังสอน แล้วระบบนำข้อมูลเดียวกันไปใช้กับ Teaching Record, Evidence และ Plan vs Actual โดยคง Human Authority และ RLS เดิม</p><div className="hero-actions"><a className="button" href="/my-courses">เปิดรายวิชาของฉัน</a><a className="button secondary" href="/pilot-entry">บันทึกหลังสอน / Quick Entry</a><a className="button secondary" href="/teaching">Teaching Record</a><a className="button secondary" href="/plan-actual">Plan vs Actual</a></div></section>
 
    <div className="notice">NON-PRODUCTION · SYNTHETIC TEST DATA ONLY · ข้อมูลที่ระบบมีแล้วไม่ควรถามผู้ใช้ซ้ำ · Production authorization not granted.</div>
 
    <section aria-label="Daily academic workflow" className="grid g4">{[
+    ['My Courses','CONNECTED','เริ่มจากรายวิชาที่มองเห็นตามสิทธิ์'],
     ['Quick Entry','READY','บันทึกการสอนและหลักฐานจากงานประจำวัน'],
     ['Teaching Record','CONNECTED','อ่านกิจกรรม แผน และ delivery ภายใต้ RLS'],
-    ['Assessment','CONNECTED','อ่าน assessment และ outcome links'],
     ['Plan vs Actual','CONNECTED','เปรียบเทียบแผนกับหลักฐานการสอนจริง']
    ].map(([a,b,c])=><article className="card interactive" key={a}><div className="label">{a}</div><div className="value">{b}</div><div className="note">{c}</div></article>)}</section>
 
@@ -33,12 +33,12 @@ export default function Home(){
    </div>
 
    <section style={{marginTop:14}} aria-labelledby="workspaces-title"><div className="eyebrow">My workspaces</div><h2 className="section-title" id="workspaces-title" style={{marginTop:6}}>งานที่ใช้บ่อย</h2><div className="grid g3">{[
+    ['My Courses','เปิดรายวิชาที่เห็นได้ตาม RLS แล้วไปยังงานสอนที่เกี่ยวข้อง','my-courses'],
     ['Quick Entry','บันทึกการสอนจริงและหลักฐานการประเมินจากหน้าสั้น ๆ','pilot-entry'],
     ['Learning & Teaching','ดูแผน กิจกรรม CLO links และ delivery records','teaching'],
     ['Assessment','ดู assessment versions และ outcome alignment','assessment'],
     ['Plan vs Actual','ดูสิ่งที่วางแผนเทียบกับสิ่งที่มีหลักฐานการสอนจริง','plan-actual'],
-    ['Evidence','ดู provenance และหลักฐานที่ระบบเชื่อมจากงานประจำ','evidence'],
-    ['Academic Tasks','รวมงานที่ต้องทำหรือรอการดำเนินการ','tasks']
+    ['Evidence','ดู provenance และหลักฐานที่ระบบเชื่อมจากงานประจำ','evidence']
    ].map(([a,b,s])=><article className="card interactive" key={a}><span className="screen-tag">Teacher workspace</span><div className="value" style={{fontSize:17}}>{a}</div><p className="note">{b}</p><a className="note" href={`/${s}`} style={{display:'inline-block',marginTop:10,fontWeight:750,color:'var(--brand)'}}>Open →</a></article>)}</div></section>
 
    <article className="card" style={{marginTop:14}}><div className="eyebrow">Governance behind the scenes</div><h2 className="section-title" style={{marginTop:6}}>Programme / QA / Governance</h2><p className="note">เมนูด้านล่างยังคงอยู่สำหรับ Programme Chair, Reviewer และ QA แต่ไม่ควรเป็นจุดเริ่มต้นของผู้สอนในงานประจำวัน</p><div className="grid g4" style={{marginTop:12}}>{governanceModules.map(([s,l])=><a className="module-link" key={s} href={`/${s}`}>{l}</a>)}</div></article>
