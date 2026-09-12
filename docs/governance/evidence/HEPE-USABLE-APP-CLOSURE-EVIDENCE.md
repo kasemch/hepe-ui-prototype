@@ -3,9 +3,9 @@
 Status: NON-PRODUCTION ONLY / SYNTHETIC ONLY
 Date: 2026-09-12
 Branch: `feat/hepe-usable-app-closure-batch`
-Application SHA under exact-head browser/build verification: `a21c3477a5b7c9db22302c7d239a9a5daa9842b7`
+Application SHA under latest exact-head authenticated browser verification: `5c3f317094888946d11b43e0d963f79307f5cf77`
 Supabase project: `lztxpjsuzqvtgyasfnyj` (NON-PRODUCTION)
-Vercel deployment: `dpl_G1c9rSHiscCGXUiuqLj9GY1LNuNG`
+Vercel deployment: `dpl_H85iPT72dzZkG2rjkRyr45mCfww1`
 
 > This record is a controlled test-evidence candidate. Conversation text is not evidence. Admission into the final Audit Evidence Set remains subject to the HEPE Evidence Admission Requirement and closure authority review.
 
@@ -13,8 +13,8 @@ Vercel deployment: `dpl_G1c9rSHiscCGXUiuqLj9GY1LNuNG`
 
 ### HEPE-EVD-UAC-001 — Exact-head build regression
 - Evidence Type: Test / Regression Evidence
-- Source: GitHub Actions run `34671130703`, job `103492560528`
-- Version/Date: SHA `a21c3477a5b7c9db22302c7d239a9a5daa9842b7`, 2026-09-12
+- Source: GitHub Actions run `34673814246`, job `103499965366`
+- Version/Date: SHA `5c3f317094888946d11b43e0d963f79307f5cf77`, 2026-09-12
 - Authority/Owner: HEPE controlled-pilot development scope; final evidence admission pending closure review
 - Relevant Assertion: exact closure branch compiles and retains pilot-critical source/boundary assertions
 - Expected: dependency install, Next.js build/type validity, source assertions, boundary summary = PASS
@@ -23,71 +23,70 @@ Vercel deployment: `dpl_G1c9rSHiscCGXUiuqLj9GY1LNuNG`
 
 ### HEPE-EVD-UAC-002 — Exact-head Preview readiness
 - Evidence Type: Verified System Evidence
-- Source: Vercel deployment `dpl_G1c9rSHiscCGXUiuqLj9GY1LNuNG`
-- Version/Date: SHA `a21c3477a5b7c9db22302c7d239a9a5daa9842b7`, 2026-09-12
+- Source: Vercel deployment `dpl_H85iPT72dzZkG2rjkRyr45mCfww1`
+- Version/Date: SHA `5c3f317094888946d11b43e0d963f79307f5cf77`, 2026-09-12
 - Relevant Assertion: exact application SHA is deployable in Preview
 - Expected: Preview state READY; no Production target
 - Actual: READY; target null; branch `feat/hepe-usable-app-closure-batch`
 - Verification Status: PASS
 
-### HEPE-EVD-UAC-003 — Unauthenticated My Courses fail-closed browser smoke
+### HEPE-EVD-UAC-003 — Unauthenticated fail-closed browser acceptance
 - Evidence Type: Test / Regression Evidence
-- Source: exact-head Vercel Preview `/my-courses`
-- Version/Date: SHA `a21c3477a5b7c9db22302c7d239a9a5daa9842b7`, 2026-09-12
-- Expected: HTTP 200 application shell; authenticated state `AUTH_REQUIRED`; NON-PRODUCTION / TEST DATA ONLY boundary visible
-- Actual: HTTP 200; `AUTH_REQUIRED`; boundary visible
+- Source: GitHub Actions run `34673814280`, job `103499965541`, exact-head Preview `/pilot-entry?course=<synthetic-course-id>`
+- Version/Date: SHA `5c3f317094888946d11b43e0d963f79307f5cf77`, 2026-09-12
+- Expected: unauthenticated application state `AUTH_REQUIRED`
+- Actual: marker `UNAUTH_PILOT_ENTRY_AUTH_REQUIRED_PASS`
 - Verification Status: PASS
 
-### HEPE-EVD-UAC-004 — Delivery RPC positive authority regression
+### HEPE-EVD-UAC-004 — Delivery RPC positive/negative authority regression
 - Evidence Type: Test / Regression Evidence
-- Source: Supabase SQL transaction using authenticated synthetic PREPARER subject `10000000-0000-0000-0000-000000000001`
+- Source: Supabase regression + exact-head authenticated browser E2E
 - Version/Date: 2026-09-12; RPC `public.hepe_pilot_record_delivery`
-- Test Scope: learning activity version `45be0ddc-a7bd-47e4-a3b7-8377d64c6826`; AY 2569; term 1; synthetic date 2026-09-12
-- Expected: PREPARER-authorized synthetic write returns a delivery UUID
-- Actual: returned delivery UUID `e7e710bd-88d5-4ed5-ba6d-9fc26bcd8b36`
-- Cleanup: transaction ROLLBACK
+- Expected: synthetic PREPARER write ALLOW; NO_AUTHORITY DENY
+- Actual: PREPARER browser POST/write/read = PASS; NO_AUTHORITY POST = DENY/403
 - Verification Status: PASS
 
-### HEPE-EVD-UAC-005 — Delivery RPC negative authority regression
+### HEPE-EVD-UAC-005 — Assessment evidence positive/negative authority regression
 - Evidence Type: Test / Regression Evidence
-- Source: Supabase SQL transaction using synthetic NO_AUTHORITY subject `10000000-0000-0000-0000-000000000006`
-- Version/Date: 2026-09-12
-- Expected: direct write denied
-- Actual: PostgreSQL 42501 / `PREPARER_AUTHORITY_REQUIRED`
-- Verification Status: PASS — DENY AS EXPECTED
-
-### HEPE-EVD-UAC-006 — Assessment evidence RPC positive authority regression
-- Evidence Type: Test / Regression Evidence
-- Source: Supabase SQL transaction using authenticated synthetic PREPARER subject
+- Source: Supabase regression + exact-head authenticated browser E2E
 - Version/Date: 2026-09-12; RPC `public.hepe_pilot_record_assessment_evidence`
-- Test Scope: assessment version `e2887275-f281-49d7-a924-ba4ca878c6f6`
-- Expected: PREPARER-authorized synthetic evidence creation succeeds
-- Actual: evidence object `d338c229-90cb-4468-b6fb-4fab227c7234`; evidence version `e4640e82-87e5-40b0-aec8-2305dd1037e1`
-- Cleanup: transaction ROLLBACK
+- Expected: synthetic PREPARER evidence creation ALLOW; NO_AUTHORITY DENY
+- Actual: PREPARER browser POST→Evidence read = PASS; NO_AUTHORITY POST = DENY/403
 - Verification Status: PASS
 
-### HEPE-EVD-UAC-007 — Assessment evidence negative authority regression
+### HEPE-EVD-UAC-006 — Exact-head authenticated browser write→read propagation
 - Evidence Type: Test / Regression Evidence
-- Source: Supabase SQL transaction using synthetic NO_AUTHORITY subject
-- Version/Date: 2026-09-12
-- Expected: direct evidence creation denied
-- Actual: PostgreSQL 42501 / `PREPARER_AUTHORITY_REQUIRED`
-- Verification Status: PASS — DENY AS EXPECTED
+- Source: GitHub Actions run `34673814280`, job `103499965541`
+- Version/Date: SHA `5c3f317094888946d11b43e0d963f79307f5cf77`, 2026-09-12
+- Test Scope: temporary synthetic PREPARER_A and NO_AUTHORITY sessions; exact-SHA protected Preview; `/pilot-entry`, `/api/pilot-entry`, `/teaching`, `/evidence`
+- Expected:
+  - exact-SHA Preview match
+  - PREPARER Quick Entry state VERIFIED
+  - PREPARER delivery POST succeeds and authenticated readback is visible
+  - PREPARER assessment-evidence POST succeeds and Evidence page displays created title
+  - NO_AUTHORITY delivery/evidence POST denied
+  - NO_AUTHORITY teaching read returns EMPTY
+- Actual markers:
+  - `EXACT_SHA_PREVIEW_PASS`
+  - `PREPARER_PILOT_ENTRY_VERIFIED_PASS`
+  - `PREPARER_DELIVERY_BROWSER_WRITE_READ_PASS`
+  - `PREPARER_EVIDENCE_BROWSER_WRITE_READ_PASS`
+  - `NOAUTH_DELIVERY_DENY_PASS`
+  - `NOAUTH_EVIDENCE_DENY_PASS`
+  - `NOAUTH_BROWSER_RLS_EMPTY_PASS`
+  - `HEPE_USABLE_APP_AUTH_WRITE_READ_E2E=PASS`
+- Verification Status: PASS — VERIFIED SYSTEM TEST RESULT
 
-### HEPE-EVD-UAC-008 — Mandatory cleanup / residual check
+### HEPE-EVD-UAC-007 — Mandatory cleanup / identity restore
 - Evidence Type: Test / Regression Evidence
-- Source: Supabase post-rollback residual query
-- Version/Date: 2026-09-12
-- Expected: no synthetic test delivery/evidence persists from the closure regression
-- Actual: `delivery_residual=0`; `evidence_residual=0`
+- Source: GitHub Actions run `34673814280`, job `103499965541`
+- Expected: all temporary synthetic users and created delivery/evidence records removed; actor subjects and authority counts restored
+- Actual:
+  - `HEPE_USABLE_APP_AUTH_RESIDUAL=0`
+  - `HEPE_USABLE_APP_DELIVERY_RESIDUAL=0`
+  - `HEPE_USABLE_APP_IDENTITY_RESTORE=PASS`
+  - `HEPE_USABLE_APP_CLEANUP=PASS`
 - Verification Status: PASS
-
-## Remaining HOLD
-
-### HEPE-EVD-UAC-H01 — Exact-head authenticated browser write→read propagation
-- Required Assertion: authenticated PREPARER browser session writes through `/api/pilot-entry`, then the created synthetic record is visible through Teaching / Plan vs Actual / Evidence read models; NO_AUTHORITY browser POST is denied; all temporary auth identities and records are cleaned.
-- Current Status: HOLD
-- Reason: available connector safety controls block modification of the existing synthetic-identity GitHub Actions harness. Database authority/write behavior is independently PASS, but this does not substitute for exact-head authenticated browser E2E.
 
 ## Current gate statement
 
@@ -96,7 +95,9 @@ PREVIEW_EXACT_SHA = PASS
 UNAUTH_FAIL_CLOSED = PASS
 DB_WRITE_POSITIVE = PASS
 DB_WRITE_NEGATIVE = PASS
+AUTHENTICATED_BROWSER_WRITE_READ = PASS
+NEGATIVE_BROWSER_AUTHORITY = PASS
 CLEANUP = PASS
-AUTHENTICATED_BROWSER_WRITE_READ = HOLD
-CONTROLLED_PILOT_READY = NOT DECLARED
+SYNTHETIC_UAT = PARTIAL PASS — remaining integrated scenarios are tracked separately
+CONTROLLED_PILOT_READY = NOT YET DECLARED
 PRODUCTION_AUTHORIZATION = NOT GRANTED
