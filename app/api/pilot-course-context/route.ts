@@ -1,10 +1,13 @@
 import {NextRequest,NextResponse} from 'next/server';
 import {loadPilotReadModel} from '../../../lib/hepe/pilot-read';
 
-type Snap={course_code:string;title_th:string;title_en:string;credit_value:number;credit_pattern:string;course_role:string;group_name_th:string;verification_status:string;mappings:{plo_code:string;irm_level:string;verification_status:string}[]};
+type Mapping={plo_code:string;irm_level:string;verification_status:string};
+type Snap={course_code:string;title_th:string;title_en:string;credit_value:number;credit_pattern:string;course_role:string;group_name_th:string;verification_status:string;mappings:Mapping[];description_th?:string;description_en?:string;description_status?:string;description_verification_status?:string;description_authority_status?:string};
+const HED2503_DESCRIPTION_TH='พัฒนาการและเพศของวัยรุ่น ความหลากหลายทางเพศ บทบาทและสิทธิทางเพศ การป้องกันการตั้งครรภ์ การตั้งครรภ์ไม่พร้อม การยุติการตั้งครรภ์ โรคติดต่อทางเพศสัมพันธ์ เจตคติทางเพศ การให้คำปรึกษาทางเพศ การวัดและประเมินผลการสอนเพศวิถี';
+const HED2503_DESCRIPTION_EN='Adolescent and gender development, gender diversity, gender roles and rights, pregnancy prevention, unplanned pregnancy, induced abortion, sexually transmitted diseases, sexual attitudes, sexual counseling, and Measurement and evaluation of sexuality education teaching in the classroom.';
 const SNAPSHOT:Snap[]=[
  {course_code:'HED1501',title_th:'การสร้างเสริมสุขภาพส่วนบุคคล',title_en:'Personal Health Promotion',credit_value:3,credit_pattern:'3 (3-0-6)',course_role:'REQUIRED',group_name_th:'สุขศึกษา วิชาเอกบังคับ',verification_status:'VALIDATED',mappings:[{plo_code:'PLO3',irm_level:'I',verification_status:'SOURCE_VERIFIED'}]},
- {course_code:'HED2503',title_th:'เพศวิถีศึกษา',title_en:'Sexuality Education',credit_value:3,credit_pattern:'3 (3-0-6)',course_role:'REQUIRED',group_name_th:'สุขศึกษา วิชาเอกบังคับ',verification_status:'VALIDATED',mappings:[{plo_code:'PLO3',irm_level:'R',verification_status:'SOURCE_VERIFIED'}]},
+ {course_code:'HED2503',title_th:'เพศวิถีศึกษา',title_en:'Sexuality Education',credit_value:3,credit_pattern:'3 (3-0-6)',course_role:'REQUIRED',group_name_th:'สุขศึกษา วิชาเอกบังคับ',verification_status:'VALIDATED',mappings:[{plo_code:'PLO3',irm_level:'R',verification_status:'SOURCE_VERIFIED'}],description_th:HED2503_DESCRIPTION_TH,description_en:HED2503_DESCRIPTION_EN,description_status:'DRAFT',description_verification_status:'SOURCE_TEXT_CROSSCHECKED',description_authority_status:'WORKING_SOURCE_CANDIDATE'},
  {course_code:'HED2504',title_th:'การจัดการเรียนรู้สุขศึกษา',title_en:'Health Education Learning Management',credit_value:3,credit_pattern:'3 (2-2-5)',course_role:'REQUIRED',group_name_th:'สุขศึกษา วิชาเอกบังคับ',verification_status:'VALIDATED',mappings:[{plo_code:'PLO4',irm_level:'R',verification_status:'SOURCE_VERIFIED'}]},
  {course_code:'HED3502',title_th:'ยาและยาเสพติด',title_en:'Drugs and Substance Abuse',credit_value:3,credit_pattern:'3 (3-0-6)',course_role:'REQUIRED',group_name_th:'สุขศึกษา วิชาเอกบังคับ',verification_status:'VALIDATED',mappings:[{plo_code:'PLO3',irm_level:'M',verification_status:'SOURCE_VERIFIED'}]},
  {course_code:'HED3504',title_th:'การส่งเสริมสุขภาพจิต',title_en:'Mental Health Promotion',credit_value:3,credit_pattern:'3 (3-0-6)',course_role:'REQUIRED',group_name_th:'สุขศึกษา วิชาเอกบังคับ',verification_status:'VALIDATED',mappings:[{plo_code:'PLO3',irm_level:'M',verification_status:'SOURCE_VERIFIED'}]},
@@ -15,11 +18,11 @@ const SNAPSHOT:Snap[]=[
 
 function snapshotResponse(req:NextRequest){
  const code=req.nextUrl.searchParams.get('courseCode');
- const course=SNAPSHOT.find(c=>c.course_code===code)??SNAPSHOT[0];
+ const course=SNAPSHOT.find(c=>c.course_code===code)??SNAPSHOT.find(c=>c.course_code==='HED2503')??SNAPSHOT[0];
  return NextResponse.json({
-  state:'READY',environment:'NON-PRODUCTION',readOnly:true,sourceMode:'VERIFIED_CONTROLLED_SNAPSHOT',snapshotScope:'UAT_SUBSET',snapshotVersion:'2026-09-12',
+  state:'READY',environment:'NON-PRODUCTION',readOnly:true,sourceMode:'VERIFIED_CONTROLLED_SNAPSHOT',snapshotScope:'UAT_SUBSET',snapshotVersion:'2026-09-12-DATA01A',
   programme:{programme_code:'25510071103503',title_th:'ศษ.บ. สุขศึกษาและพลศึกษา',version_code:'2567-SOURCEB-VALIDATION'},
-  course:{...course,description_th:null,description_status:'CONTROLLED_DESCRIPTION_NOT_AVAILABLE'},
+  course:{...course,description_th:course.description_th??null,description_en:course.description_en??null,description_status:course.description_status??'CONTROLLED_DESCRIPTION_NOT_AVAILABLE',description_verification_status:course.description_verification_status??null,description_authority_status:course.description_authority_status??null},
   mappings:course.mappings,
   courses:SNAPSHOT.map(c=>({course_code:c.course_code,title_th:c.title_th,title_en:c.title_en,credit_value:c.credit_value})),
   boundary:{canonicalWrite:false,aiAuthority:false,auditEvidenceAdmission:false,production:false,rlsChanged:false}
@@ -37,7 +40,7 @@ export async function GET(req:NextRequest){
  return NextResponse.json({
   state:'READY',environment:'NON-PRODUCTION',readOnly:true,sourceMode:'AUTHENTICATED_LIVE_READ_MODEL',
   programme:{programme_code:model.programme.programme_code,title_th:model.programme.title_th,version_code:model.version.version_code},
-  course:{course_code:course.course_code,title_th:course.title_th,title_en:course.title_en,credit_value:course.credit_value,credit_pattern:course.credit_pattern,course_role:course.course_role,group_name_th:course.group_name_th,verification_status:course.verification_status??null,description_th:null,description_status:'CONTROLLED_DESCRIPTION_NOT_AVAILABLE'},
+  course:{course_code:course.course_code,title_th:course.title_th,title_en:course.title_en,credit_value:course.credit_value,credit_pattern:course.credit_pattern,course_role:course.course_role,group_name_th:course.group_name_th,verification_status:course.verification_status??null,description_th:course.description_th??null,description_en:course.description_en??null,description_status:course.description_status_code??'CONTROLLED_DESCRIPTION_NOT_AVAILABLE',description_verification_status:course.description_verification_status??null,description_authority_status:course.description_authority_status??null},
   mappings,
   courses:model.courses.map((c:any)=>({course_code:c.course_code,title_th:c.title_th,title_en:c.title_en,credit_value:c.credit_value})),
   boundary:{canonicalWrite:false,aiAuthority:false,auditEvidenceAdmission:false,production:false,rlsChanged:false}
