@@ -16,14 +16,29 @@ const SNAPSHOT:Snap[]=[
  {course_code:'PED1501',title_th:'การสอนยิมนาสติก',title_en:'Gymnastic Instructions',credit_value:2,credit_pattern:'2 (1-2-3)',course_role:'REQUIRED',group_name_th:'พลศึกษา วิชาเอกบังคับ',verification_status:'VALIDATED',mappings:[{plo_code:'PLO3',irm_level:'I',verification_status:'SOURCE_VERIFIED'}]}
 ];
 
+function coverage(courseCode:string, hasDescription:boolean, mappings:Mapping[]){
+ const isPilot=courseCode==='HED2503';
+ return {
+  courseIdentity:{state:'AVAILABLE',source:'CONTROLLED_CURRICULUM'},
+  courseDescription:{state:hasDescription?'AVAILABLE':'MISSING',source:hasDescription?'COURSE_DESCRIPTION_VERSIONS':null},
+  coursePloIrm:{state:mappings.length?'AVAILABLE':'MISSING',source:mappings.length?'CONTROLLED_CURRICULUM_MAPPING':null},
+  clo:{state:'MISSING_IN_GOVERNED_DB',candidateSource:isPilot?'DPE_AQMS_MasterData_Import_v4.0_Course_Owner_Review_Approval.xlsx':null,candidateStatus:isPilot?'DRAFT_HUMAN_REVIEW_UNVERIFIED':null},
+  learningActivities:{state:'MISSING_IN_GOVERNED_DB',candidateSource:isPilot?'DPE_AQMS_MasterData_Import_v4.0_Course_Owner_Review_Approval.xlsx':null,candidateStatus:isPilot?'DRAFT_HUMAN_REVIEW_UNVERIFIED':null},
+  assessments:{state:'MISSING_IN_GOVERNED_DB',candidateSource:isPilot?'DPE_AQMS_MasterData_Import_v4.0_Course_Owner_Review_Approval.xlsx':null,candidateStatus:isPilot?'DRAFT_HUMAN_REVIEW_UNVERIFIED':null},
+  aiReady:false,
+  blockingReason:'CLO_LEARNING_ACTIVITY_ASSESSMENT_NOT_YET_ADMITTED_TO_GOVERNED_DB'
+ };
+}
+
 function snapshotResponse(req:NextRequest){
  const code=req.nextUrl.searchParams.get('courseCode');
  const course=SNAPSHOT.find(c=>c.course_code===code)??SNAPSHOT.find(c=>c.course_code==='HED2503')??SNAPSHOT[0];
  return NextResponse.json({
-  state:'READY',environment:'NON-PRODUCTION',readOnly:true,sourceMode:'VERIFIED_CONTROLLED_SNAPSHOT',snapshotScope:'UAT_SUBSET',snapshotVersion:'2026-09-12-DATA01A',
+  state:'READY',environment:'NON-PRODUCTION',readOnly:true,sourceMode:'VERIFIED_CONTROLLED_SNAPSHOT',snapshotScope:'UAT_SUBSET',snapshotVersion:'2026-09-12-DATA01B',
   programme:{programme_code:'25510071103503',title_th:'ศษ.บ. สุขศึกษาและพลศึกษา',version_code:'2567-SOURCEB-VALIDATION'},
   course:{...course,description_th:course.description_th??null,description_en:course.description_en??null,description_status:course.description_status??'CONTROLLED_DESCRIPTION_NOT_AVAILABLE',description_verification_status:course.description_verification_status??null,description_authority_status:course.description_authority_status??null},
   mappings:course.mappings,
+  academicContextCoverage:coverage(course.course_code,Boolean(course.description_th),course.mappings),
   courses:SNAPSHOT.map(c=>({course_code:c.course_code,title_th:c.title_th,title_en:c.title_en,credit_value:c.credit_value})),
   boundary:{canonicalWrite:false,aiAuthority:false,auditEvidenceAdmission:false,production:false,rlsChanged:false}
  });
@@ -37,11 +52,13 @@ export async function GET(req:NextRequest){
  const course=code?model.courses.find((c:any)=>String(c.course_code)===code):model.courses[0];
  if(!course) return NextResponse.json({state:'COURSE_NOT_FOUND'},{status:404});
  const mappings=model.mappings.filter((m:any)=>String(m.course_code)===String(course.course_code)).map((m:any)=>({plo_code:m.plo_code,irm_level:m.irm_level,verification_status:m.verification_status??null}));
+ const hasDescription=Boolean(course.description_th);
  return NextResponse.json({
   state:'READY',environment:'NON-PRODUCTION',readOnly:true,sourceMode:'AUTHENTICATED_LIVE_READ_MODEL',
   programme:{programme_code:model.programme.programme_code,title_th:model.programme.title_th,version_code:model.version.version_code},
   course:{course_code:course.course_code,title_th:course.title_th,title_en:course.title_en,credit_value:course.credit_value,credit_pattern:course.credit_pattern,course_role:course.course_role,group_name_th:course.group_name_th,verification_status:course.verification_status??null,description_th:course.description_th??null,description_en:course.description_en??null,description_status:course.description_status_code??'CONTROLLED_DESCRIPTION_NOT_AVAILABLE',description_verification_status:course.description_verification_status??null,description_authority_status:course.description_authority_status??null},
   mappings,
+  academicContextCoverage:coverage(String(course.course_code),hasDescription,mappings),
   courses:model.courses.map((c:any)=>({course_code:c.course_code,title_th:c.title_th,title_en:c.title_en,credit_value:c.credit_value})),
   boundary:{canonicalWrite:false,aiAuthority:false,auditEvidenceAdmission:false,production:false,rlsChanged:false}
  });
