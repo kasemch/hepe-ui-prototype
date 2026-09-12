@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
+// HEPE-WORKFLOW-04 exact-SHA Preview recovery source trigger; no runtime authority effect.
 export const dynamic = "force-dynamic";
-export const hepeClosureRecoveryMarker = "HEPE-WORKFLOW-04-EXACT-SHA-RECOVERY";
 
 export async function GET() {
   return NextResponse.json(
