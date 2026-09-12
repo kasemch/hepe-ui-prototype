@@ -1,21 +1,18 @@
-const modules = [
-  ['curriculum','Curriculum Overview'],['traceability','PLO / CLO Traceability'],['mapping','Curriculum Mapping / I-R-M'],['reviews','Review Queue'],['decisions','Approval / Decision Workspace'],['evidence','Evidence Explorer'],['findings','Findings & Improvement'],['qa','QA Readiness'],['calendar','Academic Calendar / Tasks'],['audit','Provenance / Audit Trail'],['runtime','Runtime / Connector Health'],['outbox','Outbox Queue'],['reconciliation','Reconciliation Workspace'],['governance','System Governance / Gate Status']
+const tasks=[
+ ['จัดทำ มคอ.3','วางแผนรายวิชา ผลลัพธ์การเรียนรู้ แผนสอน และการประเมิน','/tqf3','เริ่ม / ทำต่อ'],
+ ['จัดทำ มคอ.5','สรุปผลการจัดการเรียนรู้และผลการประเมินรายวิชา','/tqf5','เปิดงาน'],
+ ['ทวนสอบผลการเรียนรู้','ตรวจความสอดคล้องของผลลัพธ์ หลักฐาน และการประเมิน','/verification','เปิดงาน'],
+ ['จัดทำ มคอ.7','สรุปผลระดับหลักสูตรและประเด็นเพื่อการพัฒนา','/tqf7','เปิดงาน'],
+ ['ปรับปรุงรายวิชา','บันทึกสิ่งที่ควรปรับจากผลการสอนและการทวนสอบ','/course-review','เปิดงาน'],
+ ['งานที่รออนุมัติ','ตรวจรายการที่ต้องใช้การตัดสินใจของผู้มีอำนาจทางวิชาการ','/approval','ดูรายการ']
 ];
 
-export default function Home(){
- return <main className="shell">
-  <aside className="sidebar">
-   <div className="brand-kicker">HEPE · BED-HEPE</div><div className="brand">Academic<br/>Command Center</div><div className="env">NON-PRODUCTION</div>
-   <nav className="nav sans" aria-label="HEPE modules"><a className="active" href="/">Command Center</a>{modules.map(([s,l])=><a key={s} href={`/${s}`}>{l}</a>)}</nav>
-  </aside>
-  <section className="workspace">
-   <header className="topline"><div><div className="eyebrow">Curriculum Governance & Development</div><h1 className="page-title">Programme Command Center</h1></div><div className="contexts"><span className="chip">Academic Year · 2569</span><span className="chip">Programme · BED-HEPE</span><span className="chip">Curriculum · 2567</span></div></header>
-   <div className="notice">Evidence-first preview — controlled baseline and verified system status only. Operational values without verified provenance remain explicitly marked as “Not yet verified”.</div>
-   <div className="grid g4">{[['Governance Foundation','CONTROLLED','Foundation / REL-01 / REL-02'],['Persistence & RLS','VERIFIED','REL-02A closed'],['Application Runtime','PENDING','REL-03 not yet verified'],['Preview Website','ACTIVE','WEB-01 protected preview']].map(([a,b,c])=><article className="card" key={a}><div className="label">{a}</div><div className="value">{b}</div><div className="note">{c}</div></article>)}</div>
-   <div className="grid g2" style={{marginTop:14}}><article className="card"><h2 className="section-title">Programme Readiness</h2>{[['Curriculum baseline','Controlled'],['Evidence governance','Controlled'],['Authority / RLS','Verified'],['Durable outbox persistence','Verified foundation'],['Application runtime binding','Not yet verified']].map(([a,b])=><div className="row" key={a}><span>{a}</span><span className="status">{b}</span></div>)}</article><article className="card"><h2 className="section-title">Governance Gate Register</h2>{[['REL-01','PASS'],['REL-02','PASS'],['REL-02A','PASS + documented repair'],['REL-03','PENDING'],['WEB-01','ACTIVE']].map(([a,b])=><div className="row" key={a}><span>{a}</span><span className="status">{b}</span></div>)}</article></div>
-   <div className="grid g3" style={{marginTop:14}}>{[['Pending Reviews','Not yet verified','reviews'],['Evidence Completeness','Not yet verified','evidence'],['QA Readiness','Not yet verified','qa'],['Connector Health','Foundation ready','runtime'],['Outbox Queue','Runtime binding pending','outbox'],['Findings / Improvement','Not yet verified','findings']].map(([a,b,s])=><article className="card" key={a}><div className="label">{a}</div><div className="value" style={{fontSize:17}}>{b}</div><a className="note" href={`/${s}`}>Open workspace →</a></article>)}</div>
-   <article className="card" style={{marginTop:14}}><h2 className="section-title">Academic Workspaces</h2><div className="grid g4">{modules.map(([s,l])=><a className="module-link" key={s} href={`/${s}`}>{l}</a>)}</div></article>
-   <footer className="footer-note">HEPE Curriculum Governance & Development · Evidence-first academic workspace · NON-PRODUCTION · Production authorization not granted.</footer>
-  </section>
- </main>
-}
+export default function Home(){return <main className="teacher-home">
+ <header className="teacher-top"><div><div className="brand-kicker dark">HEPE · Curriculum Governance & Development</div><h1>งานหลักสูตรของฉัน</h1><p>เลือกงานที่ต้องการทำ ระบบจะพาไปทีละขั้น</p></div><div className="contexts"><span className="chip">ศษ.บ. สุขศึกษาและพลศึกษา</span><span className="chip">หลักสูตร 2567</span><span className="chip">Controlled Pilot</span></div></header>
+ <div className="notice"><strong>รุ่นทดลองใช้งาน · NON-PRODUCTION</strong> — ทดลองการใช้งานได้โดยไม่กระทบข้อมูลหลักสูตรจริง ข้อมูล DEMO ไม่ถือเป็น Audit Evidence และไม่มีการเผยแพร่หรือ activate หลักสูตร</div>
+ <section className="welcome-card"><div><div className="eyebrow">เริ่มจากตรงนี้</div><h2>วันนี้ต้องการทำอะไร?</h2><p>ไม่จำเป็นต้องรู้โครงสร้างระบบ เลือกงานที่ต้องการ แล้วทำตามขั้นตอนที่แสดงบนหน้าจอ</p></div><a className="primary-action" href="/tqf3">เริ่มจัดทำ มคอ.3 →</a></section>
+ <section aria-labelledby="my-work"><div className="home-section-head"><div><div className="eyebrow">MY WORK</div><h2 id="my-work">งานของฉัน</h2></div><p>เส้นทางงานหลักของผู้สอนและผู้รับผิดชอบหลักสูตร</p></div><div className="task-grid">{tasks.map(([title,desc,href,action],i)=><a className="task-card" href={href} key={title}><span className="task-number">{i+1}</span><div><h3>{title}</h3><p>{desc}</p><strong>{action} →</strong></div></a>)}</div></section>
+ <section className="journey-card"><div className="home-section-head"><div><div className="eyebrow">WORKFLOW</div><h2>ระบบพาไปตามลำดับนี้</h2></div></div><div className="journey">{['มคอ.3','จัดการเรียนรู้','มคอ.5','ทวนสอบ','มคอ.7','ปรับปรุง','Human Approval'].map((x,i)=><div className="journey-step" key={x}><span>{i+1}</span><strong>{x}</strong></div>)}</div></section>
+ <details className="advanced"><summary>ข้อมูลหลักสูตรและเครื่องมือขั้นสูง</summary><div className="advanced-links"><a href="/programme">ภาพรวมหลักสูตร</a><a href="/curriculum">โครงสร้างหลักสูตร</a><a href="/study-plan">แผนการศึกษา</a><a href="/traceability">PLO / รายวิชา</a><a href="/mapping">I-R-M</a><a href="/evidence">หลักฐาน</a><a href="/qa">QA / CPRR</a><a href="/governance">Governance</a></div></details>
+ <footer className="footer-note">HEPE Controlled Pilot · Human academic authority preserved · NON-PRODUCTION</footer>
+ </main>}

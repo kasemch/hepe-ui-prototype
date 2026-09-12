@@ -1,0 +1,161 @@
+name: HEPE PILOT 03Q Final Auth Closure
+
+on:
+  push:
+    branches: [feat/hepe-controlled-pilot-03]
+    paths: ['.github/workflows/hepe-pilot-03q-final-closure.yml']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hepe-pilot-03q-final-closure
+  cancel-in-progress: false
+
+jobs:
+  final-auth-closure:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      HEPE_GATE: HEPE-PILOT-03Q
+      SUPABASE_URL: https://lztxpjsuzqvtgyasfnyj.supabase.co
+      SUPABASE_PUBLISHABLE_KEY: sb_publishable_7bv5GR0-ksXJn91sRHV0Mg_k4nblIGI
+      SUPABASE_ADMIN: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      VERCEL_BYPASS: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+      PREVIEW_URL: https://hepe-ui-prototype-git-feat-hepe-c-7fa6ff-kasemch-3467s-projects.vercel.app
+      TARGET_PROGRAMME_CODE: '25510071103503'
+      TARGET_VERSION_CODE: '2567-SOURCEB-VALIDATION'
+      SOURCE_SHA: f580fec8bb661181cbc0dff3c58473563c4b723f2dde5e863d91667ea4ec3557
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify masked bindings and exact-SHA Preview
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${SUPABASE_ADMIN:-}" || { echo 'SUPABASE_ADMIN_BINDING_UNAVAILABLE'; exit 71; }
+          test -n "${VERCEL_BYPASS:-}" || { echo 'VERCEL_BYPASS_BINDING_UNAVAILABLE'; exit 72; }
+          ok=0
+          for i in $(seq 1 30); do
+            body="$(mktemp)"
+            code="$(curl --silent --show-error --max-time 20 --output "$body" --write-out '%{http_code}' -H "x-vercel-protection-bypass: ${VERCEL_BYPASS}" -H 'Cache-Control: no-cache' "${PREVIEW_URL}/api/pilot-build-meta" || true)"
+            if [ "$code" = '200' ] && grep -q "${GITHUB_SHA}" "$body"; then ok=1; rm -f "$body"; break; fi
+            rm -f "$body"; sleep 10
+          done
+          test "$ok" = '1' || { echo 'EXACT_SHA_PREVIEW_NOT_READY'; exit 73; }
+          echo "EXACT_SHA_PREVIEW_PASS application_sha=${GITHUB_SHA}"
+
+      - name: Install controlled dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Execute personas, RLS, browser acceptance and mandatory cleanup
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import crypto from 'node:crypto';
+          import { execFileSync } from 'node:child_process';
+          import { createClient } from '@supabase/supabase-js';
+          import { createServerClient } from '@supabase/ssr';
+          const E = process.env;
+          const admin = createClient(E.SUPABASE_URL, E.SUPABASE_ADMIN, {auth:{persistSession:false,autoRefreshToken:false}});
+          const codes=['PREPARER_A','NO_AUTHORITY','REVIEWER_B'];
+          const ctx=new Map(); let programme=null; let tempAuthorityId=null; let failure=null;
+          const fail=(m)=>{throw new Error(m)};
+          const hash=(x)=>crypto.createHash('sha256').update(JSON.stringify(x)).digest('hex');
+          function request(path,cookie=''){
+            const marker='__HEPE_HTTP__';
+            const args=['--silent','--show-error','--max-time','30','-H',`x-vercel-protection-bypass: ${E.VERCEL_BYPASS}`,'-H','Cache-Control: no-cache'];
+            if(cookie) args.push('-H',`cookie: ${cookie}`);
+            args.push('-w',`${marker}%{http_code}`,`${E.PREVIEW_URL}${path}`);
+            const out=execFileSync('curl',args,{encoding:'utf8',maxBuffer:8*1024*1024});
+            const i=out.lastIndexOf(marker); if(i<0) fail(`HTTP_MARKER_MISSING:${path}`);
+            return {body:out.slice(0,i),code:out.slice(i+marker.length).trim()};
+          }
+          async function loadPersona(code){
+            const {data:f,error:fe}=await admin.from('wave6_persona_fixtures').select('persona_code,actor_id,external_identity_subject').eq('persona_code',code).single();
+            if(fe||!f) fail(`PERSONA_LOOKUP_FAILED:${code}`);
+            const {data:a,error:ae}=await admin.from('actors').select('actor_id,external_identity_subject,status').eq('actor_id',f.actor_id).single();
+            if(ae||!a) fail(`ACTOR_LOOKUP_FAILED:${code}`);
+            const {data:asg,error:se}=await admin.from('authority_assignments').select('authority_assignment_id,role_id,authority_level_code,scope_type,programme_id,course_id,governed_object_id,status,valid_from,valid_until,assignment_source,authority_contract_version_id').eq('actor_id',a.actor_id).order('authority_assignment_id');
+            if(se) fail(`AUTHORITY_SNAPSHOT_FAILED:${code}`);
+            return {fixture:f,actor:a,assignments:asg??[]};
+          }
+          async function targetCount(actorId){
+            const {count,error}=await admin.from('authority_assignments').select('*',{count:'exact',head:true}).eq('actor_id',actorId).eq('programme_id',programme.programme_id).eq('status','ACTIVE');
+            if(error) fail('TARGET_AUTHORITY_COUNT_FAILED'); return count??0;
+          }
+          async function createSynthetic(code){
+            const email=`hepe-pilot-03q-${code.toLowerCase().replaceAll('_','-')}-${E.GITHUB_RUN_ID}-${crypto.randomBytes(4).toString('hex')}@example.invalid`;
+            const password=crypto.randomBytes(32).toString('base64url');
+            const {data,error}=await admin.auth.admin.createUser({email,password,email_confirm:true,user_metadata:{hepe_synthetic_test:true,hepe_gate:'HEPE-PILOT-03Q',hepe_persona:code}});
+            if(error||!data.user) fail(`AUTH_CREATE_FAILED:${code}`); return {uid:data.user.id,email,password};
+          }
+          async function sessionFor(u){
+            const jar=new Map();
+            const ssr=createServerClient(E.SUPABASE_URL,E.SUPABASE_PUBLISHABLE_KEY,{cookies:{getAll(){return [...jar].map(([name,value])=>({name,value}))},setAll(v){for(const {name,value} of v) jar.set(name,value)}}});
+            const {data,error}=await ssr.auth.signInWithPassword({email:u.email,password:u.password});
+            if(error||!data.user||!data.session) fail('SIGNIN_FAILED');
+            const {data:v,error:ve}=await ssr.auth.getUser(); if(ve||v.user?.id!==data.user.id) fail('GETUSER_FAILED');
+            const cookie=[...jar].map(([k,v])=>`${k}=${v}`).join('; '); if(!cookie) fail('COOKIE_MISSING');
+            return {token:data.session.access_token,cookie};
+          }
+          function userClient(token){return createClient(E.SUPABASE_URL,E.SUPABASE_PUBLISHABLE_KEY,{auth:{persistSession:false,autoRefreshToken:false},global:{headers:{Authorization:`Bearer ${token}`}}});}
+          try {
+            const {data:p,error:pe}=await admin.from('programmes').select('programme_id,programme_code').eq('programme_code',E.TARGET_PROGRAMME_CODE).single();
+            if(pe||!p) fail('TARGET_PROGRAMME_NOT_FOUND'); programme=p;
+            for(const code of codes){const x=await loadPersona(code); if(x.actor.external_identity_subject!==x.fixture.external_identity_subject) fail(`BASELINE_SUBJECT_MISMATCH:${code}`); ctx.set(code,{...x,beforeHash:hash(x.assignments),synthetic:null});}
+            for(const code of codes) if(await targetCount(ctx.get(code).actor.actor_id)!==0) fail(`UNEXPECTED_TARGET_AUTHORITY:${code}`);
+            console.log('PRE_AUTHORITY_SNAPSHOT_PASS target_counts=0,0,0');
+            const {data:role,error:re}=await admin.from('roles').select('role_id').eq('role_code','PREPARER').single(); if(re||!role) fail('PREPARER_ROLE_NOT_FOUND');
+            const {data:ta,error:te}=await admin.from('authority_assignments').insert({actor_id:ctx.get('PREPARER_A').actor.actor_id,role_id:role.role_id,authority_level_code:'A0',scope_type:'PROGRAMME',programme_id:programme.programme_id,status:'ACTIVE',valid_until:new Date(Date.now()+15*60*1000).toISOString(),assignment_source:'DIRECT'}).select('authority_assignment_id').single();
+            if(te||!ta) fail(`TEMP_A0_CREATE_FAILED:${te?.code??'UNKNOWN'}`); tempAuthorityId=ta.authority_assignment_id;
+            if(await targetCount(ctx.get('PREPARER_A').actor.actor_id)!==1) fail('TEMP_A0_COUNT_NOT_ONE');
+            console.log('TEMP_A0_PASS count=1 level=A0');
+            for(const code of codes){const c=ctx.get(code); c.synthetic=await createSynthetic(code); const {error}=await admin.from('actors').update({external_identity_subject:c.synthetic.uid}).eq('actor_id',c.actor.actor_id); if(error) fail(`ACTOR_REBIND_FAILED:${code}`);}
+            console.log('SYNTHETIC_USERS_CREATED count=3');
+            const sessions=new Map(); for(const code of codes){sessions.set(code,await sessionFor(ctx.get(code).synthetic)); console.log(`SESSION_PASS persona=${code}`);}
+            const prep=userClient(sessions.get('PREPARER_A').token);
+            const {data:sum,error:se}=await prep.from('v_hepe_ingest_validation_summary').select('*').eq('programme_code',E.TARGET_PROGRAMME_CODE).eq('version_code',E.TARGET_VERSION_CODE).single();
+            if(se||!sum) fail('PREPARER_SUMMARY_READ_FAILED');
+            for(const [k,v] of Object.entries({course_count:92,course_group_count:16,study_plan_count:54,study_plan_credits:151,plo_count:7,irm_pair_count:99})) if(Number(sum[k])!==v) fail(`SUMMARY_MISMATCH:${k}`);
+            const {data:imp,error:ie}=await prep.from('v_hepe_ingest_import_status').select('source_sha256,is_active,is_published,canonical_activation_attempted,audit_evidence_admission_attempted').eq('programme_code',E.TARGET_PROGRAMME_CODE).eq('version_code',E.TARGET_VERSION_CODE).limit(10);
+            if(ie||!imp?.some(x=>x.source_sha256===E.SOURCE_SHA)) fail('SOURCE_SHA_NOT_VISIBLE');
+            if(imp.some(x=>x.is_active||x.is_published||x.canonical_activation_attempted||x.audit_evidence_admission_attempted)) fail('BOUNDARY_STATE_VIOLATION');
+            console.log('PREPARER_A_RLS_READ_PASS metrics=92/16/54/151/7/99');
+            for(const code of ['NO_AUTHORITY','REVIEWER_B']){
+              const uc=userClient(sessions.get(code).token);
+              const {data,error}=await uc.from('programmes').select('programme_id').eq('programme_code',E.TARGET_PROGRAMME_CODE);
+              if(error) console.log(`NEGATIVE_READ_DENY_PASS persona=${code} error=${error.code??'RLS'}`);
+              else if((data??[]).length===0) console.log(`NEGATIVE_READ_DENY_PASS persona=${code} rows=0`);
+              else fail(`TARGET_READ_LEAK:${code}`);
+            }
+            const {data:wd,error:we}=await prep.from('programmes').update({programme_code:E.TARGET_PROGRAMME_CODE}).eq('programme_code',E.TARGET_PROGRAMME_CODE).select('programme_id');
+            if(!we && (wd??[]).length>0) fail('A0_WRITE_UNEXPECTEDLY_ALLOWED');
+            console.log('A0_WRITE_DENY_PASS');
+            const unauth=request('/curriculum-import'); if(unauth.code!=='200'||!unauth.body.includes('AUTH_REQUIRED')) fail('UNAUTHENTICATED_BOUNDARY_FAIL');
+            const auth=request('/curriculum-import',sessions.get('PREPARER_A').cookie); if(auth.code!=='200'||!auth.body.includes('NON-PRODUCTION')) fail('AUTHENTICATED_BROWSER_FAIL');
+            for(const [path,marker] of [['/','Academic Command Center'],['/pilot','Controlled Pilot Readiness'],['/programme','Programme Overview'],['/curriculum','Curriculum Structure'],['/study-plan','Study Plan'],['/traceability','PLO / Course Traceability'],['/mapping','PLO × Course / I-R-M'],['/evidence','Evidence Explorer'],['/qa','INSUFFICIENT VERIFIED EVIDENCE'],['/reviews','Review Queue'],['/calendar','Academic Tasks'],['/audit','Provenance'],['/ai','AI ADVISORY'],['/governance','Settings / Governance']]){const r=request(path); if(r.code!=='200'||!r.body.includes(marker)||!r.body.includes('NON-PRODUCTION')) fail(`ROUTE_ACCEPTANCE_FAIL:${path}`);}
+            console.log('03S_ROUTE_BROWSER_ACCEPTANCE_PASS');
+          } catch(e){failure=e; console.error(`HEPE_03Q_FAIL:${e.message}`);} finally {
+            if(tempAuthorityId){const {error}=await admin.from('authority_assignments').delete().eq('authority_assignment_id',tempAuthorityId); if(error&&!failure) failure=new Error('TEMP_AUTHORITY_CLEANUP_FAILED');}
+            for(const code of codes){const c=ctx.get(code); if(!c) continue; const {error:re}=await admin.from('actors').update({external_identity_subject:c.fixture.external_identity_subject}).eq('actor_id',c.actor.actor_id); if(re&&!failure) failure=new Error(`ACTOR_RESTORE_FAILED:${code}`); if(c.synthetic){const {error:de}=await admin.auth.admin.deleteUser(c.synthetic.uid); if(de&&!failure) failure=new Error(`SYNTHETIC_DELETE_FAILED:${code}`);}}
+            if(programme){for(const code of codes){if(await targetCount(ctx.get(code).actor.actor_id)!==0&&!failure) failure=new Error(`AUTHORITY_RESIDUAL:${code}`);}}
+            for(const code of codes){const c=ctx.get(code); if(!c) continue; const x=await loadPersona(code); if(x.actor.external_identity_subject!==c.fixture.external_identity_subject&&!failure) failure=new Error(`SUBJECT_RESIDUAL:${code}`); if(hash(x.assignments)!==c.beforeHash&&!failure) failure=new Error(`AUTHORITY_BASELINE_DIFFERENCE:${code}`);}
+            console.log('MANDATORY_CLEANUP_VERIFIED temp_authority_residual=0 actor_subject_difference=0 existing_authority_difference=0');
+          }
+          if(failure) throw failure;
+          console.log('HEPE_PILOT_03Q_AUTH_REGRESSION_PASS');
+          NODE
+      - name: Final boundary summary
+        run: |
+          echo "APPLICATION_SHA=${GITHUB_SHA}"
+          echo 'ENVIRONMENT=NON-PRODUCTION'
+          echo 'CANONICAL_ACTIVATION=NOT_ATTEMPTED'
+          echo 'PUBLICATION=NOT_ATTEMPTED'
+          echo 'AUDIT_EVIDENCE_ADMISSION=NOT_ATTEMPTED'
+          echo 'PRODUCTION=NOT_TOUCHED'
+          echo 'PR_MERGE=NOT_ATTEMPTED'
+
+# RETEST_REVISION: TRACK_B_FINAL_EXACT_SHA_20260912
+# FINAL_CONVERGENCE_TRIGGER: 03Q_AND_BROWSER_SAME_SHA

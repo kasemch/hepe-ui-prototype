@@ -1,0 +1,115 @@
+name: HEPE PILOT 03 Final Browser Acceptance
+
+on:
+  push:
+    branches: [feat/hepe-controlled-pilot-03]
+    paths: ['.github/workflows/hepe-pilot-03-final-browser.yml']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hepe-pilot-03-final-browser
+  cancel-in-progress: false
+
+jobs:
+  browser-acceptance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      HEPE_ENVIRONMENT: NON-PRODUCTION
+      PREVIEW_URL: https://hepe-ui-prototype-git-feat-hepe-c-7fa6ff-kasemch-3467s-projects.vercel.app
+      VERCEL_BYPASS: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+      TESTED_APP_SHA: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify boundary and bindings
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${GITHUB_REF_NAME}" = 'feat/hepe-controlled-pilot-03'
+          test -n "${VERCEL_BYPASS:-}" || { echo 'VERCEL_BYPASS_UNAVAILABLE'; exit 71; }
+          echo "TESTED_APP_SHA=${TESTED_APP_SHA}"
+          echo 'NON_PRODUCTION_SCOPE_VERIFIED'
+      - name: Wait for exact-SHA Preview
+        shell: bash
+        run: |
+          set -euo pipefail
+          ok=0
+          for i in $(seq 1 36); do
+            body="$(curl --silent --show-error --max-time 30 -H "x-vercel-protection-bypass: ${VERCEL_BYPASS}" -H 'Cache-Control: no-cache' "${PREVIEW_URL}/api/pilot-build-meta" || true)"
+            if printf '%s' "$body" | grep -Fq "\"applicationSha\":\"${TESTED_APP_SHA}\""; then
+              printf '%s' "$body" | grep -Fq '"environment":"NON-PRODUCTION"'
+              printf '%s' "$body" | grep -Fq '"production":false'
+              ok=1; echo 'EXACT_SHA_PREVIEW_READY'; break
+            fi
+            sleep 10
+          done
+          test "$ok" = 1 || { echo 'EXACT_SHA_PREVIEW_NOT_READY'; exit 72; }
+      - name: Install browser test dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --ignore-scripts --no-audit --no-fund
+          npm install --no-save --ignore-scripts --no-audit --no-fund playwright @axe-core/playwright
+          npx playwright install --with-deps chromium
+      - name: Responsive, route and accessibility acceptance
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import { chromium } from 'playwright';
+          import AxeBuilder from '@axe-core/playwright';
+          const base=process.env.PREVIEW_URL;
+          const bypass=process.env.VERCEL_BYPASS;
+          const routes=[
+            ['/', 'Academic Command Center'],['/pilot','Controlled Pilot Readiness'],['/programme','Programme Overview'],
+            ['/curriculum','Curriculum Structure'],['/study-plan','Study Plan'],['/traceability','PLO / Course Traceability'],
+            ['/mapping','PLO × Course / I-R-M'],['/evidence','Evidence Explorer'],['/qa','INSUFFICIENT VERIFIED EVIDENCE'],
+            ['/reviews','Review Queue'],['/calendar','Academic Tasks'],['/audit','Provenance'],['/ai','AI ADVISORY'],
+            ['/governance','Settings / Governance'],['/curriculum-import','AUTH_REQUIRED'],['/tqf3','มคอ.3'],
+            ['/tqf5','มคอ.5'],['/verification','ทวนสอบ'],['/tqf7','มคอ.7'],['/course-review','Course Review'],['/approval','Academic Approval Workflow']
+          ];
+          const viewports=[['desktop',1440,900],['laptop',1024,800],['tablet',768,900],['mobile',390,844]];
+          const browser=await chromium.launch({headless:true});
+          let failures=[];
+          for(const [vp,w,h] of viewports){
+            const context=await browser.newContext({viewport:{width:w,height:h},extraHTTPHeaders:{'x-vercel-protection-bypass':bypass,'Cache-Control':'no-cache'}});
+            for(const [path,marker] of routes){
+              const page=await context.newPage();
+              const res=await page.goto(base+path,{waitUntil:'networkidle',timeout:45000});
+              const code=res?.status()??0; const text=await page.locator('body').innerText();
+              if(code!==200) failures.push(`${vp}:${path}:HTTP_${code}`);
+              if(!text.includes(marker)) failures.push(`${vp}:${path}:MARKER_MISSING`);
+              if(!text.includes('NON-PRODUCTION')) failures.push(`${vp}:${path}:NON_PRODUCTION_MISSING`);
+              const dims=await page.evaluate(()=>({sw:document.documentElement.scrollWidth,cw:document.documentElement.clientWidth}));
+              if(dims.sw>dims.cw+2) failures.push(`${vp}:${path}:HORIZONTAL_OVERFLOW:${dims.sw}>${dims.cw}`);
+              const h1=await page.locator('h1').count(); if(h1!==1) failures.push(`${vp}:${path}:H1_COUNT_${h1}`);
+              const main=await page.locator('main').count(); if(main!==1) failures.push(`${vp}:${path}:MAIN_COUNT_${main}`);
+              const unlabeled=await page.locator('button:not([aria-label]):not([aria-labelledby])').evaluateAll(els=>els.filter(e=>!(e.textContent||'').trim()).length);
+              if(unlabeled) failures.push(`${vp}:${path}:UNNAMED_BUTTON_${unlabeled}`);
+              const tables=await page.locator('table').count();
+              for(let i=0;i<tables;i++){if(await page.locator('table').nth(i).locator('th').count()===0) failures.push(`${vp}:${path}:TABLE_WITHOUT_HEADERS`);}
+              const axe=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa']).analyze();
+              const serious=axe.violations.filter(v=>['serious','critical'].includes(v.impact||''));
+              if(serious.length) failures.push(`${vp}:${path}:AXE:${serious.map(v=>v.id).join(',')}`);
+              await page.close();
+            }
+            await context.close();
+          }
+          await browser.close();
+          if(failures.length){console.error('BROWSER_ACCEPTANCE_FAIL\n'+failures.join('\n'));process.exit(1);}
+          console.log('RESPONSIVE_ACCEPTANCE_PASS viewports=1440,1024,768,390');
+          console.log('ACCESSIBILITY_AUTOMATION_PASS wcag2a,wcag2aa serious_critical=0');
+          console.log('FULL_ROUTE_BROWSER_ACCEPTANCE_PASS');
+          NODE
+      - name: Boundary summary
+        if: always()
+        run: |
+          echo 'Production: NOT TOUCHED'
+          echo 'Canonical activation: NOT ATTEMPTED'
+          echo 'Publication: NOT ATTEMPTED'
+          echo 'Audit Evidence admission: NOT ATTEMPTED'
+          echo 'PR merge: NOT ATTEMPTED'
+
+# FINAL_CONVERGENCE_TRIGGER: 03Q_AND_BROWSER_SAME_SHA
