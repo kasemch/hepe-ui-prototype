@@ -68,7 +68,7 @@ jobs:
             ['/mapping','PLO × Course / I-R-M'],['/evidence','Evidence Explorer'],['/qa','INSUFFICIENT VERIFIED EVIDENCE'],
             ['/reviews','Review Queue'],['/calendar','Academic Tasks'],['/audit','Provenance'],['/ai','AI ADVISORY'],
             ['/governance','Settings / Governance'],['/curriculum-import','AUTH_REQUIRED'],['/tqf3','มคอ.3'],
-            ['/tqf5','มคอ.5'],['/verification','ทวนสอบ'],['/tqf7','มคอ.7'],['/course-review','Course Review'],['/approval','Human Approval']
+            ['/tqf5','มคอ.5'],['/verification','ทวนสอบ'],['/tqf7','มคอ.7'],['/course-review','Course Review'],['/approval','Academic Approval Workflow']
           ];
           const viewports=[['desktop',1440,900],['laptop',1024,800],['tablet',768,900],['mobile',390,844]];
           const browser=await chromium.launch({headless:true});
