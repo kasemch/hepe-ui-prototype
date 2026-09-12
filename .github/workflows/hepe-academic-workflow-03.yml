@@ -18,7 +18,7 @@ jobs:
       - name: Install dependencies
         run: npm install --ignore-scripts --no-audit --no-fund
       - name: TypeScript check
-        run: npx tsc --noEmit --jsx react-jsx --moduleResolution bundler --module esnext --target es2020 --allowJs false --skipLibCheck --esModuleInterop app/page.tsx app/tqf3/page.tsx app/tqf5/page.tsx app/verification/page.tsx app/improvement-hub/page.tsx
+        run: npx tsc --noEmit --jsx react-jsx --moduleResolution bundler --module esnext --target es2020 --allowJs false --skipLibCheck --esModuleInterop app/page.tsx app/tqf3/page.tsx app/tqf5/page.tsx app/verification/page.tsx app/improvement-hub/page.tsx app/compliance/page.tsx app/calendar/page.tsx app/documents/page.tsx
       - name: Build
         env:
           NEXT_PUBLIC_SUPABASE_URL: https://lztxpjsuzqvtgyasfnyj.supabase.co
@@ -33,6 +33,9 @@ jobs:
           grep -q 'HUMAN' app/tqf5/page.tsx
           grep -q 'NO AUTOMATIC AUDIT EVIDENCE ADMISSION' app/verification/page.tsx
           grep -q 'PROGRAMME CHAIR' app/improvement-hub/page.tsx
+          grep -q 'NO EMAIL' app/compliance/page.tsx
+          grep -q 'CONTROLLED / VERSIONED SOURCE' app/calendar/page.tsx
+          grep -q 'Printed/exported ≠ Audit Evidence Admission' app/documents/page.tsx
           grep -q 'NOT CURRENT EXECUTION SCOPE' docs/hepe-support-01-deferred-requirement.md
           ! grep -R -E 'CANONICAL_ACTIVATE|PRODUCTION_DEPLOY|AUTO_ADMIT_EVIDENCE' app docs
           echo 'HEPE_WORKFLOW_03_STATIC_GOVERNANCE_PASS'
