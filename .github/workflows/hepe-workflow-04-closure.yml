@@ -82,10 +82,10 @@ jobs:
             const {data:ta,error:ae}=await admin.from('authority_assignments').insert({actor_id:prep.fixture.actor_id,role_id:role.role_id,authority_level_code:'A4',scope_type:'PROGRAMME',programme_id:p.programme_id,status:'ACTIVE',valid_until:new Date(Date.now()+20*60*1000).toISOString(),assignment_source:'DIRECT'}).select('authority_assignment_id').single();if(ae||!ta)fail(`TEMP_CHAIR_FAILED:${ae?.code??''}`);tempChairId=ta.authority_assignment_id;
             const prepCookie=await session(prep.user), noCookie=await session(noauth.user);
             const unauth=http('/api/workflow-documents');if(unauth.code!=='401'||!unauth.body.includes('AUTH_REQUIRED'))fail('DOC_UNAUTH_BOUNDARY_FAIL');
-            const d=http('/api/workflow-documents',{cookie:prepCookie,method:'POST',body:{programme_id:p.programme_id,course_offering_id:offeringId,document_type:'TQF3',title:'Synthetic Closure Document',source_reference:'HEPE-WORKFLOW-04-CLOSURE'}});if(d.code!=='201'||!d.body.includes('"state":"CREATED"')||!d.body.includes('"status":"DRAFT"'))fail(`DOC_POST_FAIL:${d.code}`);docId=JSON.parse(d.body).record.document_record_id;
+            const d=http('/api/workflow-documents',{cookie:prepCookie,method:'POST',body:{programme_id:p.programme_id,course_offering_id:offeringId,document_type:'TQF3',title:`Synthetic Closure Document ${E.GITHUB_RUN_ID}`,source_reference:'HEPE-WORKFLOW-04-CLOSURE'}});if(d.code!=='201'||!d.body.includes('"state":"CREATED"')||!d.body.includes('"status":"DRAFT"'))fail(`DOC_POST_FAIL:${d.code}:${d.body.slice(0,180)}`);docId=JSON.parse(d.body).record.document_record_id;
             const dg=http('/api/workflow-documents',{cookie:prepCookie});if(dg.code!=='200'||!dg.body.includes(docId))fail('DOC_GET_AUTH_FAIL');
             const ng=http('/api/workflow-documents',{cookie:noCookie});if(ng.code!=='200'||ng.body.includes(docId))fail('DOC_NOAUTH_LEAK');
-            const imp=http('/api/workflow-improvements',{cookie:prepCookie,method:'POST',body:{programme_id:p.programme_id,course_offering_id:offeringId,title:'Synthetic Closure Recommendation',category:'การวัดและประเมินผล',description:'Synthetic runtime acceptance only',priority:'MEDIUM',source_status:'SYNTHETIC_TEST',source_reference:'HEPE-WORKFLOW-04-CLOSURE'}});if(imp.code!=='201'||!imp.body.includes('RECOMMENDATION_CANDIDATE'))fail(`IMPROVEMENT_POST_FAIL:${imp.code}`);improvementId=JSON.parse(imp.body).item.improvement_item_id;
+            const imp=http('/api/workflow-improvements',{cookie:prepCookie,method:'POST',body:{programme_id:p.programme_id,course_offering_id:offeringId,title:'Synthetic Closure Recommendation',category:'ASSESSMENT',description:'Synthetic runtime acceptance only',priority:'MEDIUM',source_reference:'HEPE-WORKFLOW-04-CLOSURE'}});if(imp.code!=='201'||!imp.body.includes('RECOMMENDATION_CANDIDATE'))fail(`IMPROVEMENT_POST_FAIL:${imp.code}:${imp.body.slice(0,180)}`);improvementId=JSON.parse(imp.body).item.improvement_item_id;
             console.log('AUTHENTICATED_RUNTIME_ACCEPTANCE_PASS documents=POST_GET_RLS improvements=POST_RLS noauthority=no_leak');
           }catch(e){failure=e;console.error(`AUTH_RUNTIME_FAIL:${e.message}`)}finally{
             if(improvementId)await admin.from('improvement_items').delete().eq('improvement_item_id',improvementId);
@@ -96,14 +96,16 @@ jobs:
             if(termId)await admin.from('academic_terms').delete().eq('academic_term_id',termId);
             for(const x of [prep,noauth])if(x){await admin.from('actors').update({external_identity_subject:x.fixture.external_identity_subject}).eq('actor_id',x.fixture.actor_id);await admin.auth.admin.deleteUser(x.user.uid);}
             const marker='HEPE-WORKFLOW-04-CLOSURE';
-            const [{count:dc},{count:ic},{count:oc},{count:tc}]=await Promise.all([
-              admin.from('document_records').select('*',{count:'exact',head:true}).eq('source_reference',marker),
+            const [dr,ir,or,tr]=await Promise.all([
+              admin.from('document_records').select('*',{count:'exact',head:true}).eq('source_snapshot_reference',marker),
               admin.from('improvement_items').select('*',{count:'exact',head:true}).eq('source_reference',marker),
               admin.from('course_offerings').select('*',{count:'exact',head:true}).eq('source_reference',marker),
               admin.from('academic_terms').select('*',{count:'exact',head:true}).eq('source_reference',marker)
             ]);
-            if((dc??0)!==0||(ic??0)!==0||(oc??0)!==0||(tc??0)!==0&&!failure)failure=new Error('CLEANUP_RESIDUAL');
-            console.log(`MANDATORY_CLEANUP_VERIFIED documents=${dc??0} improvements=${ic??0} offerings=${oc??0} terms=${tc??0}`);
+            for(const [name,r] of [['documents',dr],['improvements',ir],['offerings',or],['terms',tr]])if(r.error&&!failure)failure=new Error(`CLEANUP_COUNT_ERROR:${name}:${r.error.code}`);
+            const dc=dr.count??0,ic=ir.count??0,oc=or.count??0,tc=tr.count??0;
+            if((dc!==0||ic!==0||oc!==0||tc!==0)&&!failure)failure=new Error('CLEANUP_RESIDUAL');
+            console.log(`MANDATORY_CLEANUP_VERIFIED documents=${dc} improvements=${ic} offerings=${oc} terms=${tc}`);
           }
           if(failure)throw failure;
           NODE
