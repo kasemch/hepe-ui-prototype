@@ -1,4 +1,5 @@
 import './globals.css';
+import './command-center.css';
 
 export const metadata = {
   title: "HEPE Academic Command Center · NON-PRODUCTION",
