@@ -4,15 +4,18 @@
 
 - Environment: NON-PRODUCTION ONLY
 - Artifact type: AI_ADVISORY / CURRICULUM_IMPROVEMENT_RECOMMENDATION_CANDIDATE
-- Human review: REQUIRED
-- Approved: NO
+- Human review: COMPLETED FOR RECOMMENDATION DISPOSITION
+- Recommendation disposition: APPROVED FOR FUTURE CURRICULUM IMPROVEMENT CONSIDERATION
+- Current curriculum change approved: NO
 - Activated: NO
 - Canonical curriculum write: NO
 - AI authority: NO
 - Audit Evidence Admission: NO
 - Production authorization: NO
+- Approval scope: Recommendation package only; no current curriculum mutation
+- Approval date: 2026-09-12
 
-This artifact is a recommendation package for a future curriculum-improvement cycle. It must not be interpreted as a current approved CLO set, approved curriculum mapping, current assessment plan, or audit evidence.
+This artifact is approved only as a recommendation package for consideration in a future curriculum-improvement cycle. This approval must not be interpreted as approval of a current CLO set, current curriculum mapping change, current assessment plan, database write, activation, publication, production authorization, or audit evidence admission.
 
 ## 1. Source Hierarchy Used for Analysis
 
@@ -48,7 +51,7 @@ The DPE-AQMS import workbook contains draft/human-review CLO, CLO→PLO, LLO/act
 
 ## 3. AI-Proposed CLO Set for Future Curriculum Review
 
-The following are proposals, not current approved CLOs.
+The following are proposals approved for future curriculum-improvement consideration only, not current approved CLOs.
 
 ### AI-CLO1 — Knowledge and critical understanding
 **Proposed statement:** อธิบาย วิเคราะห์ และจำแนกแนวคิดเกี่ยวกับพัฒนาการทางเพศ ความหลากหลายทางเพศ บทบาทและสิทธิทางเพศ สุขภาพการเจริญพันธุ์ และการป้องกันโรคติดต่อทางเพศสัมพันธ์โดยใช้หลักวิชาการและข้อมูลที่เชื่อถือได้
@@ -104,7 +107,7 @@ Recommended principle: use multiple forms of evidence and avoid relying on a sin
 
 Total: 100%
 
-**Status:** AI recommendation only. Course owner/programme committee must reconcile with the current/next TQF3 and institutional rules before adoption.
+**Status:** Approved for future curriculum-improvement consideration only. Course owner/programme committee must reconcile with the current/next TQF3 and institutional rules before any adoption.
 
 ## 6. Recommended Rubric Domains
 
@@ -155,7 +158,9 @@ No AI proposal should modify governed curriculum data until a separately authori
 
 ## 9. Disposition
 
-- Use this package as input to future curriculum-improvement discussion.
-- Do not import these AI proposals as approved curriculum records.
+- Disposition: APPROVED FOR FUTURE CURRICULUM IMPROVEMENT CONSIDERATION.
+- Use this package as an approved recommendation input to future curriculum-improvement discussion.
+- Do not import these AI proposals as current approved curriculum records.
 - If adopted later, each accepted recommendation must be converted into a human-reviewed controlled version with authority/provenance and effective date.
 - Current database truth remains unchanged except for previously authorized HEPE-DATA-01A course-description foundation.
+- Audit Evidence Admission remains NOT AUTHORIZED.
