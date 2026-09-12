@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
+export const hepeClosureRecoveryMarker = "HEPE-WORKFLOW-04-EXACT-SHA-RECOVERY";
 
 export async function GET() {
   return NextResponse.json(
