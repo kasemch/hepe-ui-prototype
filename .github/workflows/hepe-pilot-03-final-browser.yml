@@ -111,3 +111,5 @@ jobs:
           echo 'Publication: NOT ATTEMPTED'
           echo 'Audit Evidence admission: NOT ATTEMPTED'
           echo 'PR merge: NOT ATTEMPTED'
+
+# FINAL_CONVERGENCE_TRIGGER: 03Q_AND_BROWSER_SAME_SHA
