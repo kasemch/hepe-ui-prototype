@@ -39,11 +39,18 @@ jobs:
           test -f app/my-courses/page.tsx
           test -f 'app/course-workspace/[id]/page.tsx'
           test -f app/pilot-entry/page.tsx
+          test -f app/pilot-entry/PilotEntryClient.tsx
+          test -f app/globals.css
           grep -q 'NON-PRODUCTION' app/teaching/page.tsx
           grep -q 'NO EVIDENCE' app/plan-actual/page.tsx
           grep -q 'Human academic authority preserved' app/assessment/page.tsx
           grep -q 'course-workspace' app/my-courses/page.tsx
           grep -q 'Selected course context is preserved' app/pilot-entry/page.tsx
+          grep -q '60-SECOND AFTER-CLASS RECORD' app/pilot-entry/PilotEntryClient.tsx
+          grep -q '@media(max-width:760px)' app/globals.css
+          grep -q '@media(max-width:420px)' app/globals.css
+          grep -q ':focus-visible' app/globals.css
+          grep -q 'grid-template-columns:1fr' app/globals.css
           ! grep -R --line-number --include='*.ts' --include='*.tsx' 'service_role\|SERVICE_ROLE' app lib
 
       - name: Boundary summary
@@ -52,3 +59,5 @@ jobs:
           echo 'PRODUCTION_AUTHORIZATION=NOT_GRANTED'
           echo 'SCHEMA_RLS_CHANGE=NONE'
           echo 'REAL_DATA_WRITE=NONE'
+          echo 'RESPONSIVE_STATIC_ASSERTIONS=ENFORCED'
+          echo 'KEYBOARD_FOCUS_ASSERTION=ENFORCED'
