@@ -57,14 +57,12 @@ jobs:
           import { execFileSync } from 'node:child_process';
           import { createClient } from '@supabase/supabase-js';
           import { createServerClient } from '@supabase/ssr';
-
           const E = process.env;
           const admin = createClient(E.SUPABASE_URL, E.SUPABASE_ADMIN, {auth:{persistSession:false,autoRefreshToken:false}});
           const codes=['PREPARER_A','NO_AUTHORITY','REVIEWER_B'];
           const ctx=new Map(); let programme=null; let tempAuthorityId=null; let failure=null;
           const fail=(m)=>{throw new Error(m)};
           const hash=(x)=>crypto.createHash('sha256').update(JSON.stringify(x)).digest('hex');
-
           function request(path,cookie=''){
             const marker='__HEPE_HTTP__';
             const args=['--silent','--show-error','--max-time','30','-H',`x-vercel-protection-bypass: ${E.VERCEL_BYPASS}`,'-H','Cache-Control: no-cache'];
@@ -103,24 +101,20 @@ jobs:
             return {token:data.session.access_token,cookie};
           }
           function userClient(token){return createClient(E.SUPABASE_URL,E.SUPABASE_PUBLISHABLE_KEY,{auth:{persistSession:false,autoRefreshToken:false},global:{headers:{Authorization:`Bearer ${token}`}}});}
-
           try {
             const {data:p,error:pe}=await admin.from('programmes').select('programme_id,programme_code').eq('programme_code',E.TARGET_PROGRAMME_CODE).single();
             if(pe||!p) fail('TARGET_PROGRAMME_NOT_FOUND'); programme=p;
             for(const code of codes){const x=await loadPersona(code); if(x.actor.external_identity_subject!==x.fixture.external_identity_subject) fail(`BASELINE_SUBJECT_MISMATCH:${code}`); ctx.set(code,{...x,beforeHash:hash(x.assignments),synthetic:null});}
             for(const code of codes) if(await targetCount(ctx.get(code).actor.actor_id)!==0) fail(`UNEXPECTED_TARGET_AUTHORITY:${code}`);
             console.log('PRE_AUTHORITY_SNAPSHOT_PASS target_counts=0,0,0');
-
             const {data:role,error:re}=await admin.from('roles').select('role_id').eq('role_code','PREPARER').single(); if(re||!role) fail('PREPARER_ROLE_NOT_FOUND');
             const {data:ta,error:te}=await admin.from('authority_assignments').insert({actor_id:ctx.get('PREPARER_A').actor.actor_id,role_id:role.role_id,authority_level_code:'A0',scope_type:'PROGRAMME',programme_id:programme.programme_id,status:'ACTIVE',valid_until:new Date(Date.now()+15*60*1000).toISOString(),assignment_source:'DIRECT'}).select('authority_assignment_id').single();
             if(te||!ta) fail(`TEMP_A0_CREATE_FAILED:${te?.code??'UNKNOWN'}`); tempAuthorityId=ta.authority_assignment_id;
             if(await targetCount(ctx.get('PREPARER_A').actor.actor_id)!==1) fail('TEMP_A0_COUNT_NOT_ONE');
             console.log('TEMP_A0_PASS count=1 level=A0');
-
             for(const code of codes){const c=ctx.get(code); c.synthetic=await createSynthetic(code); const {error}=await admin.from('actors').update({external_identity_subject:c.synthetic.uid}).eq('actor_id',c.actor.actor_id); if(error) fail(`ACTOR_REBIND_FAILED:${code}`);}
             console.log('SYNTHETIC_USERS_CREATED count=3');
             const sessions=new Map(); for(const code of codes){sessions.set(code,await sessionFor(ctx.get(code).synthetic)); console.log(`SESSION_PASS persona=${code}`);}
-
             const prep=userClient(sessions.get('PREPARER_A').token);
             const {data:sum,error:se}=await prep.from('v_hepe_ingest_validation_summary').select('*').eq('programme_code',E.TARGET_PROGRAMME_CODE).eq('version_code',E.TARGET_VERSION_CODE).single();
             if(se||!sum) fail('PREPARER_SUMMARY_READ_FAILED');
@@ -129,7 +123,6 @@ jobs:
             if(ie||!imp?.some(x=>x.source_sha256===E.SOURCE_SHA)) fail('SOURCE_SHA_NOT_VISIBLE');
             if(imp.some(x=>x.is_active||x.is_published||x.canonical_activation_attempted||x.audit_evidence_admission_attempted)) fail('BOUNDARY_STATE_VIOLATION');
             console.log('PREPARER_A_RLS_READ_PASS metrics=92/16/54/151/7/99');
-
             for(const code of ['NO_AUTHORITY','REVIEWER_B']){
               const uc=userClient(sessions.get(code).token);
               const {data,error}=await uc.from('programmes').select('programme_id').eq('programme_code',E.TARGET_PROGRAMME_CODE);
@@ -140,7 +133,6 @@ jobs:
             const {data:wd,error:we}=await prep.from('programmes').update({programme_code:E.TARGET_PROGRAMME_CODE}).eq('programme_code',E.TARGET_PROGRAMME_CODE).select('programme_id');
             if(!we && (wd??[]).length>0) fail('A0_WRITE_UNEXPECTEDLY_ALLOWED');
             console.log('A0_WRITE_DENY_PASS');
-
             const unauth=request('/curriculum-import'); if(unauth.code!=='200'||!unauth.body.includes('AUTH_REQUIRED')) fail('UNAUTHENTICATED_BOUNDARY_FAIL');
             const auth=request('/curriculum-import',sessions.get('PREPARER_A').cookie); if(auth.code!=='200'||!auth.body.includes('NON-PRODUCTION')) fail('AUTHENTICATED_BROWSER_FAIL');
             for(const [path,marker] of [['/','Academic Command Center'],['/pilot','Controlled Pilot Readiness'],['/programme','Programme Overview'],['/curriculum','Curriculum Structure'],['/study-plan','Study Plan'],['/traceability','PLO / Course Traceability'],['/mapping','PLO × Course / I-R-M'],['/evidence','Evidence Explorer'],['/qa','INSUFFICIENT VERIFIED EVIDENCE'],['/reviews','Review Queue'],['/calendar','Academic Tasks'],['/audit','Provenance'],['/ai','AI ADVISORY'],['/governance','Settings / Governance']]){const r=request(path); if(r.code!=='200'||!r.body.includes(marker)||!r.body.includes('NON-PRODUCTION')) fail(`ROUTE_ACCEPTANCE_FAIL:${path}`);}
@@ -155,7 +147,6 @@ jobs:
           if(failure) throw failure;
           console.log('HEPE_PILOT_03Q_AUTH_REGRESSION_PASS');
           NODE
-
       - name: Final boundary summary
         run: |
           echo "APPLICATION_SHA=${GITHUB_SHA}"
@@ -165,3 +156,5 @@ jobs:
           echo 'AUDIT_EVIDENCE_ADMISSION=NOT_ATTEMPTED'
           echo 'PRODUCTION=NOT_TOUCHED'
           echo 'PR_MERGE=NOT_ATTEMPTED'
+
+# RETEST_REVISION: TRACK_B_FINAL_EXACT_SHA_20260912
