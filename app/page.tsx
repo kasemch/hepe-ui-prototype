@@ -1,25 +1,49 @@
-const modules = [
-  ['programme','Programme Overview'],['curriculum','Curriculum Overview'],['traceability','PLO / CLO Traceability'],['mapping','Curriculum Mapping / I-R-M'],['reviews','Review Queue'],['decisions','Approval / Decision Workspace'],['evidence','Evidence Explorer'],['findings','Findings & Improvement'],['qa','QA / CPRR Readiness'],['tasks','Academic Tasks / Approval Center'],['ai','AI Advisory / Academic Intelligence'],['analytics','Analytics & Insights'],['calendar','Academic Calendar'],['audit','Provenance / Audit Trail'],['runtime','Runtime / Connector Health'],['outbox','Outbox Queue'],['reconciliation','Reconciliation Workspace'],['governance','System Governance / Gate Status'],['welcome','Welcome / Authentication Entry']
+const teacherModules = [
+  ['my-courses','My Courses'],['pilot-entry','Quick Entry'],['teaching','Learning & Teaching'],['assessment','Assessment'],['plan-actual','Plan vs Actual'],['evidence','Evidence'],['tasks','Academic Tasks']
 ];
 
-const primary = new Set(['programme','curriculum','traceability','mapping','reviews','evidence','qa','decisions','tasks']);
+const governanceModules = [
+  ['programme','Programme Overview'],['curriculum','Curriculum Overview'],['traceability','PLO / CLO Traceability'],['mapping','Curriculum Mapping / I-R-M'],['reviews','Review Queue'],['decisions','Approval / Decision Workspace'],['findings','Findings & Improvement'],['qa','QA / CPRR Readiness'],['ai','AI Advisory / Academic Intelligence'],['analytics','Analytics & Insights'],['calendar','Academic Calendar'],['audit','Provenance / Audit Trail'],['runtime','Runtime / Connector Health'],['outbox','Outbox Queue'],['reconciliation','Reconciliation Workspace'],['governance','System Governance / Gate Status'],['welcome','Welcome / Authentication Entry']
+];
 
 export default function Home(){
  return <main className="shell">
   <aside className="sidebar">
-   <div className="brand-kicker">HEPE · BED-HEPE</div><div className="brand">Academic Command Center</div>
-   <p className="brand-sub">Curriculum governance, evidence, academic authority and quality assurance in one controlled workspace.</p><div className="env">● NON-PRODUCTION</div>
-   <nav className="nav" aria-label="HEPE modules"><a className="active" href="/">Command Center</a><div className="nav-group">Core academic workflow</div>{modules.filter(([s])=>primary.has(s)).map(([s,l])=><a key={s} href={`/${s}`}>{l}</a>)}<div className="nav-group">Intelligence & governance</div>{modules.filter(([s])=>!primary.has(s)).map(([s,l])=><a key={s} href={`/${s}`}>{l}</a>)}</nav>
+   <div className="brand-kicker">HEPE · TEACHER WORKSPACE</div><div className="brand">My Academic Workspace</div>
+   <p className="brand-sub">งานสอนก่อน ระบบกำกับและหลักฐานทำงานอยู่ด้านหลัง</p><div className="env">● NON-PRODUCTION</div>
+   <nav className="nav" aria-label="HEPE teacher navigation"><a className="active" href="/">My Workspace</a><div className="nav-group">งานประจำวัน</div>{teacherModules.map(([s,l])=><a key={s} href={`/${s}`}>{l}</a>)}<div className="nav-group">Programme & Governance</div>{governanceModules.slice(0,8).map(([s,l])=><a key={s} href={`/${s}`}>{l}</a>)}</nav>
   </aside>
   <section className="workspace">
-   <header className="topline"><div><div className="eyebrow">HEPE Curriculum Governance & Development</div><h1 className="page-title">Programme Command Center</h1><p className="page-subtitle">Evidence-first academic governance for curriculum, outcomes, reviews, evidence and human-authority decisions. Only controlled or verified information is presented as fact.</p></div><div className="contexts"><span className="chip">Academic Year · 2569</span><span className="chip">Programme · BED-HEPE</span><span className="chip">Curriculum · 2567</span></div></header>
-   <section className="hero-modern" aria-labelledby="hero-title"><div className="brand-kicker">Master UI Prototype · Academic Experience</div><h2 id="hero-title">One academic governance platform, from curriculum structure to evidence-backed decisions.</h2><p>The interface brings academic workflows forward while Supabase, Vercel, GitHub and other implementation infrastructure remain behind the experience. Human academic authority and RLS boundaries remain unchanged.</p><div className="hero-actions"><a className="button" href="/reviews">Open Review Queue</a><a className="button secondary" href="/evidence">Explore Evidence</a><a className="button secondary" href="/mapping">Open PLO/CLO Mapping</a></div></section>
-   <div className="notice">Controlled Preview · REL-03 authenticated runtime binding is verified for synthetic NON-PRODUCTION personas. Live remote connector execution remains NOT VERIFIED / NOT AUTHORIZED.</div>
-   <section aria-label="Programme governance status" className="grid g4">{[['Governance Foundation','CONTROLLED','REL-01 / REL-02'],['Persistence & RLS','VERIFIED','REL-02A controlled foundation'],['Application Runtime','PASS','REL-03 controlled / reconciled'],['Preview Experience','NON-PRODUCTION','Protected test-data environment']].map(([a,b,c])=><article className="card interactive" key={a}><div className="label">{a}</div><div className="value">{b}</div><div className="note">{c}</div></article>)}</section>
-   <div className="grid g2" style={{marginTop:14}}><article className="card"><h2 className="section-title">Programme Readiness</h2>{[['Curriculum baseline','Controlled'],['Evidence governance','Controlled'],['Authority / RLS','Verified'],['Durable persistence','Verified'],['Authenticated runtime binding','Verified — synthetic preview']].map(([a,b])=><div className="row" key={a}><span>{a}</span><span className="status status-ok">{b}</span></div>)}</article><article className="card"><h2 className="section-title">Governance Gate Register</h2>{[['REL-01','PASS'],['REL-02','PASS'],['REL-02A','PASS + documented repair'],['REL-03','CONTROLLED / RECONCILED PASS'],['Production','NOT AUTHORIZED']].map(([a,b])=><div className="row" key={a}><span>{a}</span><span className="status">{b}</span></div>)}</article></div>
-   <section style={{marginTop:14}} aria-labelledby="workflow-title"><div className="eyebrow">Academic workflow</div><h2 className="section-title" id="workflow-title" style={{marginTop:6}}>Core workspaces</h2><div className="grid g3">{[['PLO / CLO Mapping','Trace outcomes, course relationships and I-R-M without changing controlled mappings.','mapping'],['Review Queue','Authority-aware academic review with RLS-preserving runtime reads.','reviews'],['Evidence Explorer','Provenance, evidence type, verification and admissibility status.','evidence'],['Approval Center','Human-governed decision context; AI cannot approve academic decisions.','decisions'],['QA / CPRR','Quality assurance and programme review workspace without fabricated scores.','qa'],['AI Advisory','Academic intelligence is advisory only and cannot replace human authority.','ai']].map(([a,b,s])=><article className="card interactive" key={a}><span className="screen-tag">Academic workspace</span><div className="value" style={{fontSize:17}}>{a}</div><p className="note">{b}</p><a className="note" href={`/${s}`} style={{display:'inline-block',marginTop:10,fontWeight:750,color:'var(--brand)'}}>Open workspace →</a></article>)}</div></section>
-   <article className="card" style={{marginTop:14}}><div className="eyebrow">Platform map</div><h2 className="section-title" style={{marginTop:6}}>Master screen families and workspaces</h2><div className="grid g4">{modules.map(([s,l])=><a className="module-link" key={s} href={`/${s}`}>{l}</a>)}</div></article>
-   <footer className="footer-note">HEPE Curriculum Governance & Development · HEPE-UI-MASTER-01 · Evidence-first · Human academic authority preserved · NON-PRODUCTION · TEST DATA ONLY.</footer>
+   <header className="topline"><div><div className="eyebrow">HEPE Curriculum Governance & Development</div><h1 className="page-title">My Academic Workspace</h1><p className="page-subtitle">เปิดรายวิชา บันทึกการสอน เพิ่มหลักฐาน และติดตามความก้าวหน้ารายวิชา โดยไม่ต้องเริ่มจากเมนู Governance</p></div><div className="contexts"><span className="chip">Academic Year · 2569</span><span className="chip">Environment · Synthetic Pilot</span></div></header>
+
+   <section className="hero-modern" aria-labelledby="today-title"><div className="brand-kicker">WORK-FIRST · ONE ENTRY → MANY OUTPUTS</div><h2 id="today-title">วันนี้เริ่มงานจากตรงนี้</h2><p>เปิด My Courses เพื่อเลือกรายวิชา หรือใช้ Quick Entry เพื่อบันทึกงานหลังสอน แล้วระบบนำข้อมูลเดียวกันไปใช้กับ Teaching Record, Evidence และ Plan vs Actual โดยคง Human Authority และ RLS เดิม</p><div className="hero-actions"><a className="button" href="/my-courses">เปิดรายวิชาของฉัน</a><a className="button secondary" href="/pilot-entry">บันทึกหลังสอน / Quick Entry</a><a className="button secondary" href="/teaching">Teaching Record</a><a className="button secondary" href="/plan-actual">Plan vs Actual</a></div></section>
+
+   <div className="notice">NON-PRODUCTION · SYNTHETIC TEST DATA ONLY · ข้อมูลที่ระบบมีแล้วไม่ควรถามผู้ใช้ซ้ำ · Production authorization not granted.</div>
+
+   <section aria-label="Daily academic workflow" className="grid g4">{[
+    ['My Courses','CONNECTED','เริ่มจากรายวิชาที่มองเห็นตามสิทธิ์'],
+    ['Quick Entry','READY','บันทึกการสอนและหลักฐานจากงานประจำวัน'],
+    ['Teaching Record','CONNECTED','อ่านกิจกรรม แผน และ delivery ภายใต้ RLS'],
+    ['Plan vs Actual','CONNECTED','เปรียบเทียบแผนกับหลักฐานการสอนจริง']
+   ].map(([a,b,c])=><article className="card interactive" key={a}><div className="label">{a}</div><div className="value">{b}</div><div className="note">{c}</div></article>)}</section>
+
+   <div className="grid g2" style={{marginTop:14}}>
+    <article className="card"><div className="eyebrow">60-Second After-Class Record</div><h2 className="section-title" style={{marginTop:6}}>บันทึกหลังสอนให้สั้นที่สุด</h2><p className="note">เลือกกิจกรรม → ระบุภาค/วันที่ → บันทึก ระบบบังคับ synthetic scope และ authority ที่ฐานข้อมูล ไม่สร้างช่อง bypass ใหม่</p><a className="button" href="/pilot-entry" style={{display:'inline-block',marginTop:12}}>เริ่มบันทึก</a></article>
+    <article className="card"><div className="eyebrow">Course Continuity</div><h2 className="section-title" style={{marginTop:6}}>จาก Plan ไป Actual</h2><p className="note">Teaching Record และ Plan vs Actual ใช้ข้อมูลจากแหล่งเดียวกัน เพื่อเตรียมเส้นทางต่อไปสู่ Course Record, Verification และ มคอ.5 โดยไม่กรอกซ้ำ</p><a className="button secondary" href="/plan-actual" style={{display:'inline-block',marginTop:12}}>ตรวจความก้าวหน้า</a></article>
+   </div>
+
+   <section style={{marginTop:14}} aria-labelledby="workspaces-title"><div className="eyebrow">My workspaces</div><h2 className="section-title" id="workspaces-title" style={{marginTop:6}}>งานที่ใช้บ่อย</h2><div className="grid g3">{[
+    ['My Courses','เปิดรายวิชาที่เห็นได้ตาม RLS แล้วไปยังงานสอนที่เกี่ยวข้อง','my-courses'],
+    ['Quick Entry','บันทึกการสอนจริงและหลักฐานการประเมินจากหน้าสั้น ๆ','pilot-entry'],
+    ['Learning & Teaching','ดูแผน กิจกรรม CLO links และ delivery records','teaching'],
+    ['Assessment','ดู assessment versions และ outcome alignment','assessment'],
+    ['Plan vs Actual','ดูสิ่งที่วางแผนเทียบกับสิ่งที่มีหลักฐานการสอนจริง','plan-actual'],
+    ['Evidence','ดู provenance และหลักฐานที่ระบบเชื่อมจากงานประจำ','evidence']
+   ].map(([a,b,s])=><article className="card interactive" key={a}><span className="screen-tag">Teacher workspace</span><div className="value" style={{fontSize:17}}>{a}</div><p className="note">{b}</p><a className="note" href={`/${s}`} style={{display:'inline-block',marginTop:10,fontWeight:750,color:'var(--brand)'}}>Open →</a></article>)}</div></section>
+
+   <article className="card" style={{marginTop:14}}><div className="eyebrow">Governance behind the scenes</div><h2 className="section-title" style={{marginTop:6}}>Programme / QA / Governance</h2><p className="note">เมนูด้านล่างยังคงอยู่สำหรับ Programme Chair, Reviewer และ QA แต่ไม่ควรเป็นจุดเริ่มต้นของผู้สอนในงานประจำวัน</p><div className="grid g4" style={{marginTop:12}}>{governanceModules.map(([s,l])=><a className="module-link" key={s} href={`/${s}`}>{l}</a>)}</div></article>
+
+   <footer className="footer-note">HEPE USABLE-APP CLOSURE · Work-first · One Entry → Many Outputs · Human academic authority preserved · NON-PRODUCTION · TEST DATA ONLY.</footer>
   </section>
  </main>
 }
