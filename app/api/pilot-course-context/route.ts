@@ -1,5 +1,5 @@
 import {NextRequest,NextResponse} from 'next/server';
-import {loadPilotReadModel} from '@/lib/hepe/pilot-read';
+import {loadPilotReadModel} from '../../../lib/hepe/pilot-read';
 
 export async function GET(req:NextRequest){
  const model=await loadPilotReadModel();
