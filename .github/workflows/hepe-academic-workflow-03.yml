@@ -1,0 +1,48 @@
+name: HEPE Academic Workflow 03 Quality
+
+on:
+  push:
+    branches: [feat/hepe-academic-workflow-03-exec]
+  pull_request:
+    branches: [feat/hepe-controlled-pilot-03]
+
+permissions:
+  contents: read
+
+jobs:
+  academic-workflow-quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: TypeScript check
+        run: npx tsc --noEmit
+      - name: Build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://lztxpjsuzqvtgyasfnyj.supabase.co
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_7bv5GR0-ksXJn91sRHV0Mg_k4nblIGI
+        run: npm run build
+      - name: Governance boundary assertions
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -R -q 'NON-PRODUCTION' app
+          grep -q 'AI' app/tqf3/page.tsx
+          grep -q 'HUMAN' app/tqf5/page.tsx
+          grep -q 'NO AUTOMATIC AUDIT EVIDENCE ADMISSION' app/verification/page.tsx
+          grep -q 'PROGRAMME CHAIR' app/improvement-hub/page.tsx
+          grep -q 'NOT CURRENT EXECUTION SCOPE' docs/hepe-support-01-deferred-requirement.md
+          ! grep -R -E 'CANONICAL_ACTIVATE|PRODUCTION_DEPLOY|AUTO_ADMIT_EVIDENCE' app docs
+          echo 'HEPE_WORKFLOW_03_STATIC_GOVERNANCE_PASS'
+      - name: Boundary summary
+        run: |
+          echo 'Environment: NON-PRODUCTION'
+          echo 'Schema migration: NOT ATTEMPTED'
+          echo 'IAM/RLS semantic expansion: NOT ATTEMPTED'
+          echo 'Real-user provisioning: NOT ATTEMPTED'
+          echo 'Email/SMTP: NOT ATTEMPTED'
+          echo 'Canonical activation/publication: NOT ATTEMPTED'
+          echo 'Audit Evidence admission: NOT ATTEMPTED'
+          echo 'PR merge: NOT ATTEMPTED'
