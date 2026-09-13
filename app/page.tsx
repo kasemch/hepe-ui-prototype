@@ -29,7 +29,7 @@ export default function Home(){
 
    <div className="grid g2" style={{marginTop:14}}>
     <article className="card"><div className="eyebrow">60-Second After-Class Record</div><h2 className="section-title" style={{marginTop:6}}>บันทึกหลังสอนให้สั้นที่สุด</h2><p className="note">เลือกกิจกรรม → ระบุภาค/วันที่ → บันทึก ระบบบังคับ synthetic scope และ authority ที่ฐานข้อมูล ไม่สร้างช่อง bypass ใหม่</p><a className="button" href="/pilot-entry" style={{display:'inline-block',marginTop:12}}>เริ่มบันทึก</a></article>
-    <article className="card"><div className="eyebrow">Course Continuity</div><h2 className="section-title" style={{marginTop:6}}>จาก Plan ไป Actual</h2><p className="note">Teaching Record และ Plan vs Actual ใช้ข้อมูลจากแหล่งเดียวกัน เพื่อเตรียมเส้นทางต่อไปสู่ Course Record, Verification และ มคอ.5 โดยไม่กรอกซ้ำ</p><a className="button secondary" href="/plan-actual" style={{display:'inline-block',marginTop:12}}>ตรวจความก้าวหน้า</a></article>
+    <article className="card"><div className="eyebrow">Course Continuity</div><h2 className="section-title" style={{marginTop:6}}>จาก Plan ไป Actual</h2><p className="note">Teaching Record และ Plan vs Actual ใช้ข้อมูลจากแหล่งเดียวกัน เพื่อเตรียมเส้นทางต่อไปสู่ Course Record, Verification และ มคอ.5 โดยไม่กรอกซ้ำ</p><a className="button" href="/plan-actual" style={{display:'inline-block',marginTop:12}}>ตรวจความก้าวหน้า</a></article>
    </div>
 
    <section style={{marginTop:14}} aria-labelledby="workspaces-title"><div className="eyebrow">My workspaces</div><h2 className="section-title" id="workspaces-title" style={{marginTop:6}}>งานที่ใช้บ่อย</h2><div className="grid g3">{[
