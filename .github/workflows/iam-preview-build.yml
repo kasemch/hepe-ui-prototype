@@ -42,16 +42,25 @@ jobs:
           done
           cat /tmp/hepe-iam-next.log
           exit 1
-      - name: Smoke test IAM routes
+      - name: Smoke test IAM routes and negative auth paths
         run: |
           set -euo pipefail
           for path in / /login /user-access /user-access/effective-access; do
             code=$(curl -sS -o /tmp/route-body -w '%{http_code}' "http://127.0.0.1:3000${path}")
             test "$code" = "200" || { echo "$path expected 200, got $code"; cat /tmp/route-body; exit 1; }
           done
+
           code=$(curl -sS -o /tmp/callback-body -w '%{http_code}' http://127.0.0.1:3000/auth/callback)
           test "$code" = "400" || { echo "/auth/callback expected 400 without code, got $code"; cat /tmp/callback-body; exit 1; }
           grep -q 'HEPE_AUTH_CALLBACK_CODE_MISSING' /tmp/callback-body
+
+          code=$(curl -sS -D /tmp/error-headers -o /tmp/error-body -w '%{http_code}' 'http://127.0.0.1:3000/auth/callback?error=access_denied&error_description=synthetic')
+          test "$code" = "307" || { echo "controlled auth error expected 307, got $code"; cat /tmp/error-headers; exit 1; }
+          grep -qi 'location: .*\/auth\/callback\/status?status=error' /tmp/error-headers
+          grep -qi 'reason=access_denied' /tmp/error-headers
+
+          code=$(curl -sS -o /tmp/status-body -w '%{http_code}' 'http://127.0.0.1:3000/auth/callback/status?status=error&reason=access_denied')
+          test "$code" = "200" || { echo "/auth/callback/status expected 200, got $code"; cat /tmp/status-body; exit 1; }
       - name: Stop synthetic runtime
         if: always()
         run: |
