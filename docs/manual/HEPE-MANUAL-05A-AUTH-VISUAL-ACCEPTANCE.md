@@ -4,40 +4,81 @@ Project: HEPE Curriculum Governance & Development
 Environment: NON-PRODUCTION ONLY
 Branch: docs/hepe-manual-04-help-tour-blueprint
 Baseline: feat/hepe-pilot-master-01 @ 259baf896a34c89d0e974520f564bbec2e9269f3
-Current HEPE-MANUAL-05A head: 4c8c8202da2275059155c3641ac5bb69a65c9bc3
+Rendered-capture head: e18cded2e1dacc984927f4567349c1bb3b210ddd
 PR: #38 (DRAFT / NOT MERGED)
 
 ## Gate objective
 
 Validate the HEPE Help Center and Guided Tour on the protected Preview, capture the P0 screenshot library, verify keyboard/focus/contrast/overflow behavior, and prepare the visual-ready Quick Start package before any merge consideration.
 
-## Authenticated browser status
+## Protected Preview rendered capture
 
-Vercel share access was generated for the exact Preview, but direct protected-page fetch still redirects to Vercel SSO. Therefore no rendered screenshot is admitted in this gate yet. No simulated screenshot is substituted.
+A dedicated GitHub Actions runner reused the existing Vercel automation bypass secret without changing Vercel protection settings. The runner verified the exact Preview SHA and NON-PRODUCTION boundary before browser execution.
 
-Status: PENDING_AUTH_CAPTURE
+Workflow run: 34755124056
+Job: visual-capture
+Conclusion: SUCCESS
+Artifact: hepe-manual-05a-visual-capture-e18cded2e1dacc984927f4567349c1bb3b210ddd
+Artifact digest: sha256:b7a819dd8861bdd2e233926e44dc45959d1166608600a9aa4fd2063a43838517
+Retention: 14 days
 
-## Verified non-visual checks
+The browser run produced 18 real rendered PNG captures across Desktop 1440x900 and Mobile 390x844 plus a machine-readable visual-capture-report.json.
 
-### Build/runtime
-- Vercel Preview deployment for head 4c8c8202da2275059155c3641ac5bb69a65c9bc3: READY.
-- HEPE-MANUAL-05 structural/keyboard regression: PASS (21 checks).
-- Next.js compile/type/static generation: PASS.
-- /help and /help/[slug] routes are present in build output.
+Important scope boundary: Vercel Protection was bypassed for automation only. No HEPE authenticated application session was created. No IAM mutation, database write, authority grant, or Production action was performed.
 
-### Keyboard/focus review
-An acceptance review identified that the initial modal implementation exposed dialog semantics but did not yet explicitly manage modal focus or Escape closure. HEPE-MANUAL-05A patched the tour layer to:
-- move focus into the dialog when opened;
-- trap Tab / Shift+Tab inside tour controls;
-- close on Escape;
-- restore focus to the Guided tour launcher after closure;
-- expose aria-haspopup=dialog and aria-expanded on the launcher;
-- add aria-describedby and an explicit close-button accessible name.
+## Rendered browser results
 
-These semantics are now included in the 21-check build regression. Runtime browser confirmation remains pending authenticated capture.
+Automated assertions for every admitted route/state:
+- HTTP response: PASS
+- NON-PRODUCTION boundary visible: PASS
+- Horizontal overflow: none detected
+- axe WCAG 2A/2AA serious/critical violations: 0
+- Desktop capture: PASS
+- Mobile capture: PASS
+- Guided Tour opens in rendered browser: PASS
+- Focus enters the tour dialog: PASS
+- Escape closes the tour dialog: PASS
 
-### Contrast calculation
-Static color-pair calculations against current CSS:
+Captured rendered screens:
+- SS-CMD-01 — My Academic Workspace
+- SS-COURSE-01 — My Courses
+- SS-LRN-01 — Learning & Teaching
+- SS-ASM-01 — Assessment
+- SS-EVD-01 — Evidence
+- SS-PLAN-01 — Plan vs Actual
+- SS-TRC-01 — PLO / CLO Traceability
+- SS-HELP-01 — Help Center
+- SS-TOUR-01 — Guided Tour desktop
+- SS-TOUR-02 — Guided Tour mobile
+
+For RLS-protected academic screens, the captured state is AUTH_REQUIRED because no HEPE application session was created. This is accepted as fail-closed rendered evidence, but it is not a substitute for authenticated VERIFIED-state screenshots.
+
+## Human visual review
+
+Manually reviewed rendered PNGs confirm:
+- Help Center desktop hierarchy is clear and visually consistent with HEPE.
+- Help Center mobile collapses cleanly to one column with readable cards.
+- Guided Tour modal is readable on desktop and mobile.
+- NON-PRODUCTION / TEST DATA ONLY boundary remains prominent.
+- Help / Guided Tour controls remain visible without apparent clipping.
+- My Courses AUTH_REQUIRED state is explicit and does not fabricate or fallback to privileged course data.
+- No obvious horizontal clipping or unreadable layout was observed in the sampled rendered captures.
+
+## Keyboard/focus review
+
+The tour implementation includes:
+- focus move into dialog on open;
+- Tab / Shift+Tab containment inside tour controls;
+- Escape-to-close;
+- focus restoration to Guided Tour launcher;
+- aria-haspopup=dialog and aria-expanded;
+- aria-describedby and explicit close-button accessible name.
+
+These semantics are covered by the 21-check build regression and focus/Escape behavior was also exercised in the rendered browser run.
+
+## Contrast calculation
+
+Static CSS color-pair calculations:
 - #173956 on #ffffff = 11.96:1 — PASS WCAG AA normal text.
 - #667085 on #ffffff = 4.97:1 — PASS WCAG AA normal text.
 - #245f8f on #ffffff = 6.76:1 — PASS WCAG AA normal text.
@@ -46,43 +87,31 @@ Static color-pair calculations against current CSS:
 - #315f80 on #eaf2f8 = 6.03:1 — PASS.
 - #645538 on #fff8e9 = 6.85:1 — PASS.
 
-These are calculated CSS color checks, not rendered-browser contrast evidence.
+These remain calculated CSS contrast checks; full WCAG conformance is not claimed.
 
-### Responsive / overflow structural review
-Current CSS defines responsive transitions at 1100px, 900px, 760px, 620px and 420px across app/help surfaces. Main grids collapse to fewer columns and then single-column layouts; Help article sidebars unstick at <=900px; Help cards collapse at <=620px; tour actions become a two-column grid on narrow screens; main navigation collapses to a single column at <=420px.
+## Remaining authenticated capture set
 
-Rendered-browser overflow verification remains PENDING_AUTH_CAPTURE.
-
-## Required visual capture set
-
-1. SS-CMD-01 — My Academic Workspace
-2. SS-COURSE-01 — My Courses
-3. SS-COURSE-02 — Course Workspace
-4. SS-ENTRY-01A — Quick Entry full view
-5. SS-ENTRY-01B — Teaching entry
-6. SS-ENTRY-01C — Assessment evidence entry
-7. SS-ENTRY-01D — Save-success state
-8. SS-LRN-01 — Learning & Teaching
-9. SS-ASM-01 — Assessment
-10. SS-EVD-01 — Evidence
-11. SS-PLAN-01 — Plan vs Actual
-12. SS-TRC-01 — PLO / CLO Traceability
-13. SS-HELP-01 — Help Center
-14. SS-TOUR-01 — Guided Tour dialog desktop
-15. SS-TOUR-02 — Guided Tour dialog mobile
-
-## Capture acceptance criteria
-
-Each admitted image must identify the exact deployment/commit, show NON-PRODUCTION context where applicable, use synthetic/test data only, contain no secret/token/sensitive real-user data, use 100% browser zoom, and be reviewed for clipping, horizontal overflow, unreadable callouts and stale UI state.
-
-Target viewports:
-- Desktop: 1440 x 900
-- Mobile: 390 x 844
+Still pending because it requires a HEPE application session and current gate does not authorize IAM/identity mutation:
+- SS-COURSE-01 — VERIFIED authenticated course list state
+- SS-COURSE-02 — Course Workspace
+- SS-ENTRY-01A — Quick Entry full view
+- SS-ENTRY-01B — Teaching entry
+- SS-ENTRY-01C — Assessment evidence entry
+- SS-ENTRY-01D — Save-success state
+- SS-LRN-01 — VERIFIED authenticated teaching state
+- SS-ASM-01 — VERIFIED authenticated assessment state
+- SS-EVD-01 — VERIFIED authenticated evidence state
+- SS-PLAN-01 — authenticated plan/actual state
+- SS-TRC-01 — authenticated traceability state
 
 ## Gate verdict
 
 IMPLEMENTATION / BUILD / STRUCTURAL ACCESSIBILITY: PASS.
-AUTHENTICATED RENDERED VISUAL ACCEPTANCE: PENDING.
-SCREENSHOT CAPTURE: PENDING_AUTH_CAPTURE.
+PROTECTED-PREVIEW RENDERED VISUAL ACCEPTANCE: PASS.
+HELP CENTER + GUIDED TOUR DESKTOP/MOBILE VISUAL ACCEPTANCE: PASS.
+FAIL-CLOSED AUTH_REQUIRED RENDERING: PASS.
+AUTHENTICATED HEPE VERIFIED-STATE CAPTURE: PENDING SEPARATE AUTHORIZATION / EXISTING NON-MUTATING SESSION.
+SCREENSHOT LIBRARY v1.0: PARTIAL RENDERED SET AVAILABLE; authenticated workflow images pending.
+PR #38: REMAINS DRAFT / NOT MERGED.
 
-Screenshot Library v1.0 is currently a registry-only package until real rendered images are captured. PR #38 remains DRAFT and must not be merged on this gate alone. This document is controlled project context and is not automatically Audit Evidence.
+This record is project-controlled context. Admission as Audit Evidence requires the project evidence-admission process and explicit provenance/authority handling.
