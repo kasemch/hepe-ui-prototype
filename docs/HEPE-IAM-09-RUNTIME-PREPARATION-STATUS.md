@@ -1,6 +1,6 @@
 # HEPE-IAM-09B/09C/09F Runtime Preparation Status
 
-Status: NON-PRODUCTION / SYNTHETIC-ONLY / 09F HOLD
+Status: NON-PRODUCTION / SYNTHETIC-ONLY / 09F PARTIAL PASS — PREVIEW HOLD
 Date: 2026-09-13
 Branch: `feat/hepe-iam-09-user-access`
 
@@ -25,40 +25,62 @@ Branch: `feat/hepe-iam-09-user-access`
 - No RLS modification.
 - No production authorization.
 
-## 09F build verification evidence
+## 09F verification evidence
 
-### EV-IAM-09F-01 — Vercel preview build failure
+### EV-IAM-09F-01 — Initial Vercel preview build failure
 
-- Source: Vercel deployment `dpl_BHAXgxzzuRpGXMRCX8nmacRZDnFe`
-- Branch: `feat/hepe-iam-09-user-access`
-- Commit: `d24e999ddbf3a0deca745a990d4b624ac123ad45`
+- Source: Vercel deployment `dpl_BHAXgxzzuRpGXMRCX8nmacRZDnFe`.
+- Branch: `feat/hepe-iam-09-user-access`.
+- Commit: `d24e999ddbf3a0deca745a990d4b624ac123ad45`.
 - Expected: `npm run build` completes successfully.
 - Actual: Next.js stopped because TypeScript build dependencies were absent.
 - Result: FAIL.
-- Remediation committed: add `typescript`, `@types/react`, and `@types/node` devDependencies in commit `9cc3ad54b26e561bd46be0fa408de191b1259352`.
+- Remediation: `typescript`, `@types/react`, and `@types/node` were added as development dependencies in commit `9cc3ad54b26e561bd46be0fa408de191b1259352`.
 
-### EV-IAM-09F-02 — Controlled CI verification workflow
+### EV-IAM-09F-02 — First controlled CI attempt
 
-- Added `.github/workflows/iam-preview-build.yml` in commit `e9d5147d2a6567dd5f3397463d0d1df418d1c5ed`.
-- Scope: Node 20, synthetic environment placeholders, dependency install and `npm run build` only.
-- No secrets, real users, email delivery, database writes, schema changes or RLS changes are performed.
+- Source: GitHub Actions run `34757752309`, job `103724981777`.
+- Expected: dependency installation and `npm run build` execute.
+- Actual: `actions/setup-node` failed before dependency installation because npm caching was enabled but no lock file existed.
+- Result: FAIL (runner/workflow configuration; application build not executed).
+- Remediation: removed npm cache requirement in commit `89d33f8b9099132633cf9c766db226b2db10b1ae`.
 
-### FI-IAM-09F-01 — Preview verification blocked by Vercel build-rate limit
+### EV-IAM-09F-03 — Independent controlled static build
 
-- Source: GitHub combined status for commit `e9d5147d2a6567dd5f3397463d0d1df418d1c5ed`.
-- Actual status: Vercel = failure with target indicating build-rate-limit / upgrade-to-Pro condition.
-- Interpretation: infrastructure/account build-rate limit blocks fresh Vercel verification; this is not evidence of application-source build failure.
-- Gate effect: 09F remains HOLD until an independent successful build or a fresh preview deployment is captured.
+- Evidence Type: Test / Regression Evidence.
+- Source: GitHub Actions workflow `HEPE IAM Preview Build`.
+- Run ID: `34757898361`.
+- Job ID: `103725366315`.
+- Exact source commit: `89d33f8b9099132633cf9c766db226b2db10b1ae`.
+- Environment: GitHub-hosted Ubuntu 24.04 runner; Node 20.20.2; synthetic Supabase URL/key placeholders only.
+- Test scope: checkout → Node setup → `npm install --no-audit --no-fund` → `npm run build`.
+- Expected: dependencies install; Next.js optimized build completes; IAM routes are included in generated route manifest.
+- Actual: Install dependencies = SUCCESS; Build = SUCCESS; workflow job = SUCCESS.
+- Build output: Next.js 15.5.25 compiled successfully, type checking completed, 9 static pages generated.
+- Verified route manifest includes `/`, `/auth/callback`, `/auth/callback/status`, `/login`, `/user-access`, `/user-access/effective-access`.
+- Result: PASS.
+- Verification Status: VERIFIED SYSTEM / TEST EVIDENCE for static build only.
+
+### FI-IAM-09F-01 — Vercel preview verification still blocked
+
+- Source: Vercel project deployment inventory and GitHub/Vercel status.
+- Latest available deployment for this IAM branch remains `dpl_BHAXgxzzuRpGXMRCX8nmacRZDnFe` from the earlier commit; no fresh deployment for the corrected head is available in the checked deployment inventory.
+- Prior status also indicated Vercel build-rate-limit / upgrade-to-Pro condition.
+- Interpretation: a current rendered Preview cannot yet be used for HTTP/visual/runtime regression.
+- Gate effect: static build sub-gate passes; rendered-preview/runtime acceptance remains HOLD.
 
 ## Gate decision
 
-`HEPE-IAM-09F = HOLD / EXCEPTION STOP`
+- `HEPE-IAM-09F-STATIC-BUILD = PASS`
+- `HEPE-IAM-09F-PREVIEW-RUNTIME = HOLD`
+- Overall `HEPE-IAM-09F = PARTIAL PASS / EXCEPTION STOP`
 
-Static/runtime preparation may remain on the controlled branch, but no build PASS, runtime PASS, preview acceptance, PR merge readiness, real-user pilot, invitation delivery, authority grant, RLS modification or production authorization may be inferred from this record.
+PR #40 must remain Draft until the current branch head is available in a non-production rendered Preview and the required route/runtime checks have PASS evidence. Static build PASS does not authorize real users, email delivery, authority grants, RLS/schema/data changes, merge, deployment to production, or production use.
 
-## Next admissible closure path
+## Remaining closure path
 
-1. Obtain one successful independent `npm run build` result from GitHub Actions or another controlled non-production runner; or
-2. obtain a fresh Vercel Preview deployment after the build-rate-limit condition clears;
-3. then verify `/`, `/login`, `/user-access`, `/user-access/effective-access`, and negative auth callback paths;
-4. record expected result, actual result and PASS/FAIL before closing 09F.
+1. Obtain a fresh Vercel Preview or another controlled rendered non-production runtime from the current branch head.
+2. Verify HTTP/render behavior for `/`, `/login`, `/user-access`, `/user-access/effective-access`.
+3. Verify negative auth callback behavior, including missing-code and controlled error paths.
+4. Record test scope, expected result, actual result and PASS/FAIL.
+5. Only after those checks pass may 09F be closed and PR #40 be considered for Ready-for-Review status.
