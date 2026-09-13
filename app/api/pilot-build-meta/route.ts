@@ -7,7 +7,7 @@ export async function GET() {
     {
       environment: 'NON-PRODUCTION',
       gate: 'HEPE-USABLE-APP-CLOSURE',
-      closureRevision: 'FINAL-VALIDATION-2026-09-12',
+      closureRevision: 'FINAL-VALIDATION-2026-09-13',
       applicationSha: process.env.VERCEL_GIT_COMMIT_SHA ?? null,
       branch: process.env.VERCEL_GIT_COMMIT_REF ?? null,
       production: false,
