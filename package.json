@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "check:manual05": "node scripts/hepe-manual-05-regression.mjs",
+    "build": "npm run check:manual05 && next build",
     "start": "next start"
   },
   "dependencies": {

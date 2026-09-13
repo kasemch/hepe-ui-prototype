@@ -1,0 +1,25 @@
+{
+  "libraryId": "HEPE-SCREENSHOT-LIBRARY-v1.0",
+  "environment": "NON-PRODUCTION",
+  "dataScope": "SYNTHETIC_TEST_ONLY",
+  "branch": "docs/hepe-manual-04-help-tour-blueprint",
+  "pr": 38,
+  "captureState": "PENDING_AUTH_CAPTURE",
+  "items": [
+    {"id":"SS-CMD-01","route":"/","manual":"Ch2","tour":"GT-02","help":"my-workspace","viewport":["1440x900","390x844"],"status":"PENDING_AUTH_CAPTURE"},
+    {"id":"SS-COURSE-01","route":"/my-courses","manual":"Ch6","tour":"GT-03","help":"my-courses","viewport":["1440x900","390x844"],"status":"PENDING_AUTH_CAPTURE"},
+    {"id":"SS-COURSE-02","route":"/course-workspace/[id]","manual":"Ch6","tour":"GT-04","help":"course-workspace","viewport":["1440x900","390x844"],"status":"PENDING_AUTH_CAPTURE"},
+    {"id":"SS-ENTRY-01A","route":"/pilot-entry?course=...","manual":"Ch8","tour":"GT-06","help":"quick-entry","viewport":["1440x900"],"status":"PENDING_AUTH_CAPTURE"},
+    {"id":"SS-ENTRY-01B","route":"/pilot-entry?course=...","manual":"Ch8","tour":"GT-06","help":"quick-entry","viewport":["1440x900","390x844"],"status":"PENDING_AUTH_CAPTURE"},
+    {"id":"SS-ENTRY-01C","route":"/pilot-entry?course=...","manual":"Ch8","tour":"GT-06","help":"quick-entry","viewport":["1440x900","390x844"],"status":"PENDING_AUTH_CAPTURE"},
+    {"id":"SS-ENTRY-01D","route":"/pilot-entry?course=...","manual":"Ch8","tour":"GT-06","help":"quick-entry","viewport":["1440x900"],"status":"PENDING_AUTH_CAPTURE"},
+    {"id":"SS-LRN-01","route":"/teaching","manual":"Ch8","tour":"GT-05","help":"learning-teaching","viewport":["1440x900","390x844"],"status":"PENDING_AUTH_CAPTURE"},
+    {"id":"SS-ASM-01","route":"/assessment","manual":"Ch9","tour":"GT-07","help":"assessment","viewport":["1440x900","390x844"],"status":"PENDING_AUTH_CAPTURE"},
+    {"id":"SS-EVD-01","route":"/evidence","manual":"Ch10","tour":"GT-08","help":"evidence","viewport":["1440x900","390x844"],"status":"PENDING_AUTH_CAPTURE"},
+    {"id":"SS-PLAN-01","route":"/plan-actual","manual":"Ch12","tour":"GT-09","help":"plan-actual","viewport":["1440x900","390x844"],"status":"PENDING_AUTH_CAPTURE"},
+    {"id":"SS-TRC-01","route":"/traceability","manual":"Ch12","tour":"GT-10","help":"traceability","viewport":["1440x900","390x844"],"status":"PENDING_AUTH_CAPTURE"},
+    {"id":"SS-HELP-01","route":"/help","manual":"QuickStart","tour":null,"help":"index","viewport":["1440x900","390x844"],"status":"PENDING_AUTH_CAPTURE"},
+    {"id":"SS-TOUR-01","route":"/","manual":"QuickStart","tour":"GT-02","help":"my-workspace","viewport":["1440x900"],"status":"PENDING_AUTH_CAPTURE"},
+    {"id":"SS-TOUR-02","route":"/","manual":"QuickStart","tour":"GT-02","help":"my-workspace","viewport":["390x844"],"status":"PENDING_AUTH_CAPTURE"}
+  ]
+}
