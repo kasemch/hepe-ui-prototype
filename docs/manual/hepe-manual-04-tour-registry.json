@@ -1,0 +1,99 @@
+{
+  "documentId": "HEPE-MANUAL-04",
+  "version": "1.0",
+  "environment": "NON_PRODUCTION",
+  "baseRuntimeSha": "259baf896a34c89d0e974520f564bbec2e9269f3",
+  "screens": [
+    {
+      "screenId": "SCREEN-CMD-01",
+      "route": "/",
+      "screenshotId": "SS-CMD-01",
+      "manualRef": "Ch.2",
+      "tourId": "GT-02",
+      "helpId": "HELP-CMD-01",
+      "helpRoute": "/help/my-workspace",
+      "exerciseId": "EX-QS-01"
+    },
+    {
+      "screenId": "SCREEN-COURSE-01",
+      "route": "/my-courses",
+      "screenshotId": "SS-COURSE-01",
+      "manualRef": "Ch.6",
+      "tourId": "GT-03",
+      "helpId": "HELP-COURSE-01",
+      "helpRoute": "/help/my-courses",
+      "exerciseId": "EX-QS-02"
+    },
+    {
+      "screenId": "SCREEN-COURSE-02",
+      "route": "/course-workspace/[id]",
+      "screenshotId": "SS-COURSE-02",
+      "manualRef": "Ch.6",
+      "tourId": "GT-04",
+      "helpId": "HELP-COURSE-02",
+      "helpRoute": "/help/course-workspace",
+      "exerciseId": "EX-QS-03"
+    },
+    {
+      "screenId": "SCREEN-ENTRY-01",
+      "route": "/pilot-entry",
+      "screenshotId": "SS-ENTRY-01",
+      "manualRef": "Ch.8",
+      "tourId": "GT-06",
+      "helpId": "HELP-ENTRY-01",
+      "helpRoute": "/help/quick-entry",
+      "exerciseId": "EX-QS-04",
+      "writeBoundary": "EXPLICIT_HUMAN_SYNTHETIC_ONLY"
+    },
+    {
+      "screenId": "SCREEN-LRN-01",
+      "route": "/teaching",
+      "screenshotId": "SS-LRN-01",
+      "manualRef": "Ch.8",
+      "tourId": "GT-05",
+      "helpId": "HELP-LRN-01",
+      "helpRoute": "/help/learning-teaching",
+      "exerciseId": "EX-QS-05"
+    },
+    {
+      "screenId": "SCREEN-ASM-01",
+      "route": "/assessment",
+      "screenshotId": "SS-ASM-01",
+      "manualRef": "Ch.9",
+      "tourId": "GT-07",
+      "helpId": "HELP-ASM-01",
+      "helpRoute": "/help/assessment",
+      "exerciseId": "EX-QS-06"
+    },
+    {
+      "screenId": "SCREEN-EVD-01",
+      "route": "/evidence",
+      "screenshotId": "SS-EVD-01",
+      "manualRef": "Ch.10",
+      "tourId": "GT-08",
+      "helpId": "HELP-EVD-01",
+      "helpRoute": "/help/evidence",
+      "exerciseId": "EX-QS-07"
+    },
+    {
+      "screenId": "SCREEN-PLAN-01",
+      "route": "/plan-actual",
+      "screenshotId": "SS-PLAN-01",
+      "manualRef": "Ch.12",
+      "tourId": "GT-09",
+      "helpId": "HELP-PLAN-01",
+      "helpRoute": "/help/plan-actual",
+      "exerciseId": "EX-QS-08"
+    },
+    {
+      "screenId": "SCREEN-TRC-01",
+      "route": "/traceability",
+      "screenshotId": "SS-TRC-01",
+      "manualRef": "Ch.12",
+      "tourId": "GT-10",
+      "helpId": "HELP-TRC-01",
+      "helpRoute": "/help/traceability",
+      "exerciseId": "EX-QS-09"
+    }
+  ]
+}
