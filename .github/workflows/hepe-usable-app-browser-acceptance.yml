@@ -6,6 +6,7 @@ on:
     paths:
       - 'app/page.tsx'
       - 'app/globals.css'
+      - 'app/api/pilot-build-meta/route.ts'
       - 'scripts/hepe-usable-app-browser-acceptance.mjs'
       - '.github/workflows/hepe-usable-app-browser-acceptance.yml'
   workflow_dispatch:
