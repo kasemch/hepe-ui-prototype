@@ -1,4 +1,5 @@
 import './globals.css';
+import HelpTools from '../components/HelpTools';
 
 export const metadata = {
   title: "HEPE Academic Command Center · NON-PRODUCTION",
@@ -12,6 +13,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <div className="environment-bar" role="status" aria-label="Environment status">
           <strong>NON-PRODUCTION</strong><span>·</span><span>TEST DATA ONLY</span><span>·</span><span>Production authorization not granted</span>
         </div>
+        <HelpTools />
         {children}
       </body>
     </html>
