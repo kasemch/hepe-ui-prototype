@@ -22,11 +22,16 @@ export default function LoginPage() {
     setSending(true);
     setError("");
 
-    const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent("/user-access/activate")}`;
+    const current = new URL(window.location.href);
+    const vercelShare = current.searchParams.get("_vercel_share");
+    const callback = new URL("/auth/callback", window.location.origin);
+    callback.searchParams.set("next", "/user-access/activate");
+    if (vercelShare) callback.searchParams.set("_vercel_share", vercelShare);
+
     const { error: otpError } = await supabase.auth.signInWithOtp({
       email: CONTROLLED_EMAIL,
       options: {
-        emailRedirectTo: redirectTo,
+        emailRedirectTo: callback.toString(),
         shouldCreateUser: true,
       },
     });
