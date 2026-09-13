@@ -1,3 +1,4 @@
+# serialized-current-head-only
 # retry-after-runner-closure-success
 # retry-after-authority-timing-reconciliation
 name: HEPE WORKFLOW 04 Exact Preview Closure V2
@@ -12,7 +13,7 @@ permissions:
 
 concurrency:
   group: hepe-workflow-04-exact-preview-closure-v2
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   exact-preview-closure-v2:
