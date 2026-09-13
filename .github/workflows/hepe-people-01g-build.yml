@@ -1,9 +1,9 @@
-name: HEPE PEOPLE 01G Build Verification
+name: HEPE PEOPLE Feature Build Verification
 
 on:
   push:
     branches:
-      - feat/hepe-people-01g-responsibility-explorer
+      - 'feat/hepe-people-*'
   pull_request:
     branches:
       - feat/hepe-people-01b2h-decision-ui
