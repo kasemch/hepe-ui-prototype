@@ -1,0 +1,66 @@
+name: HEPE USABLE-APP Browser Acceptance
+
+on:
+  push:
+    branches: [feat/hepe-usable-app-closure-batch]
+    paths:
+      - 'scripts/hepe-usable-app-browser-acceptance.mjs'
+      - '.github/workflows/hepe-usable-app-browser-acceptance.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hepe-usable-app-browser-acceptance
+  cancel-in-progress: false
+
+jobs:
+  browser-acceptance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      HEPE_BASE_URL: https://hepe-ui-prototype-git-feat-hepe-u-8022df-kasemch-3467s-projects.vercel.app
+      VERCEL_BYPASS: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - name: Verify exact SHA and boundary
+        run: |
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -n "${VERCEL_BYPASS:-}" || { echo 'VERCEL_BYPASS_BINDING_UNAVAILABLE'; exit 72; }
+          echo "HEPE_BROWSER_EXACT_SHA_CHECKOUT_PASS sha=${GITHUB_SHA}"
+          echo 'ENVIRONMENT=NON-PRODUCTION'
+      - name: Install controlled browser dependencies
+        run: |
+          npm install --ignore-scripts --no-audit --no-fund
+          npm install --no-save --ignore-scripts --no-audit --no-fund playwright @axe-core/playwright
+          npx playwright install --with-deps chromium
+      - name: Establish exact-SHA Vercel Preview
+        shell: bash
+        run: |
+          set -euo pipefail
+          ok=0
+          for i in $(seq 1 60); do
+            body="$(curl --silent --show-error --max-time 20 -H "x-vercel-protection-bypass: ${VERCEL_BYPASS}" -H 'Cache-Control: no-cache' "${HEPE_BASE_URL}/api/pilot-build-meta" || true)"
+            if printf '%s' "$body" | grep -Fq "\"applicationSha\":\"${GITHUB_SHA}\"" && printf '%s' "$body" | grep -Fq '"environment":"NON-PRODUCTION"' && printf '%s' "$body" | grep -Fq '"production":false'; then
+              ok=1
+              echo "HEPE_BROWSER_EXACT_SHA_PREVIEW_PASS sha=${GITHUB_SHA}"
+              break
+            fi
+            sleep 10
+          done
+          test "$ok" = 1 || { echo 'HEPE_BROWSER_EXACT_SHA_PREVIEW_NOT_READY'; exit 73; }
+      - name: Responsive and scoped accessibility acceptance
+        run: node scripts/hepe-usable-app-browser-acceptance.mjs
+      - name: Boundary summary
+        run: |
+          echo "APPLICATION_SHA=${GITHUB_SHA}"
+          echo 'RESPONSIVE_BROWSER_ACCEPTANCE=PASS'
+          echo 'ACCESSIBILITY_CRITICAL_BROWSER_ACCEPTANCE=PASS'
+          echo 'FULL_WCAG_CONFORMANCE=NOT_CLAIMED'
+          echo 'REAL_DATA_WRITE=NONE'
+          echo 'REAL_USER_AUTHORITY_CHANGE=NONE'
+          echo 'PRODUCTION_AUTHORIZATION=NOT_GRANTED'
+          echo 'PR_MERGE=NOT_ATTEMPTED'
