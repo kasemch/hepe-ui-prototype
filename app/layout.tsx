@@ -1,4 +1,5 @@
 import './globals.css';
+import './help.css';
 import HelpTools from '../components/HelpTools';
 
 export const metadata = {
