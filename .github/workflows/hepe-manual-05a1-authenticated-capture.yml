@@ -1,0 +1,76 @@
+name: HEPE-MANUAL-05A.1 Authenticated Capture
+
+on:
+  push:
+    branches: [docs/hepe-manual-04-help-tour-blueprint]
+    paths:
+      - 'scripts/hepe-manual-05a1-authenticated-capture.mjs'
+      - '.github/workflows/hepe-manual-05a1-authenticated-capture.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hepe-manual-05a1-authenticated-capture
+  cancel-in-progress: false
+
+jobs:
+  authenticated-capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      HEPE_BASE_URL: https://hepe-ui-prototype-git-docs-hepe-m-8ccb35-kasemch-3467s-projects.vercel.app
+      VERCEL_BYPASS: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+      SUPABASE_URL: https://lztxpjsuzqvtgyasfnyj.supabase.co
+      SUPABASE_PUBLISHABLE_KEY: sb_publishable_7bv5GR0-ksXJn91sRHV0Mg_k4nblIGI
+      SUPABASE_ADMIN: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      PREPARER_ACTOR_ID: dd73e0bc-c07d-4df7-8a50-c2103f0a9c6d
+      PREPARER_ORIGINAL_SUBJECT: 10000000-0000-0000-0000-000000000001
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - name: Verify exact SHA, bindings and non-production boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -n "${VERCEL_BYPASS:-}" || { echo 'VERCEL_BYPASS_BINDING_UNAVAILABLE'; exit 72; }
+          test -n "${SUPABASE_ADMIN:-}" || { echo 'SUPABASE_ADMIN_BINDING_UNAVAILABLE'; exit 71; }
+          ok=0
+          for i in $(seq 1 60); do
+            body="$(curl --silent --show-error --max-time 20 -H "x-vercel-protection-bypass: ${VERCEL_BYPASS}" -H 'Cache-Control: no-cache' "${HEPE_BASE_URL}/api/pilot-build-meta" || true)"
+            if printf '%s' "$body" | grep -Fq "\"applicationSha\":\"${GITHUB_SHA}\"" && printf '%s' "$body" | grep -Fq '"environment":"NON-PRODUCTION"' && printf '%s' "$body" | grep -Fq '"production":false'; then
+              ok=1; echo "HEPE_MANUAL_05A1_EXACT_SHA_PREVIEW_PASS sha=${GITHUB_SHA}"; break
+            fi
+            sleep 10
+          done
+          test "$ok" = 1 || { echo 'HEPE_MANUAL_05A1_EXACT_SHA_PREVIEW_NOT_READY'; exit 73; }
+      - name: Install controlled browser dependencies
+        run: |
+          npm install --ignore-scripts --no-audit --no-fund
+          npm install --no-save --ignore-scripts --no-audit --no-fund playwright @axe-core/playwright
+          npx playwright install --with-deps chromium
+      - name: Execute authenticated VERIFIED-state capture with mandatory cleanup
+        run: node scripts/hepe-manual-05a1-authenticated-capture.mjs
+      - name: Upload authenticated visual artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hepe-manual-05a1-authenticated-${{ github.sha }}
+          path: artifacts/hepe-manual-05a1
+          if-no-files-found: error
+          retention-days: 14
+      - name: Boundary summary
+        if: always()
+        run: |
+          echo "APPLICATION_SHA=${GITHUB_SHA}"
+          echo 'ENVIRONMENT=NON-PRODUCTION'
+          echo 'SYNTHETIC_USER=TEMPORARY'
+          echo 'IDENTITY_REBIND=TEMPORARY_AND_RESTORED_BY_RUNNER'
+          echo 'AUTHORITY_ASSIGNMENT_CHANGE=NONE'
+          echo 'RLS_CHANGE=NONE'
+          echo 'DATABASE_SCHEMA_CHANGE=NONE'
+          echo 'PRODUCTION_AUTHORIZATION=NOT_GRANTED'
+          echo 'PR_MERGE=NOT_ATTEMPTED'
