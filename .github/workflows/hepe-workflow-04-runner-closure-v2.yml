@@ -8,6 +8,7 @@ on:
 permissions:
   contents: read
 
+# Controlled NON-PRODUCTION rerun marker: contrast-repair-20260913
 jobs:
   runner-closure-v2:
     runs-on: ubuntu-latest
@@ -56,16 +57,11 @@ jobs:
         run: node scripts/hepe-workflow-04-runner-browser.mjs
       - name: Runner closure candidate boundary summary
         run: |
-          echo "APPLICATION_SHA=${GITHUB_SHA}"
-          echo 'RUNNER_EXACT_SHA=PASS'
-          echo 'AUTHENTICATED_RUNTIME=PASS'
-          echo 'CLEANUP_RESIDUAL=0'
-          echo 'RESPONSIVE_BROWSER=PASS'
-          echo 'SCOPED_AUTOMATED_ACCESSIBILITY=PASS'
+          echo 'RUNNER_BASED_CONTROLLED_PILOT_CLOSURE_CANDIDATE=PASS'
           echo 'VERCEL_PREVIEW_ACCEPTANCE=PENDING_EXTERNAL_QUOTA'
-          echo 'PRODUCTION=NOT_TOUCHED'
-          echo 'PR_MERGE=NOT_ATTEMPTED'
-          echo 'AUDIT_EVIDENCE_ADMISSION=NOT_ATTEMPTED'
+          echo 'AUDIT_EVIDENCE_ADMISSION=NOT_ADMITTED'
+          echo 'PRODUCTION=false'
+          echo 'PR_MERGE=false'
       - name: Stop runner
         if: always()
         run: if [ -f /tmp/hepe-runner.pid ]; then kill "$(cat /tmp/hepe-runner.pid)" 2>/dev/null || true; fi
