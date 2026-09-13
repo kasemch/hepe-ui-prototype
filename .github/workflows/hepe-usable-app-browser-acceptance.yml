@@ -4,6 +4,8 @@ on:
   push:
     branches: [feat/hepe-usable-app-closure-batch]
     paths:
+      - 'app/page.tsx'
+      - 'app/globals.css'
       - 'scripts/hepe-usable-app-browser-acceptance.mjs'
       - '.github/workflows/hepe-usable-app-browser-acceptance.yml'
   workflow_dispatch:
