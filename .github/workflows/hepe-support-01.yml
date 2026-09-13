@@ -1,0 +1,81 @@
+name: HEPE SUPPORT 01 Controlled Pilot Gate
+
+on:
+  push:
+    branches: [feat/hepe-academic-workflow-03-exec]
+    paths:
+      - 'app/support/**'
+      - 'app/page.tsx'
+      - 'app/layout.tsx'
+      - 'scripts/hepe-support-01-browser.mjs'
+      - '.github/workflows/hepe-support-01.yml'
+  pull_request:
+    paths:
+      - 'app/support/**'
+      - 'app/page.tsx'
+      - 'app/layout.tsx'
+      - 'scripts/hepe-support-01-browser.mjs'
+
+permissions:
+  contents: read
+
+jobs:
+  support-01:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      HEPE_ENVIRONMENT: NON-PRODUCTION
+      NEXT_PUBLIC_SUPABASE_URL: https://lztxpjsuzqvtgyasfnyj.supabase.co
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_7bv5GR0-ksXJn91sRHV0Mg_k4nblIGI
+      SUPPORT_BASE_URL: http://127.0.0.1:3000
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - name: Verify exact SHA and boundary
+        run: |
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$HEPE_ENVIRONMENT" = "NON-PRODUCTION"
+          echo "SUPPORT_EXACT_SHA_CHECKOUT_PASS sha=${GITHUB_SHA}"
+      - name: Install
+        run: |
+          npm install --ignore-scripts --no-audit --no-fund
+          npm install --no-save --ignore-scripts --no-audit --no-fund playwright @axe-core/playwright
+          npx playwright install --with-deps chromium
+      - name: Build
+        run: npm run build
+      - name: Governance and lifecycle assertions
+        run: |
+          grep -Fq "canonical_mutation_allowed:false" app/support/support-model.ts
+          grep -Fq "audit_evidence_status:'NOT_ADMITTED'" app/support/support-model.ts
+          grep -Fq "production:false" app/support/support-model.ts
+          grep -Fq "OPEN:['TRIAGED']" app/support/support-model.ts
+          grep -Fq "RESOLVED:['USER_VERIFICATION','REOPENED']" app/support/support-model.ts
+          grep -Fq "Attachment UI placeholder" app/support/new/page.tsx
+          ! grep -R "service_role\|SUPABASE_ADMIN\|Authorization:" app/support || false
+          echo 'SUPPORT_GOVERNANCE_ASSERTIONS_PASS'
+      - name: Start exact-SHA local runner
+        env:
+          VERCEL_GIT_COMMIT_SHA: ${{ github.sha }}
+          VERCEL_GIT_COMMIT_REF: feat/hepe-academic-workflow-03-exec
+        run: |
+          nohup npm start > /tmp/hepe-support.log 2>&1 &
+          echo $! > /tmp/hepe-support.pid
+          for i in $(seq 1 60); do curl --silent --fail "$SUPPORT_BASE_URL/support" >/dev/null && break || sleep 2; done
+          curl --silent --fail "$SUPPORT_BASE_URL/api/pilot-build-meta" | grep -Fq "\"applicationSha\":\"${GITHUB_SHA}\""
+          echo "SUPPORT_EXACT_SHA_RUNTIME_PASS sha=${GITHUB_SHA}"
+      - name: Responsive and scoped accessibility
+        run: node scripts/hepe-support-01-browser.mjs
+      - name: Boundary summary
+        run: |
+          echo 'HEPE_SUPPORT_01_SOURCE_RUNTIME_CANDIDATE=PASS'
+          echo 'PERSISTENT_SUPPORT_SCHEMA=NOT_CREATED'
+          echo 'PERSISTENT_SYNTHETIC_CLEANUP=NOT_APPLICABLE'
+          echo 'REAL_EMAIL_SEND=false'
+          echo 'PRODUCTION=false'
+          echo 'PR_MERGE=false'
+          echo 'CANONICAL_MUTATION=false'
+          echo 'AUDIT_EVIDENCE_ADMISSION=false'
+      - name: Stop runner
+        if: always()
+        run: if [ -f /tmp/hepe-support.pid ]; then kill "$(cat /tmp/hepe-support.pid)" 2>/dev/null || true; fi
