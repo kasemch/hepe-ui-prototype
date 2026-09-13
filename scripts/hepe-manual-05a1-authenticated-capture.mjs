@@ -1,3 +1,4 @@
+// HEPE-MANUAL-05A.1 rerun marker after authenticated-card contrast remediation.
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
