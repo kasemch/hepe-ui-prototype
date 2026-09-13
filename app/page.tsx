@@ -4,7 +4,8 @@ const actions=[
  ['การทวนสอบ','เปิดงานทวนสอบผลการเรียนรู้','/verification'],
  ['ข้อเสนอปรับปรุง','เปิด Curriculum Improvement Hub','/course-review'],
  ['งานรออนุมัติ','ดู Human Review / Approval Queue','/approval'],
- ['เอกสารและการพิมพ์','เตรียม Preview / Print / Export Center','/evidence']
+ ['เอกสารและการพิมพ์','เตรียม Preview / Print / Export Center','/evidence'],
+ ['Support Center','แจ้งปัญหา ติดตามการแก้ไข และดู Known Issues','/support']
 ];
 const timeline=['Instructor Assignment','มคอ.3','Teaching','Assessment','มคอ.5','Verification','Improvement'];
 const calendar=[
@@ -30,8 +31,8 @@ export default function Home(){return <main className="academic-command">
  <section className="command-grid command-grid-2"><article className="command-panel"><div className="panel-head"><div><div className="eyebrow">COURSE TIMELINE</div><h2>วงจรของรายวิชา</h2></div></div><div className="timeline-row">{timeline.map((x,i)=><div className="timeline-node" key={x}><span>{i+1}</span><strong>{x}</strong></div>)}</div><p className="panel-note">แต่ละจุดจะมีเวลา ผู้ดำเนินการ เวอร์ชัน และสถานะ โดยการ export เอกสารไม่ถือเป็น Audit Evidence โดยอัตโนมัติ</p></article>
  <article className="command-panel"><div className="panel-head"><div><div className="eyebrow">VISIBILITY & OVERSIGHT</div><h2>มุมมองตามบทบาท</h2></div></div><div className="role-lines"><div><strong>Instructor</strong><span>ดูเนื้อหาเฉพาะวิชาของตน · เห็น status ของวิชาอื่นตามสิทธิ</span></div><div><strong>Programme Chair</strong><span>เห็นทุกวิชาในหลักสูตร · ติดตาม completion / overdue / improvement</span></div><div><strong>Department Head</strong><span>เห็นทุกหลักสูตรในภาควิชา · oversight และ escalation</span></div><div><strong>Pilot Super User</strong><span>support scope แบบชั่วคราว · elevated access ต้องแสดงชัด</span></div></div></article></section>
 
- <section className="command-grid command-grid-3"><a className="insight-card" href="/course-review"><div className="eyebrow">IMPROVEMENT</div><h3>Curriculum Improvement Hub</h3><p>แยก recommendation, action plan, owner, due date และผลการนำไปใช้</p></a><a className="insight-card" href="/verification"><div className="eyebrow">QUALITY</div><h3>Verification Overview</h3><p>รองรับวิธีทวนสอบต่างกันแต่สรุปรวมระดับหลักสูตร/ภาควิชาได้</p></a><a className="insight-card" href="/qa"><div className="eyebrow">ANALYTICS</div><h3>Programme & Department Health</h3><p>completion, overdue, reporting snapshot และ trend ตาม authority scope</p></a></section>
+ <section className="command-grid command-grid-3"><a className="insight-card" href="/course-review"><div className="eyebrow">IMPROVEMENT</div><h3>Curriculum Improvement Hub</h3><p>แยก recommendation, action plan, owner, due date และผลการนำไปใช้</p></a><a className="insight-card" href="/verification"><div className="eyebrow">QUALITY</div><h3>Verification Overview</h3><p>รองรับวิธีทวนสอบต่างกันแต่สรุปรวมระดับหลักสูตร/ภาควิชาได้</p></a><a className="insight-card" href="/support"><div className="eyebrow">SUPPORT</div><h3>Support & Issue Resolution</h3><p>แจ้งปัญหาและติดตาม resolution โดยแยก Ticket ออกจาก Finding, Evidence และ Canonical Change</p></a></section>
 
- <details className="advanced"><summary>ข้อมูลหลักสูตรและเครื่องมือขั้นสูง</summary><div className="advanced-links"><a href="/programme">ภาพรวมหลักสูตร</a><a href="/curriculum">โครงสร้างหลักสูตร</a><a href="/study-plan">แผนการศึกษา</a><a href="/traceability">PLO / รายวิชา</a><a href="/mapping">I-R-M</a><a href="/evidence">หลักฐาน</a><a href="/qa">QA / CPRR</a><a href="/governance">Governance</a></div></details>
- <footer className="footer-note">HEPE-ACADEMIC-WORKFLOW-03 · Adaptive UI Architecture · Human authority preserved · NON-PRODUCTION</footer>
+ <details className="advanced"><summary>ข้อมูลหลักสูตรและเครื่องมือขั้นสูง</summary><div className="advanced-links"><a href="/programme">ภาพรวมหลักสูตร</a><a href="/curriculum">โครงสร้างหลักสูตร</a><a href="/study-plan">แผนการศึกษา</a><a href="/traceability">PLO / รายวิชา</a><a href="/mapping">I-R-M</a><a href="/evidence">หลักฐาน</a><a href="/qa">QA / CPRR</a><a href="/governance">Governance</a><a href="/support">Support Center</a></div></details>
+ <footer className="footer-note">HEPE-ACADEMIC-WORKFLOW-03 + HEPE-SUPPORT-01 · Human authority preserved · NON-PRODUCTION</footer>
  </main>}
