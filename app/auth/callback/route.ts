@@ -1,11 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
+function safeNext(value: string | null) {
+  if (!value) return "/auth/callback/status?status=verified";
+  if (!value.startsWith("/") || value.startsWith("//")) return "/auth/callback/status?status=verified";
+  return value;
+}
+
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get("code");
   const error = requestUrl.searchParams.get("error");
   const errorDescription = requestUrl.searchParams.get("error_description");
+  const next = safeNext(requestUrl.searchParams.get("next"));
 
   if (error) {
     const target = new URL("/auth/callback/status", requestUrl.origin);
@@ -32,7 +39,7 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const response = NextResponse.redirect(new URL("/auth/callback/status?status=verified", requestUrl.origin));
+  const response = NextResponse.redirect(new URL(next, requestUrl.origin));
 
   const supabase = createServerClient(
     supabaseUrl,
