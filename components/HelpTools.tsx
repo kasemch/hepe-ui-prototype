@@ -1,6 +1,6 @@
 'use client';
 
-import {useEffect,useMemo,useState} from 'react';
+import {useEffect,useMemo,useRef,useState} from 'react';
 import {usePathname} from 'next/navigation';
 import {getHelpBinding} from '../lib/help/hepe-help';
 
@@ -9,25 +9,54 @@ export default function HelpTools(){
  const binding=useMemo(()=>getHelpBinding(pathname),[pathname]);
  const [open,setOpen]=useState(false);
  const [step,setStep]=useState(0);
+ const launcherRef=useRef<HTMLButtonElement|null>(null);
+ const cardRef=useRef<HTMLDivElement|null>(null);
  useEffect(()=>{setOpen(false);setStep(0)},[pathname]);
+ useEffect(()=>{
+  if(!open)return;
+  const card=cardRef.current;
+  const focusables=()=>Array.from(card?.querySelectorAll<HTMLElement>('button:not([disabled]),a[href]')??[]);
+  const first=focusables()[0];
+  first?.focus();
+  const onKey=(event:KeyboardEvent)=>{
+   if(event.key==='Escape'){
+    event.preventDefault();
+    setOpen(false);
+    return;
+   }
+   if(event.key!=='Tab')return;
+   const items=focusables();
+   if(!items.length)return;
+   const firstItem=items[0];
+   const lastItem=items[items.length-1];
+   const active=document.activeElement;
+   if(event.shiftKey&&active===firstItem){event.preventDefault();lastItem.focus();}
+   else if(!event.shiftKey&&active===lastItem){event.preventDefault();firstItem.focus();}
+  };
+  document.addEventListener('keydown',onKey);
+  return ()=>{
+   document.removeEventListener('keydown',onKey);
+   launcherRef.current?.focus();
+  };
+ },[open]);
  if(!binding)return null;
  const current=binding.steps[step];
  const targetFound=typeof document!=='undefined'&&current?.selector?Boolean(document.querySelector(current.selector)):true;
  return <>
   <div className="help-tools" aria-label="Help tools">
    <a className="help-link" href={`/help/${binding.slug}`} aria-label={`Help for ${binding.slug}`}>? Help</a>
-   <button className="tour-launcher" type="button" onClick={()=>{setStep(0);setOpen(true)}}>Guided tour</button>
+   <button ref={launcherRef} className="tour-launcher" type="button" onClick={()=>{setStep(0);setOpen(true)}} aria-haspopup="dialog" aria-expanded={open}>Guided tour</button>
   </div>
-  {open&&current?<div className="tour-layer" role="dialog" aria-modal="true" aria-labelledby="hepe-tour-title">
-   <div className="tour-card">
+  {open&&current?<div className="tour-layer" role="dialog" aria-modal="true" aria-labelledby="hepe-tour-title" aria-describedby="hepe-tour-body">
+   <div className="tour-card" ref={cardRef}>
     <div className="tour-meta">{binding.tourId} · {step+1}/{binding.steps.length}</div>
     <h2 id="hepe-tour-title">{current.title}</h2>
-    <p>{current.body}</p>
+    <p id="hepe-tour-body">{current.body}</p>
     {!targetFound?<p className="tour-warning">จุดบนหน้าจอนี้ไม่พร้อมใน state ปัจจุบัน แต่คำอธิบายยังใช้ได้</p>:null}
     <div className="tour-actions">
      <button type="button" className="button ghost" disabled={step===0} onClick={()=>setStep(s=>Math.max(0,s-1))}>ย้อนกลับ</button>
      {step<binding.steps.length-1?<button type="button" className="button" onClick={()=>setStep(s=>s+1)}>ถัดไป</button>:<button type="button" className="button" onClick={()=>setOpen(false)}>จบทัวร์</button>}
-     <button type="button" className="tour-close" onClick={()=>setOpen(false)}>ปิด</button>
+     <button type="button" className="tour-close" onClick={()=>setOpen(false)} aria-label="ปิด Guided tour">ปิด</button>
     </div>
    </div>
   </div>:null}
