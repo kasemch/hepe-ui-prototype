@@ -1,6 +1,6 @@
 # HEPE-IAM-09G — Controlled Real-User Pilot Authorization Gate
 
-Status: NON-PRODUCTION / AUTHORIZATION GATE OPEN / EXECUTION NOT AUTHORIZED
+Status: NON-PRODUCTION / AUTHORIZATION PREPARATION COMPLETE / REAL-USER EXECUTION HOLD
 Date: 2026-09-13
 Project: HEPE Curriculum Governance & Development
 Branch: `feat/hepe-iam-09-user-access`
@@ -10,7 +10,7 @@ Related PR: #40
 
 This gate defines the minimum conditions that must be satisfied before any controlled real-user pilot may occur.
 
-Opening this gate does **not** itself authorize creation of a real user, sending a real invitation or authentication email, granting HEPE authority, modifying SMTP, changing RLS, modifying schema, writing application data, or deploying to production.
+Opening or preparing this gate does **not** itself authorize creation of a real user, sending a real invitation or authentication email, granting HEPE authority, modifying SMTP, changing RLS, modifying schema, writing application data, merging to production-bound source, or deploying to production.
 
 ## 2. Authorization boundary
 
@@ -18,8 +18,9 @@ The current authorization is limited to:
 
 - preparing the 09G authorization checklist;
 - verifying prerequisite evidence already produced by 09F;
-- identifying unresolved blockers and reconciliation items;
+- verifying the canonical non-production Supabase target;
 - preparing the exact scope of a future controlled real-user pilot;
+- preparing an explicit human-authorization decision candidate;
 - preserving fail-closed behavior.
 
 The following remain prohibited unless explicitly authorized in a subsequent decision record:
@@ -37,90 +38,90 @@ The following remain prohibited unless explicitly authorized in a subsequent dec
 
 ## 3. Prerequisite evidence
 
-09G may proceed to authorization consideration only when all prerequisite evidence is admitted and traceable.
-
 ### 3.1 Synthetic build/runtime prerequisite
 
-Required:
-- successful controlled build;
-- successful controlled runtime smoke test;
-- successful negative authentication-path regression;
-- exact source commit / workflow run traceability.
+Status: SATISFIED.
 
-Current status: SATISFIED by 09F controlled GitHub Actions evidence recorded in `docs/HEPE-IAM-09-RUNTIME-PREPARATION-STATUS.md`.
+09F controlled GitHub Actions evidence records successful build, controlled runtime smoke, and negative authentication-path regression in `docs/HEPE-IAM-09-RUNTIME-PREPARATION-STATUS.md`.
 
-### 3.2 Current Vercel preview prerequisite
+### 3.2 Canonical target binding
 
-Current status: NOT SATISFIED / INFRASTRUCTURE HOLD.
+Status: SATISFIED / VERIFIED.
 
-The current IAM branch does not yet have a fresh Vercel Preview for the latest source head because the connected Vercel account reached its daily free-tier deployment limit.
+Verified HEPE non-production Supabase target:
 
-This condition does not invalidate the successful controlled GitHub Actions runtime evidence, but it prevents using Vercel Preview as current rendered acceptance evidence.
+`lztxpjsuzqvtgyasfnyj` — `HEPE Curriculum Command Center Sandbox`
 
-## 4. Mandatory reconciliation before any real-user action
+Evidence record:
+
+`docs/governance/HEPE-IAM-09G-target-binding-verification.md`
+
+### 3.3 Current Vercel preview
+
+Status: INFRASTRUCTURE HOLD.
+
+The current IAM branch does not have a fresh Vercel Preview for the latest source head because the connected Vercel account reached its daily free-tier deployment limit. This does not invalidate the independent controlled GitHub Actions runtime evidence, but it remains relevant to rendered-preview acceptance.
+
+## 4. Reconciliation status
 
 ### RI-IAM-09G-01 — Supabase target binding
 
-Repository-controlled source currently references Supabase project ref:
+Status: CLOSED.
 
-`lztxpjsuzqvtgyasfnyj`
-
-Older HEPE/AcaNexa project context referenced:
-
-`nuxhsxjwhkikyrqhstkh`
-
-No real-user action may occur until the authoritative HEPE authentication target is independently verified from system configuration / controlled source and the reconciliation item is CLOSED.
+Canonical HEPE non-production target is `lztxpjsuzqvtgyasfnyj` based on verified Supabase project inventory and repository-controlled target references.
 
 ### RI-IAM-09G-02 — Gate numbering / lineage
 
-Earlier IAM work used a 00–08 sequence, while this controlled contract uses 09A–09G.
+Status: OPEN FOR CONTROLLED LINEAGE MAPPING.
 
-This is documentation/governance lineage only, but it must be mapped before a formal baseline is frozen so audit traceability is not ambiguous.
+Verified controlled source on `main` contains artifact `HEPE-IAM-08A.2A-SRC-001`; the present user/access architecture uses 09A–09G. No automatic renumbering or supersession is inferred.
 
 ### RI-IAM-09G-03 — Candidate baseline status
 
-`HEPE-IAM-09 — User & Access Architecture Contract` remains a controlled design baseline candidate unless separately frozen/adopted.
+Status: OPEN.
 
-No real-user pilot may rely on candidate-only authority semantics without an explicit controlled decision.
+`HEPE-IAM-09 — User & Access Architecture Contract` remains a controlled design baseline candidate unless explicitly frozen/adopted through a controlled decision.
 
-## 5. Controlled pilot minimum scope candidate
+## 5. Controlled pilot maximum-safe envelope
 
-A future real-user pilot, if explicitly authorized, should be limited to one named institutional account and one narrowly scoped role/scope binding.
-
-Recommended first pilot profile:
+A future real-user pilot, if explicitly authorized, is limited to:
 
 - Environment: NON-PRODUCTION only
-- User count: 1
-- Authentication: institutional email / passwordless
-- Automatic signup for ordinary login: disabled where supported
+- User count: maximum 1
+- Account: one named institutional account
+- Authentication: passwordless institutional email; exact Magic Link or Email OTP method must be explicitly selected
+- Automatic ordinary-login signup: disabled where supported
 - HEPE profile: minimal
-- Role: lowest-privilege role appropriate to the test
-- Scope: one programme/course/review object only
+- Role: lowest-privilege role explicitly approved
+- Scope: exactly one programme, course, or review object
 - Academic approval authority: DENIED by default
-- User administration authority: DENIED unless specifically needed
-- Data writes: DENIED unless separately authorized
+- User administration authority: DENIED by default
+- Application data writes: DENIED by default
+- Database/schema/RLS/SMTP modification: DENIED
 - Production: prohibited
+- Cleanup/revocation: mandatory
 
-## 6. Required human authorization record before execution
+## 6. Explicit human authorization record
 
-Before any real-user creation or email send, the decision record must explicitly state at minimum:
+Prepared candidate:
+
+`docs/governance/HEPE-IAM-09G-pilot-authorization-decision-candidate.md`
+
+Current candidate status: NOT APPROVED / EXECUTION HOLD.
+
+Before any real-user creation or authentication email send, the decision record must explicitly identify:
 
 - Authorization ID
-- Gate: HEPE-IAM-09G
-- Environment: NON-PRODUCTION
-- Authorized real user / institutional account
-- Authorized authentication method
-- Authorized Supabase project ref
-- Authorized role
-- Authorized scope
-- Authorized authority set
-- Whether invitation/email delivery is authorized
-- Whether any application data write is authorized
-- Expiry / cleanup requirement
-- Owner / approving authority
-- Date / version
-
-If any field is missing, real-user execution remains HOLD.
+- named institutional account
+- exact authentication method
+- authorized role
+- authorized scope
+- authorized authority set
+- whether invitation/authentication email delivery is authorized
+- whether any application data write is authorized
+- expiry / cleanup window
+- approving authority / owner
+- version/date
 
 ## 7. Test / regression evidence required from any future real-user pilot
 
@@ -153,6 +154,6 @@ Any authorized real-user pilot must end with explicit review of:
 
 ## 9. Current gate decision
 
-`HEPE-IAM-09G = OPEN FOR AUTHORIZATION PREPARATION ONLY / REAL-USER EXECUTION HOLD`
+`HEPE-IAM-09G = AUTHORIZATION PREPARATION COMPLETE / REAL-USER EXECUTION HOLD`
 
-09G is not a PASS/FAIL real-user pilot result yet. No real user has been created, no real email has been sent, and no HEPE business authority has been granted by opening this gate.
+Target binding is verified and the authorization-decision structure is prepared. Real-user execution remains fail-closed because required human authorization fields are not yet explicitly approved.
