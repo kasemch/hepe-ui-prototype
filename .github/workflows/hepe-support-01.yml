@@ -22,12 +22,14 @@ permissions:
 jobs:
   support-01:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 35
     env:
       HEPE_ENVIRONMENT: NON-PRODUCTION
       NEXT_PUBLIC_SUPABASE_URL: https://lztxpjsuzqvtgyasfnyj.supabase.co
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_7bv5GR0-ksXJn91sRHV0Mg_k4nblIGI
       SUPPORT_BASE_URL: http://127.0.0.1:3000
+      PREVIEW_BASE_URL: https://hepe-ui-prototype-git-feat-hepe-a-37ab37-kasemch-3467s-projects.vercel.app
+      VERCEL_BYPASS: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -52,7 +54,7 @@ jobs:
           grep -Fq "OPEN:['TRIAGED']" app/support/support-model.ts
           grep -Fq "RESOLVED:['USER_VERIFICATION','REOPENED']" app/support/support-model.ts
           grep -Fq "Attachment UI placeholder" app/support/new/page.tsx
-          ! grep -R "service_role\|SUPABASE_ADMIN\|Authorization:" app/support || false
+          if grep -R "service_role\|SUPABASE_ADMIN\|Authorization:" app/support; then exit 74; fi
           echo 'SUPPORT_GOVERNANCE_ASSERTIONS_PASS'
       - name: Start exact-SHA local runner
         env:
@@ -64,11 +66,30 @@ jobs:
           for i in $(seq 1 60); do curl --silent --fail "$SUPPORT_BASE_URL/support" >/dev/null && break || sleep 2; done
           curl --silent --fail "$SUPPORT_BASE_URL/api/pilot-build-meta" | grep -Fq "\"applicationSha\":\"${GITHUB_SHA}\""
           echo "SUPPORT_EXACT_SHA_RUNTIME_PASS sha=${GITHUB_SHA}"
-      - name: Responsive and scoped accessibility
+      - name: Local responsive and scoped accessibility
+        run: node scripts/hepe-support-01-browser.mjs
+      - name: Establish exact-SHA Vercel Preview
+        run: |
+          test -n "${VERCEL_BYPASS:-}" || { echo 'VERCEL_BYPASS_BINDING_UNAVAILABLE'; exit 72; }
+          ok=0
+          for i in $(seq 1 60); do
+            body="$(curl --silent --show-error --max-time 20 -H "x-vercel-protection-bypass: ${VERCEL_BYPASS}" -H 'Cache-Control: no-cache' "${PREVIEW_BASE_URL}/api/pilot-build-meta" || true)"
+            if printf '%s' "$body" | grep -Fq "\"applicationSha\":\"${GITHUB_SHA}\"" && printf '%s' "$body" | grep -Fq '"environment":"NON-PRODUCTION"' && printf '%s' "$body" | grep -Fq '"production":false'; then
+              ok=1
+              echo "SUPPORT_EXACT_SHA_PREVIEW_PASS sha=${GITHUB_SHA}"
+              break
+            fi
+            sleep 10
+          done
+          test "$ok" = 1 || { echo 'SUPPORT_EXACT_SHA_PREVIEW_NOT_READY'; exit 73; }
+      - name: Exact Preview responsive and scoped accessibility
+        env:
+          SUPPORT_BASE_URL: ${{ env.PREVIEW_BASE_URL }}
         run: node scripts/hepe-support-01-browser.mjs
       - name: Boundary summary
         run: |
           echo 'HEPE_SUPPORT_01_SOURCE_RUNTIME_CANDIDATE=PASS'
+          echo 'SUPPORT_EXACT_SHA_PREVIEW_ACCEPTANCE=PASS'
           echo 'PERSISTENT_SUPPORT_SCHEMA=NOT_CREATED'
           echo 'PERSISTENT_SYNTHETIC_CLEANUP=NOT_APPLICABLE'
           echo 'REAL_EMAIL_SEND=false'
