@@ -4,7 +4,7 @@ Project: HEPE Curriculum Governance & Development
 Environment: NON-PRODUCTION ONLY
 Branch: docs/hepe-manual-04-help-tour-blueprint
 Baseline: feat/hepe-pilot-master-01 @ 259baf896a34c89d0e974520f564bbec2e9269f3
-Current implementation head at initiation: 7b0222f6aa9a605c0b244bf773d1e002dc0021ac
+Current HEPE-MANUAL-05A head: 4c8c8202da2275059155c3641ac5bb69a65c9bc3
 PR: #38 (DRAFT / NOT MERGED)
 
 ## Gate objective
@@ -20,8 +20,8 @@ Status: PENDING_AUTH_CAPTURE
 ## Verified non-visual checks
 
 ### Build/runtime
-- Vercel Preview build for HEPE-MANUAL-05: PASS.
-- HEPE-MANUAL-05 structural regression: PASS (16 checks).
+- Vercel Preview deployment for head 4c8c8202da2275059155c3641ac5bb69a65c9bc3: READY.
+- HEPE-MANUAL-05 structural/keyboard regression: PASS (21 checks).
 - Next.js compile/type/static generation: PASS.
 - /help and /help/[slug] routes are present in build output.
 
@@ -34,7 +34,7 @@ An acceptance review identified that the initial modal implementation exposed di
 - expose aria-haspopup=dialog and aria-expanded on the launcher;
 - add aria-describedby and an explicit close-button accessible name.
 
-Runtime browser confirmation remains pending authenticated capture.
+These semantics are now included in the 21-check build regression. Runtime browser confirmation remains pending authenticated capture.
 
 ### Contrast calculation
 Static color-pair calculations against current CSS:
@@ -81,6 +81,8 @@ Target viewports:
 
 ## Gate verdict
 
-IMPLEMENTATION / BUILD / STRUCTURAL ACCESSIBILITY: PASS WITH AUTHENTICATED VISUAL CAPTURE PENDING.
+IMPLEMENTATION / BUILD / STRUCTURAL ACCESSIBILITY: PASS.
+AUTHENTICATED RENDERED VISUAL ACCEPTANCE: PENDING.
+SCREENSHOT CAPTURE: PENDING_AUTH_CAPTURE.
 
-Screenshot Library v1.0 remains a registry-only package until real rendered images are captured. This document is controlled project context and is not automatically Audit Evidence.
+Screenshot Library v1.0 is currently a registry-only package until real rendered images are captured. PR #38 remains DRAFT and must not be merged on this gate alone. This document is controlled project context and is not automatically Audit Evidence.
