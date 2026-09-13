@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+// HEPE-WORKFLOW-04 exact-SHA Preview recovery source trigger; no runtime authority effect.
 export const dynamic = "force-dynamic";
 
 export async function GET() {

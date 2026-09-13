@@ -1,0 +1,67 @@
+name: HEPE WORKFLOW 04 Runner Closure V2
+
+on:
+  push:
+    branches: [feat/hepe-academic-workflow-03-exec]
+    paths: ['.github/workflows/hepe-workflow-04-runner-closure-v2.yml']
+
+permissions:
+  contents: read
+
+# Controlled NON-PRODUCTION rerun marker: contrast-repair-20260913
+jobs:
+  runner-closure-v2:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      HEPE_ENVIRONMENT: NON-PRODUCTION
+      NEXT_PUBLIC_SUPABASE_URL: https://lztxpjsuzqvtgyasfnyj.supabase.co
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_7bv5GR0-ksXJn91sRHV0Mg_k4nblIGI
+      SUPABASE_ADMIN: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      TARGET_PROGRAMME_CODE: '25510071103503'
+      TARGET_VERSION_CODE: '2567-SOURCEB-VALIDATION'
+      TARGET_COURSE_CODE: 'HED2503'
+      RUNNER_BASE_URL: http://127.0.0.1:3000
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - name: Verify exact SHA
+        run: |
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$HEPE_ENVIRONMENT" = "NON-PRODUCTION"
+          test -n "${SUPABASE_ADMIN:-}"
+          echo "RUNNER_EXACT_SHA_CHECKOUT_PASS sha=${GITHUB_SHA}"
+      - name: Install dependencies and browser
+        run: |
+          npm install --ignore-scripts --no-audit --no-fund
+          npm install --no-save --ignore-scripts --no-audit --no-fund playwright @axe-core/playwright
+          npx playwright install --with-deps chromium
+      - name: Build exact SHA
+        run: npm run build
+      - name: Start exact-SHA runner server
+        env:
+          VERCEL_GIT_COMMIT_SHA: ${{ github.sha }}
+          VERCEL_GIT_COMMIT_REF: feat/hepe-academic-workflow-03-exec
+        run: |
+          nohup npm start > /tmp/hepe-runner.log 2>&1 &
+          echo $! > /tmp/hepe-runner.pid
+          for i in $(seq 1 60); do curl --silent --fail --max-time 5 "$RUNNER_BASE_URL/api/pilot-build-meta" > /tmp/meta.json && break || sleep 2; done
+          grep -Fq "\"applicationSha\":\"${GITHUB_SHA}\"" /tmp/meta.json
+          grep -Fq '"environment":"NON-PRODUCTION"' /tmp/meta.json
+          grep -Fq '"production":false' /tmp/meta.json
+          echo "RUNNER_EXACT_SHA_RUNTIME_PASS sha=${GITHUB_SHA}"
+      - name: Authenticated synthetic runtime acceptance
+        run: node scripts/hepe-workflow-04-runner-auth.mjs
+      - name: Responsive and scoped accessibility regression
+        run: node scripts/hepe-workflow-04-runner-browser.mjs
+      - name: Runner closure candidate boundary summary
+        run: |
+          echo 'RUNNER_BASED_CONTROLLED_PILOT_CLOSURE_CANDIDATE=PASS'
+          echo 'VERCEL_PREVIEW_ACCEPTANCE=PENDING_EXTERNAL_QUOTA'
+          echo 'AUDIT_EVIDENCE_ADMISSION=NOT_ADMITTED'
+          echo 'PRODUCTION=false'
+          echo 'PR_MERGE=false'
+      - name: Stop runner
+        if: always()
+        run: if [ -f /tmp/hepe-runner.pid ]; then kill "$(cat /tmp/hepe-runner.pid)" 2>/dev/null || true; fi
