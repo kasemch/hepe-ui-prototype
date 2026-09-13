@@ -18,6 +18,9 @@ export default function Home() {
           <a href="/user-access/effective-access" style={{padding:18,border:"1px solid #e2e8f0",borderRadius:14,textDecoration:"none",color:"inherit",background:"#f8fafc"}}>
             <strong>Effective Access Preview</strong><div style={{marginTop:6,color:"#64748b"}}>Synthetic permission resolution</div>
           </a>
+          <a href="/governance/course-equivalence" style={{padding:18,border:"1px solid #bfdbfe",borderRadius:14,textDecoration:"none",color:"inherit",background:"#eff6ff"}}>
+            <strong>Course Equivalence Decision</strong><div style={{marginTop:6,color:"#475569"}}>01B.2H · dropdown decision + human confirmation</div>
+          </a>
         </div>
       </section>
     </main>
