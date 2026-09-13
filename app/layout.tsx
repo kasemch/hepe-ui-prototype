@@ -1,5 +1,6 @@
 import './globals.css';
 import './help.css';
+import './accessibility-overrides.css';
 import HelpTools from '../components/HelpTools';
 
 export const metadata = {
