@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   build:
-    name: Non-production static build
+    name: Non-production static build and runtime smoke
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
@@ -30,3 +30,31 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: Build
         run: npm run build
+      - name: Start synthetic runtime
+        run: |
+          npm run start -- -H 127.0.0.1 -p 3000 > /tmp/hepe-iam-next.log 2>&1 &
+          echo $! > /tmp/hepe-iam-next.pid
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:3000/ >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/hepe-iam-next.log
+          exit 1
+      - name: Smoke test IAM routes
+        run: |
+          set -euo pipefail
+          for path in / /login /user-access /user-access/effective-access; do
+            code=$(curl -sS -o /tmp/route-body -w '%{http_code}' "http://127.0.0.1:3000${path}")
+            test "$code" = "200" || { echo "$path expected 200, got $code"; cat /tmp/route-body; exit 1; }
+          done
+          code=$(curl -sS -o /tmp/callback-body -w '%{http_code}' http://127.0.0.1:3000/auth/callback)
+          test "$code" = "400" || { echo "/auth/callback expected 400 without code, got $code"; cat /tmp/callback-body; exit 1; }
+          grep -q 'HEPE_AUTH_CALLBACK_CODE_MISSING' /tmp/callback-body
+      - name: Stop synthetic runtime
+        if: always()
+        run: |
+          if [ -f /tmp/hepe-iam-next.pid ]; then
+            kill "$(cat /tmp/hepe-iam-next.pid)" 2>/dev/null || true
+          fi
