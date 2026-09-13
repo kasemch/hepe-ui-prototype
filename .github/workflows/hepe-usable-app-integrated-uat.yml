@@ -1,0 +1,124 @@
+name: HEPE USABLE-APP Integrated Synthetic UAT
+
+on:
+  push:
+    branches: [feat/hepe-usable-app-closure-batch]
+    paths: ['.github/workflows/hepe-usable-app-integrated-uat.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hepe-usable-app-integrated-uat
+  cancel-in-progress: false
+
+jobs:
+  integrated-uat:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      SUPABASE_URL: https://lztxpjsuzqvtgyasfnyj.supabase.co
+      SUPABASE_PUBLISHABLE_KEY: sb_publishable_7bv5GR0-ksXJn91sRHV0Mg_k4nblIGI
+      SUPABASE_ADMIN: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      VERCEL_BYPASS: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+      PREVIEW_URL: https://hepe-ui-prototype-git-feat-hepe-u-8022df-kasemch-3467s-projects.vercel.app
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify exact-SHA Preview
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${SUPABASE_ADMIN:-}" || exit 71
+          test -n "${VERCEL_BYPASS:-}" || exit 72
+          ok=0
+          for i in $(seq 1 30); do
+            body="$(mktemp)"
+            code="$(curl --silent --show-error --max-time 20 --output "$body" --write-out '%{http_code}' -H "x-vercel-protection-bypass: ${VERCEL_BYPASS}" -H 'Cache-Control: no-cache' "${PREVIEW_URL}/api/pilot-build-meta" || true)"
+            if [ "$code" = '200' ] && grep -q "${GITHUB_SHA}" "$body"; then ok=1; rm -f "$body"; break; fi
+            rm -f "$body"; sleep 10
+          done
+          test "$ok" = '1' || { echo 'EXACT_SHA_PREVIEW_NOT_READY'; exit 73; }
+          echo "EXACT_SHA_PREVIEW_PASS application_sha=${GITHUB_SHA}"
+
+      - name: Install controlled dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Execute UAT-01 UAT-04 UAT-05 UAT-06 and cleanup
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import crypto from 'node:crypto';
+          import {execFileSync} from 'node:child_process';
+          import {createClient} from '@supabase/supabase-js';
+          import {createServerClient} from '@supabase/ssr';
+          const E=process.env;
+          const admin=createClient(E.SUPABASE_URL,E.SUPABASE_ADMIN,{auth:{persistSession:false,autoRefreshToken:false}});
+          const specs=[
+            ['PREPARER_A','dd73e0bc-c07d-4df7-8a50-c2103f0a9c6d','10000000-0000-0000-0000-000000000001'],
+            ['REVIEWER_A','d20fe8d6-3d4e-4f14-9c30-5a45c9c5a3a9','10000000-0000-0000-0000-000000000002'],
+            ['APPROVER_A','5d6645b3-0f93-4659-a81c-4b43be07b253','10000000-0000-0000-0000-000000000003']
+          ];
+          const personas=specs.map(([name,actorId,original])=>({name,actorId,original}));
+          const users=[]; const baseline=new Map(); let failure=null;
+          const fail=m=>{throw new Error(m)};
+          const actor=async id=>{const {data,error}=await admin.from('actors').select('external_identity_subject').eq('actor_id',id).single();if(error)fail('ACTOR_READ');return data.external_identity_subject};
+          const authCount=async id=>{const {count,error}=await admin.from('authority_assignments').select('*',{head:true,count:'exact'}).eq('actor_id',id).eq('status','ACTIVE');if(error)fail('AUTH_READ');return count??0};
+          function request(path,cookie=''){
+            const m='__HTTP__'; const args=['--silent','--show-error','--max-time','30','-H',`x-vercel-protection-bypass: ${E.VERCEL_BYPASS}`,'-H','Cache-Control: no-cache'];
+            if(cookie)args.push('-H',`cookie: ${cookie}`); args.push('-w',`${m}%{http_code}`,`${E.PREVIEW_URL}${path}`);
+            const out=execFileSync('curl',args,{encoding:'utf8',maxBuffer:12*1024*1024}); const i=out.lastIndexOf(m); if(i<0)fail(`HTTP_MARKER:${path}`); return {body:out.slice(0,i),code:out.slice(i+m.length).trim()};
+          }
+          const live=html=>html.match(/<div class="live-state">([^<]+)<\/div>/)?.[1]?.trim()??'MISSING';
+          async function sessionFor(p){const jar=new Map();const ssr=createServerClient(E.SUPABASE_URL,E.SUPABASE_PUBLISHABLE_KEY,{cookies:{getAll(){return [...jar].map(([name,value])=>({name,value}))},setAll(xs){for(const x of xs)jar.set(x.name,x.value)}}});const {data,error}=await ssr.auth.signInWithPassword({email:p.email,password:p.password});if(error||!data.session)fail(`SIGNIN:${p.name}`);return {token:data.session.access_token,cookie:[...jar].map(([k,v])=>`${k}=${v}`).join('; ')}};
+          const uc=token=>createClient(E.SUPABASE_URL,E.SUPABASE_PUBLISHABLE_KEY,{auth:{persistSession:false,autoRefreshToken:false},global:{headers:{Authorization:`Bearer ${token}`}}});
+          try{
+            for(const p of personas){if(await actor(p.actorId)!==p.original)fail(`SUBJECT_PRE:${p.name}`);baseline.set(p.name,await authCount(p.actorId));const email=`hepe-uat-${E.GITHUB_RUN_ID}-${p.name.toLowerCase()}-${crypto.randomBytes(4).toString('hex')}@example.invalid`;const password=crypto.randomBytes(32).toString('base64url');const {data,error}=await admin.auth.admin.createUser({email,password,email_confirm:true,user_metadata:{hepe_synthetic_test:true,hepe_gate:'HEPE-USABLE-APP-UAT',hepe_persona:p.name}});if(error||!data.user)fail(`CREATE:${p.name}`);p.uid=data.user.id;p.email=email;p.password=password;users.push(p.uid);const rb=await admin.from('actors').update({external_identity_subject:p.uid}).eq('actor_id',p.actorId);if(rb.error)fail(`REBIND:${p.name}`);p.session=await sessionFor(p);}
+            const prep=personas[0];
+            const {data:la,error:lae}=await admin.from('learning_activities').select('curriculum_course_id').eq('activity_code','SYN-LA01').single();if(lae||!la)fail('SYN_LA01');
+            const {data:cc,error:cce}=await admin.from('curriculum_courses').select('curriculum_course_id,courses!inner(course_code)').eq('curriculum_course_id',la.curriculum_course_id).single();if(cce||!cc)fail('COURSE_CONTEXT');
+            const my=request('/my-courses',prep.session.cookie);if(my.code!=='200'||live(my.body)!=='VERIFIED'||!my.body.includes('SYNHPE101'))fail('UAT01_MY_COURSES');
+            const cw=request(`/course-workspace/${la.curriculum_course_id}`,prep.session.cookie);if(cw.code!=='200'||live(cw.body)!=='VERIFIED'||!cw.body.includes('SYNHPE101')||!cw.body.includes('บันทึกหลังสอน'))fail('UAT01_COURSE_WORKSPACE');
+            console.log('UAT01_MY_COURSES_COURSE_WORKSPACE_PASS');
+
+            const pa=request('/plan-actual',prep.session.cookie);if(pa.code!=='200'||live(pa.body)!=='VERIFIED'||!pa.body.includes('SYN-LA01')||!pa.body.includes('SYN-LA02')||!pa.body.includes('NO EVIDENCE')||!pa.body.includes('PARTIALLY ALIGNED'))fail('UAT04_PLAN_ACTUAL');
+            console.log('UAT04_PLAN_VS_ACTUAL_PASS');
+
+            const home=request('/',prep.session.cookie);if(home.code!=='200'||!home.body.includes('My Academic Workspace')||!home.body.includes('My Courses')||!home.body.includes('Quick Entry')||!home.body.includes('NON-PRODUCTION'))fail('UAT05_HOME_CONTINUITY');
+            const programme=request('/programme',prep.session.cookie);if(programme.code!=='200'||!programme.body.includes('Programme Overview')||!programme.body.includes('NON-PRODUCTION'))fail('UAT05_PROGRAMME_CONTINUITY');
+            console.log('UAT05_WORK_FIRST_PROGRAMME_CONTINUITY_PASS');
+
+            const {data:finding,error:fe}=await admin.from('findings').select('finding_id,finding_code').eq('finding_code','SYN-FND-PILOT-01').single();if(fe||!finding)fail('UAT06_FINDING_BASELINE_MISSING');
+            const {data:action,error:iae}=await admin.from('improvement_actions').select('improvement_action_id,finding_id').eq('finding_id',finding.finding_id).limit(1).single();if(iae||!action)fail('UAT06_ACTION_BASELINE_MISSING');
+            let readable=0;
+            for(const p of personas.slice(1)){
+              const client=uc(p.session.token);
+              const fr=await client.from('findings').select('finding_id,finding_code').eq('finding_id',finding.finding_id);
+              const ar=await client.from('improvement_actions').select('improvement_action_id,finding_id').eq('improvement_action_id',action.improvement_action_id);
+              if(!fr.error&&(fr.data??[]).length===1&&!ar.error&&(ar.data??[]).length===1){readable++;console.log(`UAT06_TRACEABILITY_RLS_PASS persona=${p.name}`);}
+            }
+            if(readable<1)fail('UAT06_NO_REVIEW_AUTHORITY_CAN_TRACE_FINDING_ACTION');
+            const findingsPage=request('/findings',personas[1].session.cookie);if(findingsPage.code!=='200'||!findingsPage.body.includes('Findings & Improvement')||!findingsPage.body.includes('NON-PRODUCTION'))fail('UAT06_FINDINGS_BROWSER');
+            const aiPage=request('/ai',personas[1].session.cookie);if(aiPage.code!=='200'||!aiPage.body.includes('AI ADVISORY ONLY')||!aiPage.body.includes('Human academic authority preserved'))fail('UAT06_AI_BOUNDARY');
+            console.log('UAT06_FINDING_IMPROVEMENT_HUMAN_AUTHORITY_PASS');
+            console.log('HEPE_USABLE_APP_INTEGRATED_UAT=PASS');
+          }catch(e){failure=e;console.error(`HEPE_UAT_FAIL:${e.message}`);}finally{
+            for(const p of personas){const r=await admin.from('actors').update({external_identity_subject:p.original}).eq('actor_id',p.actorId);if(r.error&&!failure)failure=new Error(`RESTORE:${p.name}`);}
+            for(const uid of users){const d=await admin.auth.admin.deleteUser(uid);if(d.error&&!failure)failure=new Error('DELETE_USER');}
+            let ok=true;for(const p of personas){if(await actor(p.actorId)!==p.original||await authCount(p.actorId)!==baseline.get(p.name))ok=false;}
+            const {data:list}=await admin.auth.admin.listUsers({page:1,perPage:200});const residual=(list?.users??[]).filter(u=>u.user_metadata?.hepe_gate==='HEPE-USABLE-APP-UAT').length;
+            console.log(`HEPE_UAT_AUTH_RESIDUAL=${residual}`);console.log(`HEPE_UAT_IDENTITY_RESTORE=${ok?'PASS':'FAIL'}`);console.log(`HEPE_UAT_CLEANUP=${ok&&residual===0?'PASS':'FAIL'}`);if(!ok||residual!==0)process.exitCode=2;
+          }
+          if(failure)throw failure;
+          NODE
+
+      - name: Final boundary summary
+        run: |
+          echo "APPLICATION_SHA=${GITHUB_SHA}"
+          echo 'ENVIRONMENT=NON-PRODUCTION'
+          echo 'SYNTHETIC_PERSONAS_ONLY=TRUE'
+          echo 'REAL_DATA_WRITE=NONE'
+          echo 'PRODUCTION_AUTHORIZATION=NOT_GRANTED'
+          echo 'PR_MERGE=NOT_ATTEMPTED'
