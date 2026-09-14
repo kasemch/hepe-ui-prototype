@@ -1,0 +1,69 @@
+name: HEPE PEOPLE 01K Authenticated Visual Acceptance
+
+on:
+  push:
+    branches: [feat/hepe-people-01k-visual-acceptance]
+    paths:
+      - 'scripts/hepe-people-01k-authenticated-visual-acceptance.mjs'
+      - '.github/workflows/hepe-people-01k-authenticated-visual.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hepe-people-01k-authenticated-visual
+  cancel-in-progress: false
+
+jobs:
+  authenticated-visual:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      HEPE_BASE_URL: https://hepe-ui-prototype-iuaiqgu7y-kasemch-3467s-projects.vercel.app
+      EXPECTED_APP_SHA: 3c1d78b73ac042b58bdae12dce6618ff821536a5
+      VERCEL_BYPASS: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+      SUPABASE_URL: https://lztxpjsuzqvtgyasfnyj.supabase.co
+      SUPABASE_PUBLISHABLE_KEY: sb_publishable_7bv5GR0-ksXJn91sRHV0Mg_k4nblIGI
+      SUPABASE_ADMIN: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SYSTEM_ADMIN_ACTOR_ID: 58b77439-0efe-4569-9d11-69823bee3ba9
+      SYSTEM_ADMIN_ORIGINAL_SUBJECT: 10000000-0000-0000-0000-000000000010
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - name: Verify runner and non-production bindings
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -n "${VERCEL_BYPASS:-}" || { echo 'VERCEL_BYPASS_BINDING_UNAVAILABLE'; exit 72; }
+          test -n "${SUPABASE_ADMIN:-}" || { echo 'SUPABASE_ADMIN_BINDING_UNAVAILABLE'; exit 71; }
+          echo "RUNNER_SHA=${GITHUB_SHA}"
+          echo "APPLICATION_SHA=${EXPECTED_APP_SHA}"
+          echo 'ENVIRONMENT=NON-PRODUCTION'
+      - name: Install controlled browser dependencies
+        run: |
+          npm install --ignore-scripts --no-audit --no-fund
+          npm install --no-save --ignore-scripts --no-audit --no-fund playwright @axe-core/playwright
+          npx playwright install --with-deps chromium
+      - name: Execute authenticated visual acceptance with mandatory cleanup
+        run: node scripts/hepe-people-01k-authenticated-visual-acceptance.mjs
+      - name: Upload 01K visual artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hepe-people-01k-${{ github.sha }}
+          path: artifacts/hepe-people-01k
+          if-no-files-found: error
+          retention-days: 14
+      - name: Boundary summary
+        if: always()
+        run: |
+          echo "APPLICATION_SHA=${EXPECTED_APP_SHA}"
+          echo 'ENVIRONMENT=NON-PRODUCTION'
+          echo 'SYNTHETIC_USER=TEMPORARY'
+          echo 'IDENTITY_REBIND=TEMPORARY_AND_RESTORED_BY_RUNNER'
+          echo 'AUTHORITY_ASSIGNMENT_CHANGE=NONE'
+          echo 'RLS_CHANGE=NONE'
+          echo 'PRODUCTION_AUTHORIZATION=NOT_GRANTED'
