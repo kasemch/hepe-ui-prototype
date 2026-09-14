@@ -1,0 +1,89 @@
+# serialized-current-head-only
+# retry-after-runner-closure-success
+# retry-after-authority-timing-reconciliation
+name: HEPE WORKFLOW 04 Exact Preview Closure V2
+
+on:
+  push:
+    branches: [feat/hepe-academic-workflow-03-exec]
+    paths: ['.github/workflows/hepe-workflow-04-preview-closure-v2.yml']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hepe-workflow-04-exact-preview-closure-v2
+  cancel-in-progress: true
+
+jobs:
+  exact-preview-closure-v2:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      HEPE_ENVIRONMENT: NON-PRODUCTION
+      NEXT_PUBLIC_SUPABASE_URL: https://lztxpjsuzqvtgyasfnyj.supabase.co
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_7bv5GR0-ksXJn91sRHV0Mg_k4nblIGI
+      SUPABASE_ADMIN: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      VERCEL_BYPASS: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+      PREVIEW_BASE_URL: https://hepe-ui-prototype-git-feat-hepe-a-37ab37-kasemch-3467s-projects.vercel.app
+      TARGET_PROGRAMME_CODE: '25510071103503'
+      TARGET_VERSION_CODE: '2567-SOURCEB-VALIDATION'
+      TARGET_COURSE_CODE: HED2503
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Verify exact SHA and NON-PRODUCTION boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$HEPE_ENVIRONMENT" = "NON-PRODUCTION"
+          test -n "${SUPABASE_ADMIN:-}" || { echo 'SUPABASE_ADMIN_BINDING_UNAVAILABLE'; exit 71; }
+          test -n "${VERCEL_BYPASS:-}" || { echo 'VERCEL_BYPASS_BINDING_UNAVAILABLE'; exit 72; }
+          echo "EXACT_SHA_CHECKOUT_PASS sha=${GITHUB_SHA}"
+
+      - name: Establish exact-SHA Vercel Preview
+        shell: bash
+        run: |
+          set -euo pipefail
+          ok=0
+          for i in $(seq 1 60); do
+            body="$(curl --silent --show-error --max-time 20 -H "x-vercel-protection-bypass: ${VERCEL_BYPASS}" -H 'Cache-Control: no-cache' "${PREVIEW_BASE_URL}/api/pilot-build-meta" || true)"
+            if printf '%s' "$body" | grep -Fq "\"applicationSha\":\"${GITHUB_SHA}\"" && printf '%s' "$body" | grep -Fq '"environment":"NON-PRODUCTION"' && printf '%s' "$body" | grep -Fq '"production":false'; then
+              ok=1
+              echo "EXACT_SHA_PREVIEW_PASS application_sha=${GITHUB_SHA}"
+              break
+            fi
+            sleep 10
+          done
+          test "$ok" = 1 || { echo 'EXACT_SHA_PREVIEW_NOT_READY'; exit 73; }
+
+      - name: Install controlled test dependencies
+        run: |
+          npm install --ignore-scripts --no-audit --no-fund
+          npm install --no-save --ignore-scripts --no-audit --no-fund playwright @axe-core/playwright
+          npx playwright install --with-deps chromium
+
+      - name: Authenticated synthetic runtime acceptance with mandatory cleanup
+        run: node scripts/hepe-workflow-04-preview-auth.mjs
+
+      - name: Responsive regression and scoped automated accessibility acceptance
+        run: node scripts/hepe-workflow-04-preview-browser.mjs
+
+      - name: Controlled Pilot Closure Candidate boundary summary
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "CONTROLLED_PILOT_CLOSURE_CANDIDATE established=true"
+          echo "environment=NON-PRODUCTION"
+          echo "exact_sha=${GITHUB_SHA}"
+          echo "runtime_cleanup_residual=0"
+          echo "responsive_routes=23 viewports=4"
+          echo "accessibility_scope=wcag2a,wcag2aa serious_critical=0"
+          echo "pr_merge=false"
+          echo "production=false"
+          echo "canonical_activation=false"
+          echo "canonical_publication=false"
+          echo "audit_evidence_admission=false"
