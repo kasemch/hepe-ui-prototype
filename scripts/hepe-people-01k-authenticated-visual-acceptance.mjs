@@ -17,7 +17,7 @@ const admin=createClient(E.SUPABASE_URL,E.SUPABASE_ADMIN,{auth:{persistSession:f
 let createdUserId=null;
 let rebound=false;
 let failure=null;
-const evidence={gate:'HEPE-PROGRAMME-CURRICULUM-01',environment:'NON-PRODUCTION',applicationSha:E.EXPECTED_APP_SHA,runnerSha:E.GITHUB_SHA||null,startedAt:new Date().toISOString(),actorId:E.SYSTEM_ADMIN_ACTOR_ID,authorityBaseline:null,authorityAfter:null,identityRestore:null,syntheticUserCleanup:null,results:[]};
+const evidence={gate:'HEPE-EVIDENCE-EXPLORER-01',environment:'NON-PRODUCTION',applicationSha:E.EXPECTED_APP_SHA,runnerSha:E.GITHUB_SHA||null,startedAt:new Date().toISOString(),actorId:E.SYSTEM_ADMIN_ACTOR_ID,authorityBaseline:null,authorityAfter:null,identityRestore:null,syntheticUserCleanup:null,results:[]};
 const fail=m=>{throw new Error(m)};
 async function actorSubject(){const {data,error}=await admin.from('actors').select('external_identity_subject').eq('actor_id',E.SYSTEM_ADMIN_ACTOR_ID).single();if(error||!data)fail('ACTOR_READ_FAILED');return data.external_identity_subject}
 async function authorityCount(){const {count,error}=await admin.from('authority_assignments').select('*',{head:true,count:'exact'});if(error)fail('AUTHORITY_READ_FAILED');return count??0}
@@ -26,6 +26,7 @@ async function makeSession(email,password){const jar=new Map();const ssr=createS
 const routes=[
   ['SS-CMD-01','/'],
   ['SS-PRG-01','/governance/programme-curriculum'],
+  ['SS-EVD-01','/governance/evidence'],
   ['SS-RSP-01','/governance/responsibilities'],
   ['SS-COV-01','/governance/responsibility-coverage'],
   ['SS-REC-01','/governance/reconciliation'],
@@ -57,12 +58,18 @@ async function inspectPage(page,id,route,viewportName){
       if(!body.includes(label)){await diagnostic(page,id,viewportName,body);fail(`MODULE_LABEL_MISSING:${label}:${viewportName}`)}
     }
     if(!body.includes('Route: /governance/programme-curriculum')){await diagnostic(page,id,viewportName,body);fail(`PROGRAMME_CURRICULUM_BINDING_MISSING:${viewportName}`)}
+    if(!body.includes('Route: /governance/evidence')){await diagnostic(page,id,viewportName,body);fail(`EVIDENCE_BINDING_MISSING:${viewportName}`)}
   }
   if(route==='/governance/programme-curriculum'){
     for(const expected of ['Programme & Curriculum','25510071103503','2567-SOURCEB-VALIDATION','DRAFT','is_current = false','effective_from = —']){
       if(!body.includes(expected)){await diagnostic(page,id,viewportName,body);fail(`CURRICULUM_EXPECTED_STATE_MISSING:${expected}:${viewportName}`)}
     }
     if(/Activated at[^—]*\d/.test(body)){await diagnostic(page,id,viewportName,body);fail(`UNEXPECTED_CURRICULUM_ACTIVATION:${viewportName}`)}
+  }
+  if(route==='/governance/evidence'){
+    for(const expected of ['Evidence Explorer','Visible evidence','UNVERIFIED','Current versions','0','Visibility or presence in this explorer does not admit an item to the Audit Evidence Set']){
+      if(!body.includes(expected)){await diagnostic(page,id,viewportName,body);fail(`EVIDENCE_EXPECTED_STATE_MISSING:${expected}:${viewportName}`)}
+    }
   }
   if(route==='/governance/responsibility-coverage' && !/Source-B courses/.test(body)){await diagnostic(page,id,viewportName,body);fail(`COVERAGE_SUMMARY_MISSING:${viewportName}`)}
   if(route==='/governance/reconciliation' && !/Reconciliation Queue/.test(body)){await diagnostic(page,id,viewportName,body);fail(`RECONCILIATION_TITLE_MISSING:${viewportName}`)}
@@ -83,9 +90,9 @@ try{
   const original=await actorSubject();
   if(original!==E.SYSTEM_ADMIN_ORIGINAL_SUBJECT)fail(`ACTOR_SUBJECT_PRECONDITION_FAILED:${original}`);
   evidence.authorityBaseline=await authorityCount();
-  const email=`hepe-curriculum-01-${E.GITHUB_RUN_ID||Date.now()}-${crypto.randomBytes(4).toString('hex')}@example.invalid`;
+  const email=`hepe-evidence-01-${E.GITHUB_RUN_ID||Date.now()}-${crypto.randomBytes(4).toString('hex')}@example.invalid`;
   const password=crypto.randomBytes(32).toString('base64url');
-  const {data:u,error:ue}=await admin.auth.admin.createUser({email,password,email_confirm:true,user_metadata:{hepe_synthetic_test:true,hepe_gate:'HEPE-PROGRAMME-CURRICULUM-01'}});
+  const {data:u,error:ue}=await admin.auth.admin.createUser({email,password,email_confirm:true,user_metadata:{hepe_synthetic_test:true,hepe_gate:'HEPE-EVIDENCE-EXPLORER-01'}});
   if(ue||!u.user)fail(`SYNTHETIC_USER_CREATE_FAILED:${ue?.message||'unknown'}`);
   createdUserId=u.user.id;
   const reb=await admin.from('actors').update({external_identity_subject:createdUserId}).eq('actor_id',E.SYSTEM_ADMIN_ACTOR_ID);
@@ -102,8 +109,8 @@ try{
       await ctx.close();
     }
   } finally {await browser.close()}
-  console.log('HEPE_PROGRAMME_CURRICULUM_01_AUTHENTICATED_VISUAL_PASS');
-} catch(e){failure=e;console.error(`HEPE_PROGRAMME_CURRICULUM_01_FAIL:${e.message}`)} finally {
+  console.log('HEPE_EVIDENCE_EXPLORER_01_AUTHENTICATED_VISUAL_PASS');
+} catch(e){failure=e;console.error(`HEPE_EVIDENCE_EXPLORER_01_FAIL:${e.message}`)} finally {
   try{if(rebound){const r=await admin.from('actors').update({external_identity_subject:E.SYSTEM_ADMIN_ORIGINAL_SUBJECT}).eq('actor_id',E.SYSTEM_ADMIN_ACTOR_ID);if(r.error)throw new Error('ACTOR_RESTORE_FAILED')}evidence.identityRestore=(await actorSubject())===E.SYSTEM_ADMIN_ORIGINAL_SUBJECT?'PASS':'FAIL'}catch(e){evidence.identityRestore='FAIL';if(!failure)failure=e}
   try{if(createdUserId){const d=await admin.auth.admin.deleteUser(createdUserId);if(d.error)throw new Error('SYNTHETIC_USER_DELETE_FAILED')}evidence.syntheticUserCleanup='PASS'}catch(e){evidence.syntheticUserCleanup='FAIL';if(!failure)failure=e}
   try{evidence.authorityAfter=await authorityCount();if(evidence.authorityAfter!==evidence.authorityBaseline)throw new Error('AUTHORITY_COUNT_CHANGED')}catch(e){if(!failure)failure=e}
@@ -114,6 +121,6 @@ try{
   console.log(`SYNTHETIC_USER_CLEANUP=${evidence.syntheticUserCleanup}`);
   console.log(`AUTHORITY_BASELINE=${evidence.authorityBaseline}`);
   console.log(`AUTHORITY_AFTER=${evidence.authorityAfter}`);
-  console.log(`HEPE_PROGRAMME_CURRICULUM_01_VERDICT=${evidence.verdict}`);
+  console.log(`HEPE_EVIDENCE_EXPLORER_01_VERDICT=${evidence.verdict}`);
 }
 if(failure)throw failure;
