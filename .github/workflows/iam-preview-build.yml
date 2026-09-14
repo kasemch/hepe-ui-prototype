@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - feat/hepe-iam-09-user-access
+      - feat/hepe-people-01b2h-decision-ui
   pull_request:
     branches:
       - main
@@ -61,6 +62,32 @@ jobs:
 
           code=$(curl -sS -o /tmp/status-body -w '%{http_code}' 'http://127.0.0.1:3000/auth/callback/status?status=error&reason=access_denied')
           test "$code" = "200" || { echo "/auth/callback/status expected 200, got $code"; cat /tmp/status-body; exit 1; }
+      - name: Protected Preview bypass smoke
+        if: github.ref_name == 'feat/hepe-people-01b2h-decision-ui'
+        env:
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+          HEPE_PREVIEW_URL: https://hepe-ui-prototype-git-feat-hepe-p-685c79-kasemch-3467s-projects.vercel.app
+        run: |
+          set -euo pipefail
+          if [ -z "${VERCEL_AUTOMATION_BYPASS_SECRET:-}" ]; then
+            echo 'HEPE_PREVIEW_BYPASS_SECRET_MISSING'
+            exit 2
+          fi
+          code=$(curl -sS -L --max-redirs 0 \
+            -H "x-vercel-protection-bypass: ${VERCEL_AUTOMATION_BYPASS_SECRET}" \
+            -o /tmp/protected-preview-body \
+            -w '%{http_code}' \
+            "${HEPE_PREVIEW_URL}/login" || true)
+          if [ "$code" != "200" ]; then
+            echo "HEPE_PREVIEW_BYPASS_FAILED status=${code}"
+            head -c 500 /tmp/protected-preview-body || true
+            exit 1
+          fi
+          grep -qi 'HEPE\|Magic\|login\|เข้าสู่ระบบ' /tmp/protected-preview-body || {
+            echo 'HEPE_PREVIEW_LOGIN_CONTENT_NOT_CONFIRMED'
+            exit 1
+          }
+          echo 'HEPE_PREVIEW_BYPASS_PASS'
       - name: Stop synthetic runtime
         if: always()
         run: |
