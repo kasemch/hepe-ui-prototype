@@ -1,8 +1,8 @@
-name: HEPE Programme Curriculum Authenticated Acceptance
+name: HEPE Evidence Explorer Authenticated Acceptance
 
 on:
   push:
-    branches: [feat/hepe-programme-curriculum-01]
+    branches: [feat/hepe-evidence-explorer-01]
     paths:
       - 'scripts/hepe-people-01k-authenticated-visual-acceptance.mjs'
       - '.github/workflows/hepe-people-01k-authenticated-visual.yml'
@@ -12,7 +12,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: hepe-programme-curriculum-authenticated-acceptance
+  group: hepe-evidence-explorer-authenticated-acceptance
   cancel-in-progress: false
 
 jobs:
@@ -20,8 +20,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
-      HEPE_BASE_URL: https://hepe-ui-prototype-9z3lmizhe-kasemch-3467s-projects.vercel.app
-      EXPECTED_APP_SHA: f8582f3ba45b1c8f5bc8f412dc9c8791aa0292ba
+      HEPE_BASE_URL: https://hepe-ui-prototype-eh352v4gv-kasemch-3467s-projects.vercel.app
+      EXPECTED_APP_SHA: e11d3aafe6f5026446077c67663da922ae285b16
       VERCEL_BYPASS: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
       SUPABASE_URL: https://lztxpjsuzqvtgyasfnyj.supabase.co
       SUPABASE_PUBLISHABLE_KEY: sb_publishable_7bv5GR0-ksXJn91sRHV0Mg_k4nblIGI
@@ -47,13 +47,13 @@ jobs:
           npm install --ignore-scripts --no-audit --no-fund
           npm install --no-save --ignore-scripts --no-audit --no-fund playwright @axe-core/playwright
           npx playwright install --with-deps chromium
-      - name: Execute authenticated programme curriculum acceptance with mandatory cleanup
+      - name: Execute authenticated evidence explorer acceptance with mandatory cleanup
         run: node scripts/hepe-people-01k-authenticated-visual-acceptance.mjs
-      - name: Upload programme curriculum acceptance artifacts
+      - name: Upload evidence explorer acceptance artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: hepe-programme-curriculum-${{ github.sha }}
+          name: hepe-evidence-explorer-${{ github.sha }}
           path: artifacts/hepe-global-app-integration-01
           if-no-files-found: error
           retention-days: 14
@@ -66,5 +66,5 @@ jobs:
           echo 'IDENTITY_REBIND=TEMPORARY_AND_RESTORED_BY_RUNNER'
           echo 'AUTHORITY_ASSIGNMENT_CHANGE=NONE'
           echo 'RLS_CHANGE=NONE'
-          echo 'CURRICULUM_ACTIVATION=NONE'
+          echo 'EVIDENCE_ADMISSION_CHANGE=NONE'
           echo 'PRODUCTION_AUTHORIZATION=NOT_GRANTED'
