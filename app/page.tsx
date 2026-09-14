@@ -133,7 +133,7 @@ export default async function Home() {
     { title: "Evidence Explorer", description: "Evidence candidates exist in governed storage, but no verified integrated UI surface is bound here yet.", state: "READ_MODEL_NOT_AVAILABLE" },
     { title: "Traceability Explorer", description: "No verified integrated traceability UI surface is bound on this baseline yet.", state: "READ_MODEL_NOT_AVAILABLE" },
     { title: "Approval Queue", description: "No verified cross-module approval runtime surface is bound on this baseline yet.", state: "READ_MODEL_NOT_AVAILABLE" },
-    { title: "Help Center", description: "User guidance content exists in other workstreams, but no verified Help Center route is bound on this baseline yet.", state: "READ_MODEL_NOT_AVAILABLE" },
+    { title: "Help Center", description: "Verified guidance for current HEPE runtime surfaces, governance labels, authority-aware visibility, and controlled-pilot limitations.", state: "AVAILABLE", href: "/help" },
   ];
 
   return (
