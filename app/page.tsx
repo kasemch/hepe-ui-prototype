@@ -3,126 +3,202 @@ import { cookies } from "next/headers";
 
 export const dynamic = "force-dynamic";
 
-type CoverageRow = {
-  offered_in_period: boolean;
-  coverage_state: string;
-  has_course_owner_record: boolean;
-  has_course_coordinator_record: boolean;
+type TeachingState = {
+  academic_year: string;
+  term_code: string;
+  course_code: string;
+  source_person_label: string | null;
+  academic_person_id: string | null;
+  disposition: string | null;
+  verification_status: string | null;
+  creates_system_authority: boolean | null;
 };
 
-type ReconciliationRow = {
-  reconciliation_code: string;
-  category: string;
-  blocking_status: string;
+type WorkspaceSnapshot = {
+  state: string;
+  authenticated: boolean;
+  userEmail?: string;
+  academicPersonId?: string;
+  teachingStates: TeachingState[];
 };
 
-type ModuleState = "AVAILABLE" | "AUTHORITY_GATED" | "READ_MODEL_NOT_AVAILABLE";
-
-type ModuleCard = {
-  title: string;
-  description: string;
-  state: ModuleState;
-  href?: string;
-};
-
-async function loadProgrammeSnapshot() {
+async function loadWorkspaceSnapshot(): Promise<WorkspaceSnapshot> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-  if (!url || !key) {
-    return { state: "RUNTIME_NOT_CONFIGURED", authenticated: false, coverage: [] as CoverageRow[], reconciliation: [] as ReconciliationRow[] };
-  }
+  if (!url || !key) return { state: "RUNTIME_NOT_CONFIGURED", authenticated: false, teachingStates: [] };
 
   const cookieStore = await cookies();
-  const supabase = createServerClient(url, key, { cookies: { getAll() { return cookieStore.getAll(); }, setAll() { /* read-only command center */ } } });
+  const supabase = createServerClient(url, key, {
+    cookies: {
+      getAll() { return cookieStore.getAll(); },
+      setAll() { /* read-only workspace snapshot */ },
+    },
+  });
+
   const { data: authData } = await supabase.auth.getUser();
-  if (!authData.user) return { state: "AUTH_REQUIRED", authenticated: false, coverage: [] as CoverageRow[], reconciliation: [] as ReconciliationRow[] };
+  const user = authData.user;
+  if (!user) return { state: "AUTH_REQUIRED", authenticated: false, teachingStates: [] };
 
-  const [coverageResult, reconciliationResult] = await Promise.all([
-    supabase.rpc("hepe_get_people_responsibility_coverage", { p_academic_year: "2569", p_term_code: "1" }),
-    supabase.from("v_hepe_people_reconciliation_queue_v1").select("reconciliation_code,category,blocking_status").limit(100),
-  ]);
-  const readBlocked = Boolean(coverageResult.error || reconciliationResult.error);
-  return { state: readBlocked ? "PARTIAL_OR_BLOCKED" : "VERIFIED_READ", authenticated: true, coverage: (coverageResult.data ?? []) as CoverageRow[], reconciliation: (reconciliationResult.data ?? []) as ReconciliationRow[] };
+  const { data: actorRows, error: actorError } = await supabase
+    .from("actors")
+    .select("actor_id")
+    .eq("external_identity_subject", user.id)
+    .eq("status", "ACTIVE")
+    .limit(1);
+
+  if (actorError || !actorRows?.[0]) {
+    return { state: "ACTOR_BINDING_NOT_READABLE", authenticated: true, userEmail: user.email, teachingStates: [] };
+  }
+
+  const { data: bindingRows, error: bindingError } = await supabase
+    .from("academic_person_actor_bindings")
+    .select("academic_person_id,binding_status")
+    .eq("actor_id", actorRows[0].actor_id)
+    .eq("binding_status", "VERIFIED")
+    .limit(1);
+
+  if (bindingError || !bindingRows?.[0]) {
+    return { state: "ACADEMIC_PERSON_BINDING_NOT_READABLE", authenticated: true, userEmail: user.email, teachingStates: [] };
+  }
+
+  const academicPersonId = bindingRows[0].academic_person_id;
+  const { data: states, error: stateError } = await supabase
+    .from("mr30_effective_teaching_states")
+    .select("academic_year,term_code,course_code,source_person_label,academic_person_id,disposition,verification_status,creates_system_authority")
+    .eq("academic_person_id", academicPersonId)
+    .eq("academic_year", "2569")
+    .eq("term_code", "1")
+    .order("course_code");
+
+  return {
+    state: stateError ? "TEACHING_READ_PARTIAL" : "VERIFIED_READ",
+    authenticated: true,
+    userEmail: user.email,
+    academicPersonId,
+    teachingStates: (states ?? []) as TeachingState[],
+  };
 }
 
-function stateBadge(state: ModuleState) {
-  const styles = state === "AVAILABLE" ? { border: "#bbf7d0", background: "#f0fdf4", color: "#166534" } : state === "AUTHORITY_GATED" ? { border: "#bfdbfe", background: "#eff6ff", color: "#1d4ed8" } : { border: "#cbd5e1", background: "#f8fafc", color: "#475569" };
-  return <span style={{ border: `1px solid ${styles.border}`, background: styles.background, color: styles.color, borderRadius: 999, padding: "4px 8px", fontSize: 11, fontWeight: 700 }}>{state.replaceAll("_", " ")}</span>;
+function Pill({ children }: { children: React.ReactNode }) {
+  return <span style={{display:"inline-flex",alignItems:"center",padding:"5px 10px",borderRadius:999,border:"1px solid #cbd5e1",background:"#f8fafc",fontSize:12,fontWeight:700,color:"#475569"}}>{children}</span>;
 }
 
-function moduleCardStyle(state: ModuleState) {
-  const muted = state === "READ_MODEL_NOT_AVAILABLE";
-  return { padding: 18, border: `1px solid ${muted ? "#cbd5e1" : "#e2e8f0"}`, borderRadius: 14, textDecoration: "none", color: "inherit", background: muted ? "#f8fafc" : "#ffffff", opacity: muted ? 0.86 : 1, minHeight: 138, display: "flex", flexDirection: "column" as const, justifyContent: "space-between", gap: 12 };
+function Metric({ label, value, note }: { label: string; value: string | number; note?: string }) {
+  return <article style={{background:"white",border:"1px solid #e2e8f0",borderRadius:18,padding:18,boxShadow:"0 8px 24px rgba(15,23,42,.04)"}}>
+    <div style={{fontSize:12,color:"#64748b"}}>{label}</div>
+    <div style={{fontSize:28,fontWeight:850,marginTop:6,color:"#0f172a"}}>{value}</div>
+    {note && <div style={{fontSize:12,color:"#64748b",marginTop:6,lineHeight:1.5}}>{note}</div>}
+  </article>;
 }
 
 export default async function Home() {
-  const snapshot = await loadProgrammeSnapshot();
-  const sourceBCourses = snapshot.coverage.length;
-  const offered = snapshot.coverage.filter((r) => r.offered_in_period).length;
-  const recorded = snapshot.coverage.filter((r) => r.coverage_state === "VERIFIED_RESPONSIBILITY_RECORDED").length;
-  const noCurrent = snapshot.coverage.filter((r) => r.coverage_state === "NO_CURRENT_RESPONSIBILITY_RECORD").length;
-  const periodMismatch = snapshot.coverage.filter((r) => r.coverage_state === "TEACHING_STATE_WITHOUT_EXACT_OFFERING").length;
-  const ownerRecords = snapshot.coverage.filter((r) => r.has_course_owner_record).length;
-  const coordinatorRecords = snapshot.coverage.filter((r) => r.has_course_coordinator_record).length;
-  const openReconciliation = snapshot.reconciliation.length;
-  const blockingReconciliation = snapshot.reconciliation.filter((r) => r.blocking_status?.includes("BLOCKS_")).length;
+  const snapshot = await loadWorkspaceSnapshot();
+  const verifiedStates = snapshot.teachingStates.filter((s) => (s.verification_status ?? "").includes("VERIFIED")).length;
+  const courseCount = new Set(snapshot.teachingStates.map((s) => s.course_code)).size;
 
-  const modules: ModuleCard[] = [
-    { title: "Login", description: "Controlled authentication entry.", state: "AVAILABLE", href: "/login" },
-    { title: "User & Access Center", description: "Role, scope, and authority preview. Authority is never inferred from academic responsibility.", state: "AVAILABLE", href: "/user-access" },
-    { title: "Programme-Chair Activation", description: "Controlled IAM activation surface. Write behavior is authority-gated and NON-PRODUCTION only.", state: "AUTHORITY_GATED", href: "/user-access/activate" },
-    { title: "Effective Access", description: "Resolved permission preview for the authenticated identity.", state: "AVAILABLE", href: "/user-access/effective-access" },
-    { title: "Course Equivalence", description: "Controlled legacy/current equivalence reconciliation.", state: "AUTHORITY_GATED", href: "/governance/course-equivalence" },
-    { title: "Academic Responsibility", description: "Current responsibility, timeline, and provenance.", state: "AVAILABLE", href: "/governance/responsibilities" },
-    { title: "Responsibility Coverage", description: "Period-aware recording coverage without inventing missing ownership or offering records.", state: "AVAILABLE", href: "/governance/responsibility-coverage" },
-    { title: "Reconciliation Queue", description: "Verified system conditions requiring reconciliation. Queue items are not Formal Findings by default.", state: "AVAILABLE", href: "/governance/reconciliation" },
-    { title: "Programme & Curriculum", description: "Authority-aware controlled curriculum context. Displays system status without approving or activating a curriculum.", state: "AVAILABLE", href: "/governance/programme-curriculum" },
-    { title: "Course Registry", description: "Authority-aware read-only registry of the 92 controlled Source-B curriculum courses.", state: "AVAILABLE", href: "/governance/courses" },
-    { title: "PLO / CLO Mapping", description: "No verified integrated app read surface is bound on this baseline yet.", state: "READ_MODEL_NOT_AVAILABLE" },
-    { title: "Evidence Explorer", description: "Authority-aware read-only evidence health projection. Visible or UNVERIFIED evidence is not automatically Audit Evidence.", state: "AVAILABLE", href: "/governance/evidence" },
-    { title: "Traceability Explorer", description: "No verified integrated traceability UI surface is bound on this baseline yet.", state: "READ_MODEL_NOT_AVAILABLE" },
-    { title: "Approval Queue", description: "No verified cross-module approval runtime surface is bound on this baseline yet.", state: "READ_MODEL_NOT_AVAILABLE" },
-    { title: "Help Center", description: "Verified guidance for current HEPE runtime surfaces, governance labels, authority-aware visibility, and controlled-pilot limitations.", state: "AVAILABLE", href: "/help" },
+  if (!snapshot.authenticated) {
+    return (
+      <main style={{minHeight:"100vh",display:"grid",placeItems:"center",padding:24,background:"linear-gradient(135deg,#f0fdfa,#f8fafc 55%,#eff6ff)"}}>
+        <section style={{maxWidth:720,background:"white",border:"1px solid #e2e8f0",borderRadius:24,padding:30,boxShadow:"0 18px 48px rgba(15,23,42,.08)"}}>
+          <div style={{fontSize:13,fontWeight:800,letterSpacing:".08em",color:"#0f766e"}}>HEPE · ACADEMIC WORKSPACE · NON-PRODUCTION</div>
+          <h1 style={{margin:"8px 0 10px"}}>พื้นที่ทำงานอาจารย์</h1>
+          <p style={{color:"#475569",lineHeight:1.8}}>กรุณาเข้าสู่ระบบก่อน ระบบจะพาเข้าสู่หน้าหลักที่แสดงงานประจำภาคเรียน รายวิชา และสถานะเอกสาร โดยไม่เริ่มจากหน้าบริหารระบบ</p>
+          <a href="/login" style={{display:"inline-block",marginTop:12,padding:"12px 18px",borderRadius:12,background:"#0f766e",color:"white",fontWeight:800,textDecoration:"none"}}>เข้าสู่ระบบ</a>
+        </section>
+      </main>
+    );
+  }
+
+  const timeline = [
+    ["ก่อนเปิดภาค", "เตรียมข้อมูลรายวิชาและแผนการสอน"],
+    ["ต้นภาคเรียน", "จัดทำเอกสารต้นภาคและตรวจความครบถ้วน"],
+    ["ระหว่างภาค", "บันทึกการสอน หลักฐาน และผลการประเมิน"],
+    ["สิ้นสุดภาค", "สรุปผลการเรียนรู้และผลการดำเนินงาน"],
+    ["หลังสิ้นสุดภาค", "ปิดภาคและส่งสัญญาณเข้าสู่การปรับปรุงหลักสูตร"],
   ];
 
   return (
-    <main style={{ maxWidth: 1180, margin: "32px auto", padding: 24 }}>
-      <section style={{ background: "white", borderRadius: 18, padding: 26, border: "1px solid #e2e8f0" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", gap: 18, flexWrap: "wrap" }}>
+    <main style={{minHeight:"100vh",background:"#f8fafc",color:"#0f172a"}}>
+      <div style={{maxWidth:1240,margin:"0 auto",padding:"28px 22px 48px"}}>
+        <header style={{display:"flex",justifyContent:"space-between",gap:18,alignItems:"flex-start",flexWrap:"wrap"}}>
           <div>
-            <div style={{ fontSize: 13, color: "#475569", fontWeight: 700 }}>HEPE · GLOBAL APP INTEGRATION 01 · NON-PRODUCTION</div>
-            <h1 style={{ margin: "6px 0" }}>HEPE Curriculum Command Center</h1>
-            <p style={{ margin: 0, maxWidth: 860, color: "#475569" }}>Single application shell for verified HEPE runtime surfaces. Module availability is evidence-first: a module is linked only when a route and runtime surface exist on this baseline. Missing modules remain explicitly unavailable rather than being simulated or inferred.</p>
+            <div style={{fontSize:13,fontWeight:800,letterSpacing:".08em",color:"#0f766e"}}>HEPE · POST-LOGIN HOME · NON-PRODUCTION</div>
+            <h1 style={{margin:"6px 0 6px",fontSize:34}}>พื้นที่ทำงานอาจารย์</h1>
+            <p style={{margin:0,color:"#64748b",lineHeight:1.7}}>ภาคเรียนนี้ต้องทำอะไร งานไปถึงไหน และอะไรควรทำต่อ</p>
           </div>
-          <div style={{ alignSelf: "flex-start", padding: "8px 11px", borderRadius: 999, border: "1px solid #cbd5e1", background: "#f8fafc", fontSize: 12 }}>Read state: <strong>{snapshot.state}</strong></div>
-        </div>
-
-        {!snapshot.authenticated && <div style={{ marginTop: 18, padding: 16, borderRadius: 12, background: "#fff7ed", border: "1px solid #fed7aa" }}>Authentication is required before programme-scoped indicators can be shown. Anonymous access remains fail-closed.</div>}
-        {snapshot.authenticated && snapshot.state === "PARTIAL_OR_BLOCKED" && <div style={{ marginTop: 18, padding: 16, borderRadius: 12, background: "#fef2f2", border: "1px solid #fecaca" }}>Some programme-scoped read models are unavailable to this identity. No broader authority is inferred or granted.</div>}
-
-        {snapshot.state === "VERIFIED_READ" && <>
-          <h2 style={{ fontSize: 18, margin: "24px 0 10px" }}>Verified programme snapshot · 2569-T1</h2>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 10 }}>
-            {[["Source-B courses", sourceBCourses],["Offered", offered],["Responsibility recorded", recorded],["No current record", noCurrent],["Period mismatch", periodMismatch],["Open reconciliation", openReconciliation],["Blocking conditions", blockingReconciliation]].map(([label, value]) => <div key={String(label)} style={{ padding: 14, border: "1px solid #e2e8f0", borderRadius: 12 }}><div style={{ fontSize: 12, color: "#64748b" }}>{label}</div><strong style={{ fontSize: 26 }}>{value}</strong></div>)}
+          <div style={{display:"flex",gap:8,flexWrap:"wrap",justifyContent:"flex-end"}}>
+            <Pill>ปีการศึกษา 2569</Pill>
+            <Pill>ภาคเรียน 1</Pill>
+            <Pill>{snapshot.state}</Pill>
           </div>
-          <div style={{ marginTop: 12, padding: 13, borderRadius: 12, background: "#f8fafc", border: "1px solid #e2e8f0", fontSize: 13, color: "#475569" }}>Owner records: <strong>{ownerRecords}</strong> · Coordinator records: <strong>{coordinatorRecords}</strong>. “No current record” is a recording-coverage state only and does not prove that no instructor or responsible person exists in reality.</div>
-        </>}
+        </header>
 
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "end", gap: 16, flexWrap: "wrap", marginTop: 28 }}>
-          <div><h2 style={{ fontSize: 18, margin: 0 }}>Module registry</h2><p style={{ margin: "5px 0 0", color: "#64748b", fontSize: 13 }}>Verified navigation only. Unavailable cards are intentionally non-clickable.</p></div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>{stateBadge("AVAILABLE")}{stateBadge("AUTHORITY_GATED")}{stateBadge("READ_MODEL_NOT_AVAILABLE")}</div>
-        </div>
+        <section style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(210px,1fr))",gap:14,marginTop:24}}>
+          <Metric label="รายวิชาที่พบใน Teaching State" value={courseCount} note="นับจาก verified person binding และ MR30 effective teaching state" />
+          <Metric label="Teaching State ที่มีสถานะ VERIFIED" value={verifiedStates} note={`ทั้งหมด ${snapshot.teachingStates.length} records`} />
+          <Metric label="ความครบถ้วน มคอ. ภาคเรียนนี้" value="ยังไม่เชื่อม" note="จะไม่สร้างเปอร์เซ็นต์จำลองจนกว่าจะมี M.Kor read model จริง" />
+          <Metric label="งานเร่งด่วน" value="ยังไม่เชื่อม" note="รอ deadline/completeness engine ที่ตรวจสอบได้" />
+        </section>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(230px,1fr))", gap: 14, marginTop: 12 }}>
-          {modules.map((module) => {
-            const body = <><div><div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}><strong>{module.title}</strong>{stateBadge(module.state)}</div><div style={{ marginTop: 8, color: "#475569", fontSize: 13 }}>{module.description}</div></div><div style={{ fontSize: 12, color: "#64748b" }}>{module.href ? `Route: ${module.href}` : "READ MODEL NOT AVAILABLE / COMING SOON"}</div></>;
-            return module.href ? <a key={module.title} href={module.href} style={moduleCardStyle(module.state)}>{body}</a> : <div key={module.title} aria-disabled="true" style={moduleCardStyle(module.state)}>{body}</div>;
-          })}
-        </div>
+        <section style={{marginTop:22,background:"white",border:"1px solid #e2e8f0",borderRadius:20,padding:20}}>
+          <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"center",flexWrap:"wrap"}}>
+            <div><h2 style={{margin:0,fontSize:20}}>Timeline การจัดทำ มคอ.</h2><p style={{margin:"5px 0 0",fontSize:13,color:"#64748b"}}>โครงสร้างตามวงจรภาคเรียนที่ LOCK ไว้; สถานะจริงจะเชื่อมเมื่อ M.Kor runtime พร้อม</p></div>
+            <Pill>NO MOCK STATUS</Pill>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(190px,1fr))",gap:12,marginTop:16}}>
+            {timeline.map(([phase,description],i) => <div key={phase} style={{padding:16,borderRadius:16,border:"1px solid #e2e8f0",background:i===0?"#f0fdfa":"#fff"}}>
+              <div style={{fontSize:12,fontWeight:800,color:"#0f766e"}}>STEP {i+1}</div>
+              <strong style={{display:"block",marginTop:5}}>{phase}</strong>
+              <p style={{fontSize:13,color:"#64748b",lineHeight:1.6,marginBottom:8}}>{description}</p>
+              <span style={{fontSize:11,fontWeight:800,color:"#92400e",background:"#fffbeb",border:"1px solid #fde68a",borderRadius:999,padding:"4px 8px"}}>READ MODEL PENDING</span>
+            </div>)}
+          </div>
+        </section>
 
-        <div style={{ marginTop: 22, padding: 16, borderRadius: 12, background: "#f8fafc", border: "1px solid #e2e8f0", fontSize: 13, color: "#475569" }}>Governance boundary: Conversation, draft UI text, and unavailable-module placeholders are not Audit Evidence. Production authorization is not implied. Existing reconciliation items remain open until resolved by controlled source or verified system evidence.</div>
-        <div style={{ marginTop: 22, paddingTop: 16, borderTop: "1px solid #e2e8f0", fontSize: 12, color: "#64748b" }}>NON-PRODUCTION only · No production authorization · No automatic Audit Evidence Admission · Human authority preserved.</div>
-      </section>
+        <section style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:14,marginTop:22}}>
+          <a href="/teaching" style={{textDecoration:"none",color:"inherit",background:"white",border:"1px solid #bbf7d0",borderRadius:20,padding:20}}>
+            <div style={{fontSize:12,fontWeight:800,color:"#166534"}}>PRIMARY WORKSPACE</div>
+            <h3 style={{margin:"7px 0 7px"}}>รายวิชาของฉัน</h3>
+            <p style={{margin:0,color:"#64748b",lineHeight:1.65}}>เปิดรายวิชาที่ผูกกับบุคคลจาก MR30 effective teaching state และดู provenance ก่อนพัฒนา M.Kor workspace ต่อ</p>
+          </a>
+          <div style={{background:"white",border:"1px solid #e2e8f0",borderRadius:20,padding:20}}>
+            <div style={{fontSize:12,fontWeight:800,color:"#475569"}}>NEXT BUILD</div>
+            <h3 style={{margin:"7px 0 7px"}}>มคอ.ของฉัน</h3>
+            <p style={{margin:0,color:"#64748b",lineHeight:1.65}}>Create/Edit/Validate/Preview/Submit พร้อม One Data Entry → Many Outputs จะเชื่อมใน wave ถัดไป</p>
+          </div>
+          <div style={{background:"white",border:"1px solid #e2e8f0",borderRadius:20,padding:20}}>
+            <div style={{fontSize:12,fontWeight:800,color:"#475569"}}>NEXT BUILD</div>
+            <h3 style={{margin:"7px 0 7px"}}>เตรียมปรับปรุงหลักสูตร</h3>
+            <p style={{margin:0,color:"#64748b",lineHeight:1.65}}>Signal → Evidence → Analysis → Priority → Recommendation → Human Decision → Follow-up</p>
+          </div>
+        </section>
+
+        {snapshot.teachingStates.length > 0 && <section style={{marginTop:22,background:"white",border:"1px solid #e2e8f0",borderRadius:20,padding:20}}>
+          <div style={{display:"flex",justifyContent:"space-between",gap:10,alignItems:"center",flexWrap:"wrap"}}>
+            <div><h2 style={{margin:0,fontSize:20}}>รายวิชาที่ระบบพบในภาคเรียนนี้</h2><p style={{margin:"5px 0 0",fontSize:13,color:"#64748b"}}>แสดงจาก Verified System Data; ไม่ตีความเป็น course ownership หรือ authority เพิ่มเติม</p></div>
+            <a href="/teaching" style={{fontWeight:800,color:"#0f766e",textDecoration:"none"}}>ดูทั้งหมด →</a>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:10,marginTop:14}}>
+            {snapshot.teachingStates.slice(0,6).map((s) => <article key={`${s.course_code}-${s.disposition}`} style={{padding:14,border:"1px solid #e2e8f0",borderRadius:14}}>
+              <strong>{s.course_code}</strong>
+              <div style={{fontSize:13,color:"#64748b",marginTop:6}}>{s.source_person_label ?? "—"}</div>
+              <div style={{fontSize:12,color:"#475569",marginTop:8}}>{s.disposition ?? "NO DISPOSITION"}</div>
+            </article>)}
+          </div>
+        </section>}
+
+        <section style={{marginTop:22,padding:18,borderRadius:18,background:"#eef2ff",border:"1px solid #c7d2fe"}}>
+          <strong>Programme Administration / Governance</strong>
+          <p style={{margin:"7px 0 12px",color:"#475569",lineHeight:1.7}}>ส่วนนี้เป็น secondary navigation ตามบทบาท ไม่ใช่หน้าเริ่มต้นของผู้สอน</p>
+          <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+            <a href="/governance/course-equivalence" style={{padding:"9px 12px",borderRadius:10,background:"white",border:"1px solid #c7d2fe",textDecoration:"none",color:"#3730a3",fontWeight:800}}>Course Equivalence</a>
+            <a href="/governance/responsibilities" style={{padding:"9px 12px",borderRadius:10,background:"white",border:"1px solid #c7d2fe",textDecoration:"none",color:"#3730a3",fontWeight:800}}>Academic Responsibility</a>
+            <a href="/governance/evidence" style={{padding:"9px 12px",borderRadius:10,background:"white",border:"1px solid #c7d2fe",textDecoration:"none",color:"#3730a3",fontWeight:800}}>Evidence Explorer</a>
+          </div>
+        </section>
+
+        <footer style={{marginTop:26,fontSize:12,color:"#64748b",lineHeight:1.7}}>VERIFIED SYSTEM DATA is shown where available. Calculated or unavailable M.Kor states are not fabricated. NON-PRODUCTION · No automatic Audit Evidence Admission · Human authority preserved.</footer>
+      </div>
     </main>
   );
 }
