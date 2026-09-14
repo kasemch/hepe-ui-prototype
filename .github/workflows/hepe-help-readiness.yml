@@ -1,0 +1,44 @@
+name: HEPE Help Readiness Visual Acceptance
+
+on:
+  push:
+    branches: [feat/hepe-help-readiness-01]
+    paths:
+      - 'scripts/hepe-help-readiness-visual.mjs'
+      - '.github/workflows/hepe-help-readiness.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  help-visual:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      HEPE_BASE_URL: https://hepe-ui-prototype-bwys3pjym-kasemch-3467s-projects.vercel.app
+      EXPECTED_APP_SHA: 9a3bd1304ff25cc2e3725b4baa8a4d8dab989aae
+      VERCEL_BYPASS: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify controlled bindings
+        run: |
+          set -euo pipefail
+          test -n "${VERCEL_BYPASS:-}" || { echo 'VERCEL_BYPASS_BINDING_UNAVAILABLE'; exit 72; }
+          echo "APPLICATION_SHA=${EXPECTED_APP_SHA}"
+          echo 'ENVIRONMENT=NON-PRODUCTION'
+      - name: Install controlled browser dependencies
+        run: |
+          npm install --ignore-scripts --no-audit --no-fund
+          npm install --no-save --ignore-scripts --no-audit --no-fund playwright @axe-core/playwright
+          npx playwright install --with-deps chromium
+      - name: Run Help Center responsive accessibility acceptance
+        run: node scripts/hepe-help-readiness-visual.mjs
+      - name: Boundary summary
+        if: always()
+        run: |
+          echo "APPLICATION_SHA=${EXPECTED_APP_SHA}"
+          echo 'DATABASE_WRITE=NONE'
+          echo 'IAM_MUTATION=NONE'
+          echo 'AUTHORITY_CHANGE=NONE'
+          echo 'PRODUCTION_AUTHORIZATION=NOT_GRANTED'
