@@ -128,7 +128,7 @@ export default async function Home() {
     { title: "Academic Responsibility", description: "Current responsibility, timeline, and provenance.", state: "AVAILABLE", href: "/governance/responsibilities" },
     { title: "Responsibility Coverage", description: "Period-aware recording coverage without inventing missing ownership or offering records.", state: "AVAILABLE", href: "/governance/responsibility-coverage" },
     { title: "Reconciliation Queue", description: "Verified system conditions requiring reconciliation. Queue items are not Formal Findings by default.", state: "AVAILABLE", href: "/governance/reconciliation" },
-    { title: "Programme & Curriculum", description: "No verified integrated app read surface is bound on this baseline yet.", state: "READ_MODEL_NOT_AVAILABLE" },
+    { title: "Programme & Curriculum", description: "Authority-aware controlled curriculum context. Displays system status without approving or activating a curriculum.", state: "AVAILABLE", href: "/governance/programme-curriculum" },
     { title: "PLO / CLO Mapping", description: "No verified integrated app read surface is bound on this baseline yet.", state: "READ_MODEL_NOT_AVAILABLE" },
     { title: "Evidence Explorer", description: "Evidence candidates exist in governed storage, but no verified integrated UI surface is bound here yet.", state: "READ_MODEL_NOT_AVAILABLE" },
     { title: "Traceability Explorer", description: "No verified integrated traceability UI surface is bound on this baseline yet.", state: "READ_MODEL_NOT_AVAILABLE" },
