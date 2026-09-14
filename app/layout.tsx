@@ -30,8 +30,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <style>{`
           *, *::before, *::after { box-sizing: border-box; }
           input, select, button { min-width: 0; max-width: 100%; }
+          article, dl, dt, dd { min-width: 0; }
+          dd, article, p { overflow-wrap: anywhere; }
           @media (max-width: 900px) {
             form { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)) !important; }
+          }
+          @media (max-width: 600px) {
+            dl { grid-template-columns: 1fr !important; }
+            dd { margin-left: 0 !important; }
           }
         `}</style>
       </head>
