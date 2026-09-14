@@ -1,8 +1,8 @@
-name: HEPE PEOPLE 01K Authenticated Visual Acceptance
+name: HEPE Global App Integration Authenticated Acceptance
 
 on:
   push:
-    branches: [feat/hepe-people-01k-visual-acceptance]
+    branches: [feat/hepe-global-app-integration-01]
     paths:
       - 'scripts/hepe-people-01k-authenticated-visual-acceptance.mjs'
       - '.github/workflows/hepe-people-01k-authenticated-visual.yml'
@@ -12,7 +12,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: hepe-people-01k-authenticated-visual
+  group: hepe-global-app-integration-authenticated-acceptance
   cancel-in-progress: false
 
 jobs:
@@ -20,8 +20,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
-      HEPE_BASE_URL: https://hepe-ui-prototype-i87gfpmuo-kasemch-3467s-projects.vercel.app
-      EXPECTED_APP_SHA: f95a7c034aa70a2b018db7d79d628dad4b68a53c
+      HEPE_BASE_URL: https://hepe-ui-prototype-qdxuph372-kasemch-3467s-projects.vercel.app
+      EXPECTED_APP_SHA: 9667cc11ff865f8e09e8cb9ac906b03ce7baed2e
       VERCEL_BYPASS: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
       SUPABASE_URL: https://lztxpjsuzqvtgyasfnyj.supabase.co
       SUPABASE_PUBLISHABLE_KEY: sb_publishable_7bv5GR0-ksXJn91sRHV0Mg_k4nblIGI
@@ -47,14 +47,14 @@ jobs:
           npm install --ignore-scripts --no-audit --no-fund
           npm install --no-save --ignore-scripts --no-audit --no-fund playwright @axe-core/playwright
           npx playwright install --with-deps chromium
-      - name: Execute authenticated visual acceptance with mandatory cleanup
+      - name: Execute authenticated global acceptance with mandatory cleanup
         run: node scripts/hepe-people-01k-authenticated-visual-acceptance.mjs
-      - name: Upload 01K visual artifacts
+      - name: Upload global acceptance artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: hepe-people-01k-${{ github.sha }}
-          path: artifacts/hepe-people-01k
+          name: hepe-global-app-integration-${{ github.sha }}
+          path: artifacts/hepe-global-app-integration-01
           if-no-files-found: error
           retention-days: 14
       - name: Boundary summary
