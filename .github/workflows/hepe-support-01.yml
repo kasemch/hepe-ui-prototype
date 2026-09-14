@@ -31,15 +31,16 @@ jobs:
       SUPPORT_BASE_URL: http://127.0.0.1:3000
       PREVIEW_BASE_URL: https://hepe-ui-prototype-git-feat-hepe-a-37ab37-kasemch-3467s-projects.vercel.app
       VERCEL_BYPASS: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+      EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ env.EXPECTED_SHA }}
       - name: Verify exact SHA and boundary
         run: |
-          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
           test "$HEPE_ENVIRONMENT" = "NON-PRODUCTION"
-          echo "SUPPORT_EXACT_SHA_CHECKOUT_PASS sha=${GITHUB_SHA}"
+          echo "SUPPORT_EXACT_SHA_CHECKOUT_PASS sha=${EXPECTED_SHA}"
       - name: Install
         run: |
           npm install --ignore-scripts --no-audit --no-fund
@@ -59,14 +60,14 @@ jobs:
           echo 'SUPPORT_GOVERNANCE_ASSERTIONS_PASS'
       - name: Start exact-SHA local runner
         env:
-          VERCEL_GIT_COMMIT_SHA: ${{ github.sha }}
+          VERCEL_GIT_COMMIT_SHA: ${{ env.EXPECTED_SHA }}
           VERCEL_GIT_COMMIT_REF: feat/hepe-academic-workflow-03-exec
         run: |
           nohup npm start > /tmp/hepe-support.log 2>&1 &
           echo $! > /tmp/hepe-support.pid
           for i in $(seq 1 60); do curl --silent --fail "$SUPPORT_BASE_URL/support" >/dev/null && break || sleep 2; done
-          curl --silent --fail "$SUPPORT_BASE_URL/api/pilot-build-meta" | grep -Fq "\"applicationSha\":\"${GITHUB_SHA}\""
-          echo "SUPPORT_EXACT_SHA_RUNTIME_PASS sha=${GITHUB_SHA}"
+          curl --silent --fail "$SUPPORT_BASE_URL/api/pilot-build-meta" | grep -Fq "\"applicationSha\":\"${EXPECTED_SHA}\""
+          echo "SUPPORT_EXACT_SHA_RUNTIME_PASS sha=${EXPECTED_SHA}"
       - name: Local responsive and scoped accessibility
         run: node scripts/hepe-support-01-browser.mjs
       - name: Establish exact-SHA Vercel Preview
@@ -75,9 +76,9 @@ jobs:
           ok=0
           for i in $(seq 1 60); do
             body="$(curl --silent --show-error --max-time 20 -H "x-vercel-protection-bypass: ${VERCEL_BYPASS}" -H 'Cache-Control: no-cache' "${PREVIEW_BASE_URL}/api/pilot-build-meta" || true)"
-            if printf '%s' "$body" | grep -Fq "\"applicationSha\":\"${GITHUB_SHA}\"" && printf '%s' "$body" | grep -Fq '"environment":"NON-PRODUCTION"' && printf '%s' "$body" | grep -Fq '"production":false'; then
+            if printf '%s' "$body" | grep -Fq "\"applicationSha\":\"${EXPECTED_SHA}\"" && printf '%s' "$body" | grep -Fq '"environment":"NON-PRODUCTION"' && printf '%s' "$body" | grep -Fq '"production":false'; then
               ok=1
-              echo "SUPPORT_EXACT_SHA_PREVIEW_PASS sha=${GITHUB_SHA}"
+              echo "SUPPORT_EXACT_SHA_PREVIEW_PASS sha=${EXPECTED_SHA}"
               break
             fi
             sleep 10
