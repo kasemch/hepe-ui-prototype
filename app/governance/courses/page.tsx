@@ -58,6 +58,8 @@ export default async function CourseRegistryPage() {
   const { state, rows } = await loadCourses();
   const active = rows.filter((r) => r.is_active).length;
   const credits = rows.reduce((sum, row) => sum + (Number(row.credit_value) || 0), 0);
+  const curriculumVersion = rows.length > 0 ? rows[0].curriculum_version_code : "—";
+  const programmeCode = rows.length > 0 ? rows[0].programme_code : "—";
 
   return (
     <main style={{ maxWidth: 1240, margin: "32px auto", padding: 24 }}>
@@ -86,6 +88,9 @@ export default async function CourseRegistryPage() {
               {[["Registered courses", rows.length], ["Active flags", active], ["Displayed credit total", credits]].map(([label, value]) => (
                 <div key={String(label)} style={{ padding: 14, border: "1px solid #e2e8f0", borderRadius: 12 }}><div style={{ fontSize: 12, color: "#64748b" }}>{label}</div><strong style={{ fontSize: 25 }}>{value}</strong></div>
               ))}
+            </div>
+            <div style={{ marginTop: 12, padding: 13, borderRadius: 12, background: "#f8fafc", border: "1px solid #e2e8f0", fontSize: 13, color: "#475569" }}>
+              <strong>Programme:</strong> {programmeCode} · <strong>Curriculum version:</strong> {curriculumVersion}
             </div>
             <div style={{ marginTop: 14, padding: 14, borderRadius: 12, background: "#fff7ed", border: "1px solid #fed7aa" }}>
               <strong>Controlled-baseline note:</strong> registry visibility does not change the curriculum version status. The Source-B validation curriculum remains governed by its own DRAFT/current/effective-date metadata. Synthetic pilot programmes are separate scopes and are not included in this BED-HEPE registry view.
