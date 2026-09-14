@@ -1,9 +1,10 @@
-name: HEPE Course Registry Authenticated Acceptance
+name: HEPE Course Registry Exact-Head Local Acceptance
 
 on:
   push:
     branches: [feat/hepe-course-registry-01]
     paths:
+      - 'app/**'
       - 'scripts/hepe-people-01k-authenticated-visual-acceptance.mjs'
       - '.github/workflows/hepe-people-01k-authenticated-visual.yml'
   workflow_dispatch:
@@ -12,7 +13,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: hepe-course-registry-authenticated-acceptance
+  group: hepe-course-registry-local-acceptance
   cancel-in-progress: false
 
 jobs:
@@ -20,9 +21,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
-      HEPE_BASE_URL: https://hepe-ui-prototype-639zae18h-kasemch-3467s-projects.vercel.app
-      EXPECTED_APP_SHA: d34a06e516ddd5e55799a0de6a4c3f4e2aea8896
-      VERCEL_BYPASS: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+      HEPE_BASE_URL: http://127.0.0.1:3000
+      EXPECTED_APP_SHA: 06d9b89a33ef271a69be404b2a0cdd5e4a40e712
+      VERCEL_BYPASS: local-runtime-not-required
+      NEXT_PUBLIC_SUPABASE_URL: https://lztxpjsuzqvtgyasfnyj.supabase.co
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_7bv5GR0-ksXJn91sRHV0Mg_k4nblIGI
       SUPABASE_URL: https://lztxpjsuzqvtgyasfnyj.supabase.co
       SUPABASE_PUBLISHABLE_KEY: sb_publishable_7bv5GR0-ksXJn91sRHV0Mg_k4nblIGI
       SUPABASE_ADMIN: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
@@ -32,36 +35,60 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.sha }}
-      - name: Verify runner and non-production bindings
+      - name: Verify exact source and non-production bindings
         shell: bash
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
-          test -n "${VERCEL_BYPASS:-}" || { echo 'VERCEL_BYPASS_BINDING_UNAVAILABLE'; exit 72; }
           test -n "${SUPABASE_ADMIN:-}" || { echo 'SUPABASE_ADMIN_BINDING_UNAVAILABLE'; exit 71; }
           echo "RUNNER_SHA=${GITHUB_SHA}"
-          echo "APPLICATION_SHA=${EXPECTED_APP_SHA}"
-          echo 'ENVIRONMENT=NON-PRODUCTION'
-      - name: Install controlled browser dependencies
+          echo "APPLICATION_SOURCE_SHA=${EXPECTED_APP_SHA}"
+          echo 'RUNTIME=LOCAL_GITHUB_ACTIONS_NON_PRODUCTION'
+      - name: Install application and browser dependencies
         run: |
           npm install --ignore-scripts --no-audit --no-fund
           npm install --no-save --ignore-scripts --no-audit --no-fund playwright @axe-core/playwright
           npx playwright install --with-deps chromium
+      - name: Build exact-head Next.js application
+        run: npm run build
+      - name: Start exact-head local runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          nohup npm start -- -p 3000 > /tmp/hepe-course-registry-local.log 2>&1 &
+          echo $! > /tmp/hepe-course-registry-local.pid
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:3000/ >/dev/null; then
+              echo 'LOCAL_RUNTIME_READY'
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/hepe-course-registry-local.log || true
+          exit 70
       - name: Execute authenticated course registry acceptance with mandatory cleanup
         run: node scripts/hepe-people-01k-authenticated-visual-acceptance.mjs
       - name: Upload course registry acceptance artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: hepe-course-registry-${{ github.sha }}
+          name: hepe-course-registry-local-${{ github.sha }}
           path: artifacts/hepe-global-app-integration-01
           if-no-files-found: error
           retention-days: 14
+      - name: Stop local runtime
+        if: always()
+        shell: bash
+        run: |
+          if [ -f /tmp/hepe-course-registry-local.pid ]; then
+            kill "$(cat /tmp/hepe-course-registry-local.pid)" 2>/dev/null || true
+          fi
       - name: Boundary summary
         if: always()
         run: |
-          echo "APPLICATION_SHA=${EXPECTED_APP_SHA}"
-          echo 'ENVIRONMENT=NON-PRODUCTION'
+          echo "APPLICATION_SOURCE_SHA=${EXPECTED_APP_SHA}"
+          echo 'RUNTIME=LOCAL_GITHUB_ACTIONS_NON_PRODUCTION'
+          echo 'VERCEL_EXACT_PREVIEW=PENDING_BUILD_RATE_LIMIT'
           echo 'SYNTHETIC_USER=TEMPORARY'
           echo 'IDENTITY_REBIND=TEMPORARY_AND_RESTORED_BY_RUNNER'
           echo 'AUTHORITY_ASSIGNMENT_CHANGE=NONE'
