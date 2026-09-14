@@ -52,7 +52,11 @@ async function inspectPage(page,id,route,viewportName){
   if(route==='/governance/reconciliation' && !/Reconciliation Queue/.test(body))fail(`RECONCILIATION_TITLE_MISSING:${viewportName}`);
   const axe=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa']).analyze();
   const severe=axe.violations.filter(v=>v.impact==='serious'||v.impact==='critical');
-  if(severe.length)fail(`AXE_SERIOUS_CRITICAL:${id}:${viewportName}:${severe.map(v=>v.id).join(',')}`);
+  if(severe.length){
+    const detail=severe.map(v=>({id:v.id,impact:v.impact,nodes:v.nodes.slice(0,8).map(n=>({target:n.target,html:n.html,failureSummary:n.failureSummary}))}));
+    console.error(`AXE_DETAIL:${id}:${viewportName}:${JSON.stringify(detail)}`);
+    fail(`AXE_SERIOUS_CRITICAL:${id}:${viewportName}:${severe.map(v=>v.id).join(',')}`);
+  }
   const file=path.join(out,viewportName,`${id}.png`);
   await page.screenshot({path:file,fullPage:true});
   evidence.results.push({id,route,viewport:viewportName,httpStatus:response.status(),overflow:false,axeSeriousCritical:0,file});
