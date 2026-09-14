@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type Decision =
   | ""
@@ -27,6 +27,26 @@ type Receipt = {
   reviewId?: string;
   statusCode?: string;
   evidenceId?: string;
+};
+
+type PersistedItemDecision = {
+  legacyCode?: string;
+  decision?: Decision;
+  targetCodes?: string[];
+};
+
+type StatusPayload = {
+  ok?: boolean;
+  state?: string;
+  locked?: boolean;
+  review?: { reviewId?: string; statusCode?: string };
+  decision?: {
+    decisionId?: string;
+    packet?: { itemDecisions?: PersistedItemDecision[] };
+  } | null;
+  auditEvidenceAdmission?: string;
+  production?: boolean;
+  code?: string;
 };
 
 const decisionOptions: { value: Decision; label: string }[] = [
@@ -66,8 +86,45 @@ export default function CourseEquivalenceDecisionPage() {
   const [acknowledged, setAcknowledged] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
+  const [statusLoading, setStatusLoading] = useState(true);
+  const [runtimeState, setRuntimeState] = useState("CHECKING_SYSTEM_STATE");
   const [submitError, setSubmitError] = useState("");
   const [receipt, setReceipt] = useState<Receipt | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadStatus() {
+      try {
+        const res = await fetch("/api/governance/course-equivalence/status", { cache: "no-store" });
+        const data = (await res.json()) as StatusPayload;
+        if (cancelled) return;
+        if (!res.ok || !data.ok) {
+          setRuntimeState(data.code ?? "STATUS_READ_FAILED");
+          return;
+        }
+        setRuntimeState(data.state ?? "UNKNOWN");
+        if (data.locked && data.decision) {
+          const persisted: Record<string, Decision> = {};
+          for (const row of data.decision.packet?.itemDecisions ?? []) {
+            if (row.legacyCode && row.decision) persisted[row.legacyCode] = row.decision;
+          }
+          setDecisions(persisted);
+          setReceipt({
+            decisionId: data.decision.decisionId,
+            reviewId: data.review?.reviewId,
+            statusCode: data.review?.statusCode,
+          });
+          setConfirmed(true);
+        }
+      } catch {
+        if (!cancelled) setRuntimeState("STATUS_NETWORK_ERROR");
+      } finally {
+        if (!cancelled) setStatusLoading(false);
+      }
+    }
+    loadStatus();
+    return () => { cancelled = true; };
+  }, []);
 
   const completed = useMemo(
     () => items.filter((item) => Boolean(decisions[item.legacyCode])).length,
@@ -80,7 +137,8 @@ export default function CourseEquivalenceDecisionPage() {
     authorityRole.trim().length > 0 &&
     acknowledged &&
     !submitting &&
-    !confirmed;
+    !confirmed &&
+    !statusLoading;
 
   async function confirmPacket() {
     if (!canConfirm) return;
@@ -112,6 +170,7 @@ export default function CourseEquivalenceDecisionPage() {
         statusCode: raw.status_code,
         evidenceId: data?.evidenceCandidate?.evidenceId,
       });
+      setRuntimeState("HUMAN_DECISION_RECORDED");
       setConfirmed(true);
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch {
@@ -129,18 +188,21 @@ export default function CourseEquivalenceDecisionPage() {
         <div>
           <div style={{fontSize:13,fontWeight:800,letterSpacing:".08em",color:"#475569"}}>HEPE · PEOPLE-01B.2H</div>
           <h1 style={{margin:"6px 0 8px"}}>Course Equivalence Governance Decision</h1>
-          <p style={{margin:0,color:"#64748b",lineHeight:1.6}}>เลือกผลการพิจารณาทีละรายวิชา แล้วบันทึกผ่าน authority-aware controlled runtime</p>
+          <p style={{margin:0,color:"#64748b",lineHeight:1.6}}>สถานะหน้าจอนี้อ่านจาก controlled runtime; การ lock ไม่อาศัย local browser state</p>
         </div>
-        <div style={{padding:"10px 14px",borderRadius:999,background:"#fff7ed",border:"1px solid #fed7aa",color:"#9a3412",fontWeight:800}}>NON-PRODUCTION · NOT_ADMITTED</div>
+        <div style={{display:"grid",gap:8,justifyItems:"end"}}>
+          <div style={{padding:"10px 14px",borderRadius:999,background:"#fff7ed",border:"1px solid #fed7aa",color:"#9a3412",fontWeight:800}}>NON-PRODUCTION · NOT_ADMITTED</div>
+          <div style={{fontSize:12,color:"#64748b"}}>Runtime: <strong>{runtimeState}</strong></div>
+        </div>
       </header>
 
       {confirmed && (
         <section style={{marginBottom:20,background:"#ecfdf5",border:"1px solid #a7f3d0",borderRadius:16,padding:18}}>
-          <strong style={{color:"#065f46"}}>บันทึก Controlled Decision Record สำเร็จและหน้าถูก Lock แล้ว</strong>
+          <strong style={{color:"#065f46"}}>Human Decision ถูกบันทึกใน Controlled System Record แล้ว และหน้าถูก Lock จาก persisted state</strong>
           <p style={{margin:"8px 0 0",color:"#047857",lineHeight:1.7}}>
             Decision ID: <code>{receipt?.decisionId ?? "—"}</code> · Review: <code>{receipt?.reviewId ?? "—"}</code> · Status: <strong>{receipt?.statusCode ?? "—"}</strong>
           </p>
-          <p style={{margin:"6px 0 0",color:"#047857"}}>Evidence Candidate: <code>{receipt?.evidenceId ?? "—"}</code> · Admission = <strong>NOT_ADMITTED</strong></p>
+          <p style={{margin:"6px 0 0",color:"#047857"}}>Audit Evidence Admission = <strong>NOT_ADMITTED</strong> · Production = <strong>false</strong></p>
         </section>
       )}
 
@@ -148,21 +210,18 @@ export default function CourseEquivalenceDecisionPage() {
         <section style={{marginBottom:20,background:"#fef2f2",border:"1px solid #fecaca",borderRadius:16,padding:18}}>
           <strong style={{color:"#991b1b"}}>ยังไม่บันทึก — Fail Closed</strong>
           <p style={{margin:"8px 0 0",color:"#b91c1c",lineHeight:1.7}}>{submitError}</p>
-          <p style={{margin:"8px 0 0",color:"#7f1d1d"}}>หากขึ้น AUTH_REQUIRED ให้เข้าสู่ระบบก่อน หากขึ้น REVIEW_NOT_READY ต้องจัด controlled review ให้ถึง READY_FOR_DECISION โดยไม่ข้าม workflow</p>
         </section>
       )}
 
       <section style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:16,padding:18,marginBottom:20}}>
         <strong>ข้อกำกับ</strong>
         <p style={{margin:"8px 0 0",lineHeight:1.75,color:"#334155"}}>
-          รายวิชา พ.ศ. 2567 เป็น Candidate for Human Consideration เท่านั้น ชื่อ/รหัสที่อยู่ในแถวเดียวกันไม่ใช่หลักฐาน equivalence.
-          ชื่อและบทบาทที่กรอกเป็น declaration metadata เท่านั้น — สิทธิยืนยันจริงต้องผ่าน authenticated HEPE actor + database authority/RLS + SoD/COI checks.
-          การยืนยันไม่สร้าง authority และไม่รับเข้า Audit Evidence Set โดยอัตโนมัติ
+          Candidate course เดิมใช้เพื่อการพิจารณาเท่านั้น เมื่อมี persisted Human Decision แล้ว หน้านี้จะแสดงผลที่ถูกบันทึกจริงจากฐานข้อมูลและไม่อนุญาตให้แก้ผ่าน local state. การตัดสินไม่สร้าง authority และไม่รับเข้า Audit Evidence Set โดยอัตโนมัติ
         </p>
       </section>
 
       <section style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:12,marginBottom:22}}>
-        {[["รายการทั้งหมด",String(items.length)],["เลือกสถานะแล้ว",`${completed}/${items.length}`],["ยังไม่ตัดสิน",String(items.length-completed)],["Gate",confirmed?"LOCKED":completed===items.length?"READY TO CONFIRM":"HUMAN DECISION REQUIRED"]].map(([label,value]) => (
+        {[["รายการทั้งหมด",String(items.length)],["มีผลการตัดสิน",`${completed}/${items.length}`],["คงค้าง",String(items.length-completed)],["Gate",statusLoading?"READING SYSTEM":confirmed?"HUMAN DECISION RECORDED":completed===items.length?"READY TO CONFIRM":"HUMAN DECISION REQUIRED"]].map(([label,value]) => (
           <article key={label} style={{background:"white",border:"1px solid #e2e8f0",borderRadius:14,padding:16}}><div style={{color:"#64748b",fontSize:13}}>{label}</div><div style={{marginTop:6,fontSize:19,fontWeight:800}}>{value}</div></article>
         ))}
       </section>
@@ -171,10 +230,10 @@ export default function CourseEquivalenceDecisionPage() {
         {items.map((item,index) => {
           const decision = decisions[item.legacyCode] ?? "";
           return (
-            <article key={item.legacyCode} style={{background:"white",border:decision?"1px solid #86efac":"1px solid #e2e8f0",borderRadius:18,padding:18,opacity:locked?.82:1}}>
+            <article key={item.legacyCode} style={{background:"white",border:decision?"1px solid #86efac":"1px solid #e2e8f0",borderRadius:18,padding:18,opacity:locked?.88:1}}>
               <div style={{display:"flex",justifyContent:"space-between",gap:12,flexWrap:"wrap"}}>
                 <div><div style={{color:"#64748b",fontSize:13}}>รายการ {index+1} / {items.length}</div><h2 style={{margin:"4px 0"}}>{item.legacyCode} — {item.legacyTitle}</h2></div>
-                <span style={{alignSelf:"start",padding:"6px 10px",borderRadius:999,background:decision?"#ecfdf5":"#f8fafc",fontWeight:700,fontSize:13}}>{decision?"DECIDED":"PENDING"}</span>
+                <span style={{alignSelf:"start",padding:"6px 10px",borderRadius:999,background:decision?"#ecfdf5":"#f8fafc",fontWeight:700,fontSize:13}}>{decision || "PENDING"}</span>
               </div>
               <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))",gap:12,margin:"14px 0"}}>
                 <div style={{padding:14,borderRadius:12,background:"#f8fafc"}}><div style={{fontSize:12,color:"#64748b"}}>Legacy</div><strong>{item.legacyCode}</strong><div>{item.legacyTitle}</div></div>
@@ -183,38 +242,37 @@ export default function CourseEquivalenceDecisionPage() {
               </div>
               {item.operationalNote && <p style={{background:"#fffbeb",border:"1px solid #fde68a",padding:12,borderRadius:10,color:"#854d0e"}}>{item.operationalNote}</p>}
               <label style={{display:"grid",gap:6,fontWeight:700}}>สถานะการตัดสิน
-                <select disabled={locked} value={decision} onChange={(e)=>setDecisions((s)=>({...s,[item.legacyCode]:e.target.value as Decision}))} style={{padding:11,borderRadius:10,border:"1px solid #cbd5e1",background:"white"}}>
+                <select disabled={locked || statusLoading} value={decision} onChange={(e)=>setDecisions((s)=>({...s,[item.legacyCode]:e.target.value as Decision}))} style={{padding:11,borderRadius:10,border:"1px solid #cbd5e1",background:"white"}}>
                   {decisionOptions.map((o)=><option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
               </label>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:12,marginTop:12}}>
+              {!locked && <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:12,marginTop:12}}>
                 <label style={{display:"grid",gap:6,fontWeight:700}}>เหตุผลจาก controlled evidence
-                  <textarea disabled={locked} value={rationales[item.legacyCode]??""} onChange={(e)=>setRationales((s)=>({...s,[item.legacyCode]:e.target.value}))} rows={3} style={{padding:10,borderRadius:10,border:"1px solid #cbd5e1"}} />
+                  <textarea value={rationales[item.legacyCode]??""} onChange={(e)=>setRationales((s)=>({...s,[item.legacyCode]:e.target.value}))} rows={3} style={{padding:10,borderRadius:10,border:"1px solid #cbd5e1"}} />
                 </label>
                 <label style={{display:"grid",gap:6,fontWeight:700}}>มติ / เอกสาร / reference
-                  <textarea disabled={locked} value={references[item.legacyCode]??""} onChange={(e)=>setReferences((s)=>({...s,[item.legacyCode]:e.target.value}))} rows={3} style={{padding:10,borderRadius:10,border:"1px solid #cbd5e1"}} />
+                  <textarea value={references[item.legacyCode]??""} onChange={(e)=>setReferences((s)=>({...s,[item.legacyCode]:e.target.value}))} rows={3} style={{padding:10,borderRadius:10,border:"1px solid #cbd5e1"}} />
                 </label>
-              </div>
+              </div>}
             </article>
           );
         })}
       </section>
 
-      <section style={{marginTop:22,background:"white",border:"1px solid #e2e8f0",borderRadius:18,padding:18}}>
+      {!locked && <section style={{marginTop:22,background:"white",border:"1px solid #e2e8f0",borderRadius:18,padding:18}}>
         <h2 style={{marginTop:0}}>Human Authority Declaration</h2>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:12}}>
-          <label style={{display:"grid",gap:6,fontWeight:700}}>ชื่อผู้พิจารณา<input disabled={locked} value={authorityName} onChange={(e)=>setAuthorityName(e.target.value)} style={{padding:11,borderRadius:10,border:"1px solid #cbd5e1"}} /></label>
-          <label style={{display:"grid",gap:6,fontWeight:700}}>บทบาท / Capacity<input disabled={locked} value={authorityRole} onChange={(e)=>setAuthorityRole(e.target.value)} style={{padding:11,borderRadius:10,border:"1px solid #cbd5e1"}} /></label>
+          <label style={{display:"grid",gap:6,fontWeight:700}}>ชื่อผู้พิจารณา<input value={authorityName} onChange={(e)=>setAuthorityName(e.target.value)} style={{padding:11,borderRadius:10,border:"1px solid #cbd5e1"}} /></label>
+          <label style={{display:"grid",gap:6,fontWeight:700}}>บทบาท / Capacity<input value={authorityRole} onChange={(e)=>setAuthorityRole(e.target.value)} style={{padding:11,borderRadius:10,border:"1px solid #cbd5e1"}} /></label>
         </div>
         <label style={{display:"flex",gap:10,alignItems:"flex-start",marginTop:16,lineHeight:1.6}}>
-          <input disabled={locked} type="checkbox" checked={acknowledged} onChange={(e)=>setAcknowledged(e.target.checked)} style={{marginTop:4}} />
-          <span>ยืนยันว่าการเลือกสถานะทั้ง 12 รายการเป็นการตัดสินโดยมนุษย์ และรับทราบว่าระบบจะตรวจ authority จาก authenticated HEPE identity ไม่ใช่จากชื่อ/บทบาทที่พิมพ์ในช่องนี้</span>
+          <input type="checkbox" checked={acknowledged} onChange={(e)=>setAcknowledged(e.target.checked)} style={{marginTop:4}} />
+          <span>ยืนยันว่าการเลือกสถานะทั้ง 12 รายการเป็นการตัดสินโดยมนุษย์ และรับทราบว่าระบบตรวจ authority จาก authenticated HEPE identity</span>
         </label>
         <button onClick={confirmPacket} disabled={!canConfirm} style={{marginTop:18,padding:"12px 18px",borderRadius:12,border:0,background:canConfirm?"#0f172a":"#cbd5e1",color:"white",fontWeight:800,cursor:canConfirm?"pointer":"not-allowed"}}>
-          {submitting?"กำลังตรวจ Authority และบันทึก…":confirmed?"ยืนยันแล้ว — LOCKED":"บันทึกและยืนยัน Controlled Decision"}
+          {submitting?"กำลังตรวจ Authority และบันทึก…":"บันทึกและยืนยัน Controlled Decision"}
         </button>
-        <p style={{margin:"10px 0 0",color:"#64748b",fontSize:13}}>ระบบเขียนได้เฉพาะเมื่อมี authenticated actor, controlled review อยู่สถานะ READY_FOR_DECISION และผ่าน authority / SoD / COI checks ทั้งหมด</p>
-      </section>
+      </section>}
     </main>
   );
 }
