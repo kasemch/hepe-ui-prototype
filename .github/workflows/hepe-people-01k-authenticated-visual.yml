@@ -1,0 +1,98 @@
+name: HEPE Course Registry Exact-Head Local Acceptance
+
+on:
+  push:
+    branches: [feat/hepe-course-registry-01]
+    paths:
+      - 'app/**'
+      - 'scripts/hepe-people-01k-authenticated-visual-acceptance.mjs'
+      - '.github/workflows/hepe-people-01k-authenticated-visual.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hepe-course-registry-local-acceptance
+  cancel-in-progress: false
+
+jobs:
+  authenticated-visual:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      HEPE_BASE_URL: http://127.0.0.1:3000
+      EXPECTED_APP_SHA: 40e752f111f60becc506271c531eadbb4ee3c8f6
+      VERCEL_BYPASS: local-runtime-not-required
+      NEXT_PUBLIC_SUPABASE_URL: https://lztxpjsuzqvtgyasfnyj.supabase.co
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_7bv5GR0-ksXJn91sRHV0Mg_k4nblIGI
+      SUPABASE_URL: https://lztxpjsuzqvtgyasfnyj.supabase.co
+      SUPABASE_PUBLISHABLE_KEY: sb_publishable_7bv5GR0-ksXJn91sRHV0Mg_k4nblIGI
+      SUPABASE_ADMIN: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SYSTEM_ADMIN_ACTOR_ID: 58b77439-0efe-4569-9d11-69823bee3ba9
+      SYSTEM_ADMIN_ORIGINAL_SUBJECT: 10000000-0000-0000-0000-000000000010
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - name: Verify exact source and non-production bindings
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -n "${SUPABASE_ADMIN:-}" || { echo 'SUPABASE_ADMIN_BINDING_UNAVAILABLE'; exit 71; }
+          echo "RUNNER_SHA=${GITHUB_SHA}"
+          echo "APPLICATION_SOURCE_SHA=${EXPECTED_APP_SHA}"
+          echo 'RUNTIME=LOCAL_GITHUB_ACTIONS_NON_PRODUCTION'
+      - name: Install application and browser dependencies
+        run: |
+          npm install --ignore-scripts --no-audit --no-fund
+          npm install --no-save --ignore-scripts --no-audit --no-fund playwright @axe-core/playwright
+          npx playwright install --with-deps chromium
+      - name: Build exact-head Next.js application
+        run: npm run build
+      - name: Start exact-head local runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          nohup npm start -- -p 3000 > /tmp/hepe-course-registry-local.log 2>&1 &
+          echo $! > /tmp/hepe-course-registry-local.pid
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:3000/ >/dev/null; then
+              echo 'LOCAL_RUNTIME_READY'
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/hepe-course-registry-local.log || true
+          exit 70
+      - name: Execute authenticated course registry acceptance with mandatory cleanup
+        run: node scripts/hepe-people-01k-authenticated-visual-acceptance.mjs
+      - name: Upload course registry acceptance artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hepe-course-registry-local-${{ github.sha }}
+          path: artifacts/hepe-global-app-integration-01
+          if-no-files-found: error
+          retention-days: 14
+      - name: Stop local runtime
+        if: always()
+        shell: bash
+        run: |
+          if [ -f /tmp/hepe-course-registry-local.pid ]; then
+            kill "$(cat /tmp/hepe-course-registry-local.pid)" 2>/dev/null || true
+          fi
+      - name: Boundary summary
+        if: always()
+        run: |
+          echo "APPLICATION_SOURCE_SHA=${EXPECTED_APP_SHA}"
+          echo 'RUNTIME=LOCAL_GITHUB_ACTIONS_NON_PRODUCTION'
+          echo 'VERCEL_EXACT_PREVIEW=PENDING_BUILD_RATE_LIMIT'
+          echo 'SYNTHETIC_USER=TEMPORARY'
+          echo 'IDENTITY_REBIND=TEMPORARY_AND_RESTORED_BY_RUNNER'
+          echo 'AUTHORITY_ASSIGNMENT_CHANGE=NONE'
+          echo 'RLS_CHANGE=NONE'
+          echo 'CURRICULUM_ACTIVATION=NONE'
+          echo 'COURSE_RECORD_WRITE=NONE'
+          echo 'PRODUCTION_AUTHORIZATION=NOT_GRANTED'
