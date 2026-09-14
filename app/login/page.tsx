@@ -1,14 +1,16 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 
 const CONTROLLED_EMAIL = "kasem.ch@rumail.ru.ac.th";
+const CANONICAL_PREVIEW_ORIGIN = "https://hepe-ui-prototype-git-feat-hepe-p-685c79-kasemch-3467s-projects.vercel.app";
 
 export default function LoginPage() {
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState("");
+  const [canonicalReady, setCanonicalReady] = useState(false);
 
   const supabase = useMemo(() => {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -17,14 +19,28 @@ export default function LoginPage() {
     return createBrowserClient(url, key);
   }, []);
 
+  useEffect(() => {
+    const current = new URL(window.location.href);
+    const canonical = new URL("/login", CANONICAL_PREVIEW_ORIGIN);
+    const vercelShare = current.searchParams.get("_vercel_share");
+    if (vercelShare) canonical.searchParams.set("_vercel_share", vercelShare);
+
+    if (window.location.origin !== CANONICAL_PREVIEW_ORIGIN) {
+      window.location.replace(canonical.toString());
+      return;
+    }
+
+    setCanonicalReady(true);
+  }, []);
+
   async function sendMagicLink() {
-    if (!supabase || sending) return;
+    if (!supabase || sending || !canonicalReady) return;
     setSending(true);
     setError("");
 
     const current = new URL(window.location.href);
     const vercelShare = current.searchParams.get("_vercel_share");
-    const callback = new URL("/auth/callback", window.location.origin);
+    const callback = new URL("/auth/callback", CANONICAL_PREVIEW_ORIGIN);
     callback.searchParams.set("next", "/user-access/activate");
     if (vercelShare) callback.searchParams.set("_vercel_share", vercelShare);
 
@@ -66,10 +82,10 @@ export default function LoginPage() {
           <button
             type="button"
             onClick={sendMagicLink}
-            disabled={!supabase || sending || sent}
+            disabled={!supabase || sending || sent || !canonicalReady}
             style={{marginTop:14,width:"100%",padding:"12px 16px",border:0,borderRadius:10,fontWeight:700,background:sent?"#bbf7d0":"#0f766e",color:sent?"#166534":"white",cursor:sent?"default":"pointer"}}
           >
-            {sent ? "ส่ง Magic Link แล้ว — กรุณาเปิดอีเมล" : sending ? "กำลังส่ง..." : "ส่ง Magic Link เพื่อยืนยันตัวตน"}
+            {!canonicalReady ? "กำลังเตรียมช่องทางยืนยันตัวตน..." : sent ? "ส่ง Magic Link แล้ว — กรุณาเปิดอีเมล" : sending ? "กำลังส่ง..." : "ส่ง Magic Link เพื่อยืนยันตัวตน"}
           </button>
           {!supabase && <p style={{color:"#b91c1c",marginBottom:0}}>Runtime Supabase binding ยังไม่พร้อมใน Preview นี้</p>}
           {error && <p style={{color:"#b91c1c",marginBottom:0}}>{error}</p>}
