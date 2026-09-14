@@ -34,32 +34,36 @@ const routes=[
   ['SS-ACT-01','/user-access/activate']
 ];
 
+async function diagnostic(page,id,viewportName,body){
+  const dir=path.join(out,viewportName);
+  fs.writeFileSync(path.join(dir,`${id}-diagnostic.txt`),body);
+  await page.screenshot({path:path.join(dir,`${id}-diagnostic.png`),fullPage:true});
+  console.error(`PAGE_BODY_DIAGNOSTIC:${id}:${viewportName}:${body.slice(0,4000)}`);
+}
+
 async function inspectPage(page,id,route,viewportName){
   const response=await page.goto(base+route,{waitUntil:'networkidle',timeout:45000});
   if(!response||!response.ok())fail(`HTTP_FAIL:${id}:${response?.status()}`);
   const overflow=await page.evaluate(()=>document.documentElement.scrollWidth>document.documentElement.clientWidth+2);
   if(overflow)fail(`HORIZONTAL_OVERFLOW:${id}:${viewportName}`);
   const body=(await page.locator('body').innerText()).replace(/\s+/g,' ').trim();
-  if(/AUTH_REQUIRED/.test(body))fail(`AUTH_REQUIRED_UNEXPECTED:${id}:${viewportName}`);
+  if(/AUTH_REQUIRED/.test(body)){await diagnostic(page,id,viewportName,body);fail(`AUTH_REQUIRED_UNEXPECTED:${id}:${viewportName}`)}
   if(route==='/'){
-    if(!/HEPE Curriculum Command Center/.test(body))fail(`GLOBAL_COMMAND_CENTER_MISSING:${viewportName}`);
-    if(!/NON-PRODUCTION/.test(body))fail(`NON_PRODUCTION_BADGE_MISSING:${viewportName}`);
-    if(!/AVAILABLE/.test(body)||!/AUTHORITY GATED/.test(body)||!/READ MODEL NOT AVAILABLE/.test(body))fail(`MODULE_STATE_LEGEND_MISSING:${viewportName}`);
+    if(!/HEPE Curriculum Command Center/.test(body)){await diagnostic(page,id,viewportName,body);fail(`GLOBAL_COMMAND_CENTER_MISSING:${viewportName}`)}
+    if(!/NON-PRODUCTION/.test(body)){await diagnostic(page,id,viewportName,body);fail(`NON_PRODUCTION_BADGE_MISSING:${viewportName}`)}
+    if(!/AVAILABLE/.test(body)||!/AUTHORITY GATED/.test(body)||!/READ MODEL NOT AVAILABLE/.test(body)){await diagnostic(page,id,viewportName,body);fail(`MODULE_STATE_LEGEND_MISSING:${viewportName}`)}
     for(const label of ['Programme & Curriculum','PLO / CLO Mapping','Evidence Explorer','Traceability Explorer','Approval Queue','Help Center']){
-      if(!body.includes(label))fail(`UNAVAILABLE_MODULE_LABEL_MISSING:${label}:${viewportName}`);
+      if(!body.includes(label)){await diagnostic(page,id,viewportName,body);fail(`UNAVAILABLE_MODULE_LABEL_MISSING:${label}:${viewportName}`)}
     }
   }
-  if(route==='/governance/responsibility-coverage' && !/Source-B courses/.test(body))fail(`COVERAGE_SUMMARY_MISSING:${viewportName}`);
-  if(route==='/governance/reconciliation' && !/Reconciliation Queue/.test(body))fail(`RECONCILIATION_TITLE_MISSING:${viewportName}`);
+  if(route==='/governance/responsibility-coverage' && !/Source-B courses/.test(body)){await diagnostic(page,id,viewportName,body);fail(`COVERAGE_SUMMARY_MISSING:${viewportName}`)}
+  if(route==='/governance/reconciliation' && !/Reconciliation Queue/.test(body)){await diagnostic(page,id,viewportName,body);fail(`RECONCILIATION_TITLE_MISSING:${viewportName}`)}
   const axe=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa']).analyze();
   const severe=axe.violations.filter(v=>v.impact==='serious'||v.impact==='critical');
   if(severe.length){
-    const detail=severe.map(v=>({
-      id:v.id,
-      impact:v.impact,
-      nodes:v.nodes.slice(0,8).map(n=>({target:n.target,html:n.html,failureSummary:n.failureSummary}))
-    }));
+    const detail=severe.map(v=>({id:v.id,impact:v.impact,nodes:v.nodes.slice(0,8).map(n=>({target:n.target,html:n.html,failureSummary:n.failureSummary}))}));
     console.error(`AXE_DETAIL:${id}:${viewportName}:${JSON.stringify(detail)}`);
+    await diagnostic(page,id,viewportName,body);
     fail(`AXE_SERIOUS_CRITICAL:${id}:${viewportName}:${severe.map(v=>v.id).join(',')}`);
   }
   const file=path.join(out,viewportName,`${id}.png`);
