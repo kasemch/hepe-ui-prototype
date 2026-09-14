@@ -20,8 +20,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
-      HEPE_BASE_URL: https://hepe-ui-prototype-jxg21yybb-kasemch-3467s-projects.vercel.app
-      EXPECTED_APP_SHA: 47d95a6f0193fa5b890ae5b390ddd57fbbbb4989
+      HEPE_BASE_URL: https://hepe-ui-prototype-lyppcaxpq-kasemch-3467s-projects.vercel.app
+      EXPECTED_APP_SHA: 43559f580e95354a9251ced686a64fe16642497e
       VERCEL_BYPASS: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
       SUPABASE_URL: https://lztxpjsuzqvtgyasfnyj.supabase.co
       SUPABASE_PUBLISHABLE_KEY: sb_publishable_7bv5GR0-ksXJn91sRHV0Mg_k4nblIGI
