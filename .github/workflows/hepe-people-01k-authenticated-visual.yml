@@ -22,7 +22,7 @@ jobs:
     timeout-minutes: 30
     env:
       HEPE_BASE_URL: http://127.0.0.1:3000
-      EXPECTED_APP_SHA: 06d9b89a33ef271a69be404b2a0cdd5e4a40e712
+      EXPECTED_APP_SHA: 40e752f111f60becc506271c531eadbb4ee3c8f6
       VERCEL_BYPASS: local-runtime-not-required
       NEXT_PUBLIC_SUPABASE_URL: https://lztxpjsuzqvtgyasfnyj.supabase.co
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_7bv5GR0-ksXJn91sRHV0Mg_k4nblIGI
