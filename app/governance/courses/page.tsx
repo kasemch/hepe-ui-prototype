@@ -3,6 +3,8 @@ import { cookies } from "next/headers";
 
 export const dynamic = "force-dynamic";
 
+const PROGRAMME_ID = "69e3361e-b342-43e1-b386-ac73b191b9a4";
+
 type CourseRow = {
   programme_id: string;
   programme_code: string;
@@ -39,6 +41,7 @@ async function loadCourses() {
   const { data, error } = await supabase
     .from("v_hepe_course_registry_v1")
     .select("programme_id,programme_code,curriculum_version_id,curriculum_version_code,course_id,course_code,title_th,title_en,credit_value,course_status_code,course_role,recommended_year,recommended_term,display_order,is_active")
+    .eq("programme_id", PROGRAMME_ID)
     .order("display_order", { ascending: true })
     .order("course_code", { ascending: true });
   if (error) return { state: `READ_BLOCKED:${error.code ?? "UNKNOWN"}`, rows: [] as CourseRow[] };
@@ -64,7 +67,7 @@ export default async function CourseRegistryPage() {
             <div style={{ fontSize: 13, color: "#475569", fontWeight: 700 }}>HEPE · COURSE REGISTRY · NON-PRODUCTION</div>
             <h1 style={{ margin: "6px 0" }}>Course Registry</h1>
             <p style={{ margin: 0, maxWidth: 880, color: "#475569" }}>
-              Authority-aware read-only course registry from the controlled HEPE curriculum read model. This page displays registered course context and does not activate a curriculum, infer teaching responsibility, or modify course records.
+              Authority-aware read-only course registry scoped to the controlled BED-HEPE programme. This page displays registered course context and does not activate a curriculum, infer teaching responsibility, or modify course records.
             </p>
           </div>
           <a href="/" style={{ alignSelf: "flex-start", color: "#1d4ed8" }}>← Command Center</a>
@@ -85,7 +88,7 @@ export default async function CourseRegistryPage() {
               ))}
             </div>
             <div style={{ marginTop: 14, padding: 14, borderRadius: 12, background: "#fff7ed", border: "1px solid #fed7aa" }}>
-              <strong>Controlled-baseline note:</strong> registry visibility does not change the curriculum version status. The current Source-B validation curriculum remains governed by its own DRAFT/current/effective-date metadata.
+              <strong>Controlled-baseline note:</strong> registry visibility does not change the curriculum version status. The Source-B validation curriculum remains governed by its own DRAFT/current/effective-date metadata. Synthetic pilot programmes are separate scopes and are not included in this BED-HEPE registry view.
             </div>
           </>
         )}
