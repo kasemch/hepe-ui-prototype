@@ -16,6 +16,15 @@ type ReconciliationRow = {
   blocking_status: string;
 };
 
+type ModuleState = "AVAILABLE" | "AUTHORITY_GATED" | "READ_MODEL_NOT_AVAILABLE";
+
+type ModuleCard = {
+  title: string;
+  description: string;
+  state: ModuleState;
+  href?: string;
+};
+
 async function loadProgrammeSnapshot() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -66,15 +75,36 @@ async function loadProgrammeSnapshot() {
   };
 }
 
-function cardStyle(border: string, background: string) {
+function stateBadge(state: ModuleState) {
+  const styles = state === "AVAILABLE"
+    ? { border: "#bbf7d0", background: "#f0fdf4", color: "#166534" }
+    : state === "AUTHORITY_GATED"
+      ? { border: "#bfdbfe", background: "#eff6ff", color: "#1d4ed8" }
+      : { border: "#cbd5e1", background: "#f8fafc", color: "#475569" };
+
+  return (
+    <span style={{ border: `1px solid ${styles.border}`, background: styles.background, color: styles.color, borderRadius: 999, padding: "4px 8px", fontSize: 11, fontWeight: 700 }}>
+      {state.replaceAll("_", " ")}
+    </span>
+  );
+}
+
+function moduleCardStyle(state: ModuleState) {
+  const muted = state === "READ_MODEL_NOT_AVAILABLE";
   return {
     padding: 18,
-    border: `1px solid ${border}`,
+    border: `1px solid ${muted ? "#cbd5e1" : "#e2e8f0"}`,
     borderRadius: 14,
     textDecoration: "none",
     color: "inherit",
-    background,
-  } as const;
+    background: muted ? "#f8fafc" : "#ffffff",
+    opacity: muted ? 0.86 : 1,
+    minHeight: 138,
+    display: "flex",
+    flexDirection: "column" as const,
+    justifyContent: "space-between",
+    gap: 12,
+  };
 }
 
 export default async function Home() {
@@ -89,15 +119,32 @@ export default async function Home() {
   const openReconciliation = snapshot.reconciliation.length;
   const blockingReconciliation = snapshot.reconciliation.filter((r) => r.blocking_status?.includes("BLOCKS_")).length;
 
+  const modules: ModuleCard[] = [
+    { title: "Login", description: "Controlled authentication entry.", state: "AVAILABLE", href: "/login" },
+    { title: "User & Access Center", description: "Role, scope, and authority preview. Authority is never inferred from academic responsibility.", state: "AVAILABLE", href: "/user-access" },
+    { title: "Programme-Chair Activation", description: "Controlled IAM activation surface. Write behavior is authority-gated and NON-PRODUCTION only.", state: "AUTHORITY_GATED", href: "/user-access/activate" },
+    { title: "Effective Access", description: "Resolved permission preview for the authenticated identity.", state: "AVAILABLE", href: "/user-access/effective-access" },
+    { title: "Course Equivalence", description: "Controlled legacy/current equivalence reconciliation.", state: "AUTHORITY_GATED", href: "/governance/course-equivalence" },
+    { title: "Academic Responsibility", description: "Current responsibility, timeline, and provenance.", state: "AVAILABLE", href: "/governance/responsibilities" },
+    { title: "Responsibility Coverage", description: "Period-aware recording coverage without inventing missing ownership or offering records.", state: "AVAILABLE", href: "/governance/responsibility-coverage" },
+    { title: "Reconciliation Queue", description: "Verified system conditions requiring reconciliation. Queue items are not Formal Findings by default.", state: "AVAILABLE", href: "/governance/reconciliation" },
+    { title: "Programme & Curriculum", description: "No verified integrated app read surface is bound on this baseline yet.", state: "READ_MODEL_NOT_AVAILABLE" },
+    { title: "PLO / CLO Mapping", description: "No verified integrated app read surface is bound on this baseline yet.", state: "READ_MODEL_NOT_AVAILABLE" },
+    { title: "Evidence Explorer", description: "Evidence candidates exist in governed storage, but no verified integrated UI surface is bound here yet.", state: "READ_MODEL_NOT_AVAILABLE" },
+    { title: "Traceability Explorer", description: "No verified integrated traceability UI surface is bound on this baseline yet.", state: "READ_MODEL_NOT_AVAILABLE" },
+    { title: "Approval Queue", description: "No verified cross-module approval runtime surface is bound on this baseline yet.", state: "READ_MODEL_NOT_AVAILABLE" },
+    { title: "Help Center", description: "User guidance content exists in other workstreams, but no verified Help Center route is bound on this baseline yet.", state: "READ_MODEL_NOT_AVAILABLE" },
+  ];
+
   return (
-    <main style={{ maxWidth: 1120, margin: "32px auto", padding: 24 }}>
+    <main style={{ maxWidth: 1180, margin: "32px auto", padding: 24 }}>
       <section style={{ background: "white", borderRadius: 18, padding: 26, border: "1px solid #e2e8f0" }}>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 18, flexWrap: "wrap" }}>
           <div>
-            <div style={{ fontSize: 13, color: "#64748b", fontWeight: 700 }}>HEPE · PEOPLE-01J · NON-PRODUCTION</div>
-            <h1 style={{ margin: "6px 0" }}>Academic Command Center</h1>
-            <p style={{ margin: 0, maxWidth: 820, color: "#475569" }}>
-              Programme-level people, responsibility, coverage, reconciliation, and IAM navigation. Academic responsibility remains separate from system authority. Reconciliation/data-quality states are not Formal Findings or automatically admitted Audit Evidence.
+            <div style={{ fontSize: 13, color: "#475569", fontWeight: 700 }}>HEPE · GLOBAL APP INTEGRATION 01 · NON-PRODUCTION</div>
+            <h1 style={{ margin: "6px 0" }}>HEPE Curriculum Command Center</h1>
+            <p style={{ margin: 0, maxWidth: 860, color: "#475569" }}>
+              Single application shell for verified HEPE runtime surfaces. Module availability is evidence-first: a module is linked only when a route and runtime surface exist on this baseline. Missing modules remain explicitly unavailable rather than being simulated or inferred.
             </p>
           </div>
           <div style={{ alignSelf: "flex-start", padding: "8px 11px", borderRadius: 999, border: "1px solid #cbd5e1", background: "#f8fafc", fontSize: 12 }}>
@@ -119,7 +166,7 @@ export default async function Home() {
 
         {snapshot.state === "VERIFIED_READ" && (
           <>
-            <h2 style={{ fontSize: 18, margin: "24px 0 10px" }}>Programme snapshot · 2569-T1</h2>
+            <h2 style={{ fontSize: 18, margin: "24px 0 10px" }}>Verified programme snapshot · 2569-T1</h2>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 10 }}>
               {[
                 ["Source-B courses", sourceBCourses],
@@ -143,16 +190,43 @@ export default async function Home() {
           </>
         )}
 
-        <h2 style={{ fontSize: 18, margin: "26px 0 10px" }}>Governance & access surfaces</h2>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 14 }}>
-          <a href="/login" style={cardStyle("#e2e8f0", "#f8fafc")}><strong>Login</strong><div style={{ marginTop: 6, color: "#64748b" }}>Controlled authentication entry</div></a>
-          <a href="/user-access" style={cardStyle("#e2e8f0", "#f8fafc")}><strong>User & Access Center</strong><div style={{ marginTop: 6, color: "#64748b" }}>Role · Scope · Authority preview</div></a>
-          <a href="/user-access/activate" style={cardStyle("#e2e8f0", "#f8fafc")}><strong>Programme-Chair Activation</strong><div style={{ marginTop: 6, color: "#64748b" }}>Controlled IAM activation surface</div></a>
-          <a href="/user-access/effective-access" style={cardStyle("#e2e8f0", "#f8fafc")}><strong>Effective Access</strong><div style={{ marginTop: 6, color: "#64748b" }}>Permission-resolution preview</div></a>
-          <a href="/governance/course-equivalence" style={cardStyle("#bfdbfe", "#eff6ff")}><strong>Course Equivalence</strong><div style={{ marginTop: 6, color: "#475569" }}>Controlled equivalence reconciliation</div></a>
-          <a href="/governance/responsibilities" style={cardStyle("#bbf7d0", "#f0fdf4")}><strong>Academic Responsibility</strong><div style={{ marginTop: 6, color: "#475569" }}>Current · Timeline · provenance</div></a>
-          <a href="/governance/responsibility-coverage" style={cardStyle("#c4b5fd", "#f5f3ff")}><strong>Responsibility Coverage</strong><div style={{ marginTop: 6, color: "#475569" }}>Period-aware recording coverage</div></a>
-          <a href="/governance/reconciliation" style={cardStyle("#fed7aa", "#fff7ed")}><strong>Reconciliation Queue</strong><div style={{ marginTop: 6, color: "#475569" }}>Verified system conditions requiring reconciliation</div></a>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "end", gap: 16, flexWrap: "wrap", marginTop: 28 }}>
+          <div>
+            <h2 style={{ fontSize: 18, margin: 0 }}>Module registry</h2>
+            <p style={{ margin: "5px 0 0", color: "#64748b", fontSize: 13 }}>Verified navigation only. Unavailable cards are intentionally non-clickable.</p>
+          </div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {stateBadge("AVAILABLE")}{stateBadge("AUTHORITY_GATED")}{stateBadge("READ_MODEL_NOT_AVAILABLE")}
+          </div>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(230px,1fr))", gap: 14, marginTop: 12 }}>
+          {modules.map((module) => {
+            const body = (
+              <>
+                <div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
+                    <strong>{module.title}</strong>
+                    {stateBadge(module.state)}
+                  </div>
+                  <div style={{ marginTop: 8, color: "#475569", fontSize: 13 }}>{module.description}</div>
+                </div>
+                <div style={{ fontSize: 12, color: "#64748b" }}>
+                  {module.href ? `Route: ${module.href}` : "READ MODEL NOT AVAILABLE / COMING SOON"}
+                </div>
+              </>
+            );
+
+            return module.href ? (
+              <a key={module.title} href={module.href} style={moduleCardStyle(module.state)}>{body}</a>
+            ) : (
+              <div key={module.title} aria-disabled="true" style={moduleCardStyle(module.state)}>{body}</div>
+            );
+          })}
+        </div>
+
+        <div style={{ marginTop: 22, padding: 16, borderRadius: 12, background: "#f8fafc", border: "1px solid #e2e8f0", fontSize: 13, color: "#475569" }}>
+          Governance boundary: Conversation, draft UI text, and unavailable-module placeholders are not Audit Evidence. Production authorization is not implied. Existing reconciliation items remain open until resolved by controlled source or verified system evidence.
         </div>
 
         <div style={{ marginTop: 22, paddingTop: 16, borderTop: "1px solid #e2e8f0", fontSize: 12, color: "#64748b" }}>
