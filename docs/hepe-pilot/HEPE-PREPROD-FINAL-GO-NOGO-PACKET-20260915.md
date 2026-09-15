@@ -46,7 +46,8 @@ Production exposure remains subject to least-privilege policy acceptance and reg
 - Protected lane: `non-production`
 - Draft PR: #54 from `rc/hepe-preprod-20260915` → `non-production`
 - PR is intentionally DRAFT
-- Current PR mergeability reported false; do not merge until conflicts/checks are reconciled and exact-SHA acceptance is repeated if SHA changes
+- GitHub recomputation reports PR #54 `mergeable=true`; no merge has been performed
+- The RC SHA remains unchanged
 
 ## Runtime
 - Vercel project runtime-error check in preceding final regression: no runtime errors in selected 12-hour range
@@ -61,9 +62,8 @@ NO-GO at this time.
 
 Blocking reasons:
 1. Protected Preview browser-session/subroute acceptance for the exact RC SHA is not proven end-to-end in the current execution channel.
-2. Draft PR #54 is currently not mergeable and must be reconciled before using the protected `non-production` lane.
-3. Programme/Curriculum remain DRAFT and curriculum `is_current=false`; baseline promotion is a separate Human Authority decision.
-4. Production Authorization has not been explicitly granted.
+2. Programme/Curriculum remain DRAFT and curriculum `is_current=false`; baseline promotion is a separate Human Authority decision.
+3. Production Authorization has not been explicitly granted.
 
 Residual / accepted non-production risks:
 - leaked-password protection unavailable by plan, with user-approved password-strength compensating controls
@@ -76,9 +76,8 @@ Residual / accepted non-production risks:
 - HD-09 Audit Evidence Admission: DEFER / NOT_ADMITTED
 
 ## Required next closure before another Production GO decision
-1. Reconcile PR #54 mergeability without merging to Production.
-2. Establish an exact-SHA protected Preview browser acceptance path or document an explicitly accepted alternative evidence contract.
-3. Re-run exact-SHA CI/runtime/security regression after any SHA-changing reconciliation.
-4. Present final Production GO/NO-GO packet to Human Authority.
+1. Establish an exact-SHA protected Preview browser acceptance path or document an explicitly accepted alternative evidence contract.
+2. If any release SHA changes, re-run exact-SHA CI/runtime/security regression.
+3. Present final Production GO/NO-GO packet to Human Authority.
 
 This document does not itself authorize Production, baseline activation, schema/IAM/authority changes, or Audit Evidence admission.
