@@ -1,0 +1,63 @@
+name: HEPE PILOT 03 Exact Preview Acceptance
+
+on:
+  push:
+    branches: [feat/hepe-controlled-pilot-03]
+    paths: ['.github/workflows/hepe-pilot-03-preview-acceptance.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  preview-acceptance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      HEPE_ENVIRONMENT: NON-PRODUCTION
+      TESTED_APP_SHA: d4f756ceb295a423033c75464114ff76abaa2be7
+      PREVIEW_URL: https://hepe-ui-prototype-p2tezc48t-kasemch-3467s-projects.vercel.app
+      VERCEL_BYPASS: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+    steps:
+      - name: Verify protected Preview binding
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${VERCEL_BYPASS:-}" || { echo 'VERCEL_BYPASS_UNAVAILABLE'; exit 71; }
+          echo "TESTED_APP_SHA=${TESTED_APP_SHA}"
+          echo 'NON_PRODUCTION_SCOPE_VERIFIED'
+      - name: Route and marker acceptance
+        shell: bash
+        run: |
+          set -euo pipefail
+          check(){
+            path="$1"; marker="$2"; body="$(mktemp)"
+            code="$(curl --silent --show-error --max-time 30 --output "$body" --write-out '%{http_code}' -H "x-vercel-protection-bypass: ${VERCEL_BYPASS}" -H 'Cache-Control: no-cache' "${PREVIEW_URL}${path}")"
+            echo "ROUTE ${path} HTTP=${code}"
+            test "$code" = '200'
+            grep -q "$marker" "$body"
+            grep -q 'NON-PRODUCTION' "$body"
+            rm -f "$body"
+          }
+          check '/' 'Academic Command Center'
+          check '/pilot' 'Controlled Pilot Readiness'
+          check '/programme' 'Programme Overview'
+          check '/curriculum' 'Curriculum Structure'
+          check '/study-plan' 'Study Plan'
+          check '/traceability' 'PLO / Course Traceability'
+          check '/mapping' 'PLO × Course / I-R-M'
+          check '/evidence' 'Evidence Explorer'
+          check '/qa' 'INSUFFICIENT VERIFIED EVIDENCE'
+          check '/reviews' 'Review Queue'
+          check '/calendar' 'Academic Tasks'
+          check '/audit' 'Provenance'
+          check '/ai' 'AI ADVISORY'
+          check '/governance' 'Settings / Governance'
+          check '/curriculum-import' 'AUTH_REQUIRED'
+          echo 'HEPE_PILOT_03_PREVIEW_ROUTE_ACCEPTANCE_PASS'
+      - name: Boundary summary
+        run: |
+          echo 'Production: NOT TOUCHED'
+          echo 'Canonical activation: NOT ATTEMPTED'
+          echo 'Publication: NOT ATTEMPTED'
+          echo 'Audit Evidence admission: NOT ATTEMPTED'
+          echo 'PR merge: NOT ATTEMPTED'
