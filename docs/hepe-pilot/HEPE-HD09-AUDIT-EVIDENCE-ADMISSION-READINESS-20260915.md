@@ -21,7 +21,9 @@ Prepare a narrow, provenance-qualified Audit Evidence Admission package after Pr
 - Audit Evidence Admission: NOT_ADMITTED
 
 ## Candidate population
-System readback shows 65 NOT_ADMITTED candidates, including 8 created on 2026-09-15. Many older candidates correctly describe prior temporal states (for example DRAFT / not-current / no-Production) and must not be reused as current-state PASS evidence without temporal qualification.
+System readback before the two final reconciliation candidates showed 65 NOT_ADMITTED candidates, including 8 created on 2026-09-15. Two additional current-state candidates were then created as NOT_ADMITTED for Production UI reconciliation and PR #54 release-lane review, bringing the working NOT_ADMITTED population to 67.
+
+Many older candidates correctly describe prior temporal states (for example DRAFT / not-current / no-Production) and must not be reused as current-state PASS evidence without temporal qualification.
 
 ## Recommended narrow admission package
 ### ADMIT — recommended, subject to explicit HD-09 decision
@@ -43,7 +45,18 @@ System readback shows 65 NOT_ADMITTED candidates, including 8 created on 2026-09
 4. HEPE-EV-HD08-PRODUCTION-DEPLOYMENT-20260915
    - Type: Verified System Evidence Candidate
    - Basis: exact-SHA Vercel Production promotion metadata, canonical-domain HTTP 200, runtime readback, controlled GitHub record
-   - Limitation: original candidate captured UI-label mismatch that was subsequently reconciled; admit only with temporal annotation and link to UI-reconciliation closure
+   - Temporal annotation: original candidate captured the transient UI-label mismatch immediately after first Production promotion; do not read that mismatch as current state
+
+5. HEPE-EV-HD08-PRODUCTION-UI-RECONCILIATION-20260915
+   - Type: Verified System Evidence Candidate + Production UI Reconciliation
+   - Basis: Vercel Production metadata + canonical production-domain fetch + GitHub hotfix/PR #55
+   - Assertion scope: Production displays PRODUCTION while Preview preserves CONTROLLED PREVIEW / NON-PRODUCTION; governance wording remains intact
+
+6. HEPE-EV-PR54-RELEASE-LANE-REVIEW-20260915
+   - Type: Controlled Release-Lane Merge Review Candidate + Test / Regression Evidence Candidate
+   - Basis: GitHub PR #54 metadata/check-runs/ruleset + exact RC Preview + targeted high-risk runtime/API source inspection
+   - Limitation: PR #54 is 170 commits / 114 files; this is merge-readiness evidence, not a claim of independent line-by-line re-audit
+   - Current state: Human merge decision still required; PR #54 not merged at packet time
 
 ### HOLD — do not admit as current-state PASS
 - HEPE-EV-PREPROD-FINAL-CLOSURE-20260915
@@ -70,4 +83,4 @@ Admission must not:
 ## Human decision required
 Explicit HD-09 admission authorization is required. Recommended wording:
 
-Approve HD-09 Audit Evidence Admission for the narrow package only: HEPE-EV-SECURITY-PACKAGE-HD01-HD06-EXECUTION-20260915, HEPE-EV-HD07B-BASELINE-PROMOTION-20260915, HEPE-EV-HD08-PROGRAMME-ACTIVATION-20260915, and HEPE-EV-HD08-PRODUCTION-DEPLOYMENT-20260915, with all stated temporal annotations and limitations preserved. Do not admit any other candidate.
+Approve HD-09 Audit Evidence Admission for the narrow package only: HEPE-EV-SECURITY-PACKAGE-HD01-HD06-EXECUTION-20260915, HEPE-EV-HD07B-BASELINE-PROMOTION-20260915, HEPE-EV-HD08-PROGRAMME-ACTIVATION-20260915, HEPE-EV-HD08-PRODUCTION-DEPLOYMENT-20260915, HEPE-EV-HD08-PRODUCTION-UI-RECONCILIATION-20260915, and HEPE-EV-PR54-RELEASE-LANE-REVIEW-20260915, with all stated temporal annotations and limitations preserved. Do not admit any other candidate.
