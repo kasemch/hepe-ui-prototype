@@ -4,6 +4,7 @@ import { FormEvent, useMemo, useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 
 const AUTHORIZED_PILOT_EMAIL = "kasem.ch@rumail.ru.ac.th";
+const CANONICAL_PREVIEW_ORIGIN = "https://hepe-ui-prototype-git-feat-hepe-i-2574e3-kasemch-3467s-projects.vercel.app";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -39,11 +40,18 @@ export default function LoginPage() {
     setStatus("sending");
 
     const supabase = createBrowserClient(supabaseUrl, supabaseKey);
+    const callback = new URL("/auth/callback", CANONICAL_PREVIEW_ORIGIN);
+    callback.searchParams.set("next", "/");
+
+    const currentUrl = new URL(window.location.href);
+    const vercelShare = currentUrl.searchParams.get("_vercel_share");
+    if (vercelShare) callback.searchParams.set("_vercel_share", vercelShare);
+
     const { error } = await supabase.auth.signInWithOtp({
       email: AUTHORIZED_PILOT_EMAIL,
       options: {
         shouldCreateUser: true,
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        emailRedirectTo: callback.toString(),
       },
     });
 
@@ -60,7 +68,7 @@ export default function LoginPage() {
   return (
     <main style={{ maxWidth: 760, margin: "48px auto", padding: 24 }}>
       <section style={{ background: "white", borderRadius: 20, padding: 28, boxShadow: "0 8px 28px rgba(15,23,42,.08)" }}>
-        <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: ".08em", color: "#475569" }}>HEPE · IAM-09G.2</div>
+        <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: ".08em", color: "#475569" }}>HEPE · IAM-09G.2D.5</div>
         <h1 style={{ marginBottom: 8 }}>เข้าสู่ระบบ HEPE</h1>
         <p style={{ marginTop: 0, color: "#475569" }}>Controlled Real-User Pilot · NON-PRODUCTION ONLY</p>
 
@@ -95,8 +103,9 @@ export default function LoginPage() {
           <strong>Controlled behaviour</strong>
           <p style={{ marginBottom: 0, lineHeight: 1.6 }}>
             หน้านี้เปิดทางส่ง Magic Link เฉพาะเมื่อ Preview runtime มี feature flag สำหรับ HEPE IAM real-user pilot,
-            Supabase runtime ถูกผูกครบ และอีเมลตรงกับบัญชีที่ได้รับอนุญาตเท่านั้น. การเรียก Auth นี้อาจสร้าง Supabase Auth user
-            หากยังไม่มีบัญชีตาม authorization ที่บันทึกไว้ แต่จะไม่สร้าง HEPE profile, role, scope หรือ academic authority.
+            Supabase runtime ถูกผูกครบ และอีเมลตรงกับบัญชีที่ได้รับอนุญาตเท่านั้น. Magic Link จะกลับเข้าสู่ canonical Preview origin
+            ของ branch IAM เดียวกันก่อนสร้าง session. การเรียก Auth นี้อาจสร้าง Supabase Auth user หากยังไม่มีบัญชีตาม authorization
+            ที่บันทึกไว้ แต่จะไม่สร้าง HEPE profile, role, scope หรือ academic authority.
           </p>
         </div>
 
