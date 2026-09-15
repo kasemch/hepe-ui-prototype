@@ -32,37 +32,81 @@ Result:
 - After remediation, direct privilege count = 0.
 - No permissive RLS policies were added.
 
-### HD-03 / HD-06 — private schema hardening
-Applied migration: `hepe_release06_restrict_private_schema_authenticated_surface`
+### HD-03 / HD-06 — private schema hardening and reconciliation
+Initial hardening migrations:
+- `hepe_release06_restrict_private_schema_authenticated_surface`
+- `hepe_release06_remove_public_execute_private_functions`
 
-Applied migration: `hepe_release06_remove_public_execute_private_functions`
+Initial result:
+- private authenticated direct surface was reduced to zero.
 
-Result:
-- `authenticated` and `anon` lost direct `USAGE` on schema `private`.
-- direct EXECUTE on private functions revoked from `authenticated`, `anon`, and inherited `PUBLIC`.
-- default function EXECUTE privileges in `private` hardened for future postgres-owned functions.
-- authenticated SECURITY DEFINER direct-execute count in `private` = 0.
+Regression exception:
+- authenticated execution of `public.hepe_get_people_responsibility_coverage('2569','1')` failed with `permission denied for schema private`.
+- cause: public SECURITY INVOKER wrappers and a security-invoker view legitimately depend on selected `private.*` helpers.
 
-## Regression readback
-Verified after migration:
+Reconciliation migrations:
+- `hepe_release06_reconcile_private_wrapper_access`
+- `hepe_release06_minimize_private_helper_execute`
+
+Final least-privilege result:
+- `authenticated` retains schema `private` USAGE only because SECURITY INVOKER wrappers require it.
+- anon retains no private schema USAGE.
+- PUBLIC and anon direct private-function EXECUTE remain revoked.
+- authenticated private SECURITY DEFINER EXECUTE surface is reduced to 15 required helper dependencies, not the temporary broad 70-function restore.
+- verified wrappers execute without schema-permission regression:
+  - `public.hepe_get_people_responsibility_coverage('2569','1')`
+  - `public.v_hepe_people_reconciliation_queue_v1`
+
+## Regression readback — final reconciled posture
+Verified:
 - authority assignments = 13
 - programme status = DRAFT
 - curriculum status = DRAFT
 - curriculum is_current = false
 - critical S5 RPC authenticated EXECUTE = false
 - public RLS/no-policy tables with anon/auth direct privileges = 0
-- private schema authenticated USAGE = false
-- private authenticated SECURITY DEFINER direct-execute count = 0
+- private schema authenticated USAGE = true, required by SECURITY INVOKER wrappers
+- private schema anon USAGE = false
+- authenticated SECURITY DEFINER direct-execute population in `private` = 15 required dependencies
+
+## Rollback acceptance
+Test: `HEPE-ROLLBACK-SECURITY-PRIV-01`
+
+A transactional restore simulation was executed and then rolled back. The test verified that simulated prior privilege posture did not persist after `ROLLBACK`.
+
+Status: PASS
+Cleanup: PASS — no simulated restore state persisted.
+
+Note: this test occurred before the final private-helper allowlist reconciliation. A final-posture rollback verification is required for closure evidence and must expect the 15-helper authenticated private surface rather than zero.
 
 ## Security advisor after remediation
 Observed:
 - `authenticated_security_definer_function_executable`: 24 → 23
 - critical S5 authority-binding RPC no longer appears in that exposed-public warning set
-- `rls_enabled_no_policy`: remains 64 because policy count was intentionally not changed; this remains a review population, not 64 confirmed vulnerabilities
-- leaked-password protection remains disabled and requires an Auth configuration action outside the currently available Supabase mutation tools
+- `rls_enabled_no_policy`: remains 64 because policy count was intentionally not changed; this is a review population, not 64 confirmed vulnerabilities
+- leaked-password protection remains disabled and requires a Supabase Auth configuration action
+
+The remaining 23 public SECURITY DEFINER warnings are not automatically classified as vulnerabilities. They include self-scoped learner, role-guarded instructor, synthetic-only pilot, and support workflow functions and remain subject to intended-exposure review/regression.
 
 ## Repository / release integrity state
-Current controlled-pilot branch remains unprotected and latest reviewed commit remains unsigned. Repository connector available in this execution can read protection/rulesets but does not expose branch-protection mutation.
+Development source branch: `feat/hepe-controlled-pilot-03`.
+
+Controlled NON-PRODUCTION release lane discovered and verified:
+- branch: `non-production`
+- repository ruleset: `HEPE Non-Production Governance`
+- enforcement: active
+- pull request required
+- required status check: `governance-policy`
+- non-fast-forward and deletion restrictions enabled
+- no bypass actors
+- latest verified branch commit observed with a valid GitHub signature
+
+Accordingly, the feature branch is treated as a development source, while controlled promotion should occur through PR into the protected `non-production` lane.
+
+## Remaining platform-control dependency
+HD-02 remains incomplete in execution evidence:
+- Supabase leaked-password protection is still disabled.
+- Current connected Supabase tools do not expose an Auth configuration mutation action for this setting.
 
 ## Evidence limitation
 This record is a candidate only. It is not automatically admitted to the Audit Evidence Set.
