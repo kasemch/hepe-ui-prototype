@@ -1,0 +1,65 @@
+name: HEPE INGEST 02F AuthZ Diagnostic
+
+on:
+  push:
+    branches: [feat/hepe-ingest-02e-ui-binding]
+    paths: ['.github/workflows/hepe-ingest-02f-authz-diagnostic.yml']
+permissions:
+  contents: read
+jobs:
+  authz-diagnostic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SUPABASE_URL: https://lztxpjsuzqvtgyasfnyj.supabase.co
+      SUPABASE_PUBLISHABLE_KEY: sb_publishable_7bv5GR0-ksXJn91sRHV0Mg_k4nblIGI
+      SUPABASE_ADMIN: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      VERCEL_BYPASS: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+      PREVIEW_URL: https://hepe-ui-prototype-qwc5uarna-kasemch-3467s-projects.vercel.app
+      TARGET_PROGRAMME_CODE: '25510071103503'
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Run authenticated authorization diagnostic and cleanup
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import crypto from 'node:crypto';
+          import { execFileSync } from 'node:child_process';
+          import { createClient } from '@supabase/supabase-js';
+          import { createServerClient } from '@supabase/ssr';
+          const E=process.env, fail=m=>{throw new Error(m)};
+          const admin=createClient(E.SUPABASE_URL,E.SUPABASE_ADMIN,{auth:{persistSession:false,autoRefreshToken:false}});
+          const codes=['PREPARER_A','NO_AUTHORITY','REVIEWER_B'];
+          const ctx=new Map(); let failure=null;
+          async function load(code){
+            const {data:f,error:fe}=await admin.from('wave6_persona_fixtures').select('actor_id,external_identity_subject,expected_programme_code').eq('persona_code',code).single(); if(fe||!f) fail(`FIXTURE:${code}`);
+            const {data:a,error:ae}=await admin.from('actors').select('actor_id,external_identity_subject').eq('actor_id',f.actor_id).single(); if(ae||!a) fail(`ACTOR:${code}`);
+            const {data:p,error:pe}=await admin.from('programmes').select('programme_id').eq('programme_code',E.TARGET_PROGRAMME_CODE).single(); if(pe||!p) fail('TARGET_PROGRAMME_MISSING');
+            const {count,error:ce}=await admin.from('authority_assignments').select('*',{count:'exact',head:true}).eq('actor_id',a.actor_id).eq('programme_id',p.programme_id).eq('status','ACTIVE'); if(ce) fail(`TARGET_AUTHORITY_QUERY:${code}`);
+            return {f,a,targetAuthority:count??0};
+          }
+          async function makeUser(code){const tag=`${E.GITHUB_RUN_ID}-${crypto.randomBytes(5).toString('hex')}`;const email=`hepe-02f-diag-${code.toLowerCase()}-${tag}@example.invalid`;const password=crypto.randomBytes(32).toString('base64url');const {data,error}=await admin.auth.admin.createUser({email,password,email_confirm:true,user_metadata:{hepe_synthetic_test:true,hepe_gate:'HEPE-INGEST-02F-AUTH-DIAG',hepe_persona:code}});if(error||!data.user)fail(`CREATE_USER:${code}`);return {uid:data.user.id,email,password};}
+          async function bind(actor,subject){const {error}=await admin.from('actors').update({external_identity_subject:subject}).eq('actor_id',actor);if(error)fail('BIND_FAIL');}
+          async function session(u){const jar=new Map();const ssr=createServerClient(E.SUPABASE_URL,E.SUPABASE_PUBLISHABLE_KEY,{cookies:{getAll(){return [...jar].map(([name,value])=>({name,value}));},setAll(xs){for(const x of xs)jar.set(x.name,x.value);}}});const {data,error}=await ssr.auth.signInWithPassword({email:u.email,password:u.password});if(error||!data.session)fail('SESSION_FAIL');return [...jar].map(([k,v])=>`${k}=${v}`).join('; ');}
+          function req(path,cookie){const m='__H__';const out=execFileSync('curl',['--silent','--show-error','--max-time','30','-H',`x-vercel-protection-bypass: ${E.VERCEL_BYPASS}`,'-H',`cookie: ${cookie}`,'-H','Cache-Control: no-cache','-w',`${m}%{http_code}`,`${E.PREVIEW_URL}${path}`],{encoding:'utf8',maxBuffer:5*1024*1024});const i=out.lastIndexOf(m);return {body:out.slice(0,i),code:out.slice(i+m.length).trim()};}
+          try{
+            for(const code of codes){const c=await load(code);if(c.a.external_identity_subject!==c.f.external_identity_subject)fail(`BASELINE_SUBJECT:${code}`);if(c.targetAuthority!==0)fail(`UNEXPECTED_TARGET_AUTHORITY:${code}`);ctx.set(code,{...c,u:null});}
+            console.log('TARGET_PROGRAMME_AUTHORITY_BASELINE_PASS all=0');
+            for(const code of codes){const c=ctx.get(code);c.u=await makeUser(code);await bind(c.a.actor_id,c.u.uid);}
+            console.log('TEMP_USERS_AND_BINDINGS_PASS count=3');
+            const violations=[];
+            for(const code of codes){const c=ctx.get(code),cookie=await session(c.u);const page=req('/curriculum-import',cookie),api=req('/api/curriculum-import',cookie);const pageAuth=page.body.includes('AUTH_REQUIRED')?'AUTH_REQUIRED':page.body.includes('AUTHENTICATED_VALIDATION_READ')?'AUTHENTICATED_VALIDATION_READ':page.body.includes('AUTHORITY_DENIED_OR_READ_MODEL_UNAVAILABLE')?'AUTHORITY_DENIED':'OTHER';console.log(`DIAG persona=${code} page_http=${page.code} page_state=${pageAuth} api_http=${api.code}`);if(pageAuth==='AUTH_REQUIRED'||api.code==='401')violations.push(`AUTH_COOKIE_NOT_RECOGNIZED:${code}`);if(pageAuth==='AUTHENTICATED_VALIDATION_READ'||api.code==='200')violations.push(`OUT_OF_SCOPE_VALIDATION_READ_ALLOWED:${code}`);if(!(api.code==='403'||api.code==='200'||api.code==='401'))violations.push(`UNEXPECTED_API_STATUS:${code}:${api.code}`);}
+            if(violations.length)fail(violations.join(','));
+            console.log('AUTHZ_DIAGNOSTIC_PASS');
+          }catch(e){failure=e;console.error(`AUTHZ_DIAGNOSTIC_FAIL:${e.message}`);}finally{
+            const errs=[];for(const code of codes){const c=ctx.get(code);if(!c)continue;try{await bind(c.a.actor_id,c.f.external_identity_subject)}catch{errs.push(`RESTORE:${code}`)}try{if(c.u?.uid)await admin.auth.admin.deleteUser(c.u.uid)}catch{errs.push(`DELETE:${code}`)}}
+            try{const {data,error}=await admin.auth.admin.listUsers({page:1,perPage:1000});if(error)errs.push('RESIDUAL_QUERY');else if(data.users.some(u=>u.user_metadata?.hepe_gate==='HEPE-INGEST-02F-AUTH-DIAG'))errs.push('RESIDUAL_PRESENT');}catch{errs.push('RESIDUAL_VERIFY')}
+            if(errs.length){console.error(`CLEANUP_FAIL:${errs.join(',')}`);process.exitCode=2}else console.log('MANDATORY_CLEANUP_PASS residual=0');
+          }
+          if(failure)process.exitCode=process.exitCode||1;
+          NODE
+      - name: Boundary summary
+        if: always()
+        run: echo 'NON-PRODUCTION synthetic-only; no authority grant/revoke; no IAM policy change; no Production; no PR merge.'

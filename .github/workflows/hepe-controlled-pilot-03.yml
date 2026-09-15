@@ -1,0 +1,47 @@
+name: HEPE Controlled Pilot 03 Quality
+
+on:
+  push:
+    branches: [feat/hepe-controlled-pilot-03]
+  pull_request:
+    branches: [feat/hepe-ingest-02e-ui-binding]
+
+permissions:
+  contents: read
+
+jobs:
+  controlled-pilot-quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: TypeScript check
+        run: npx tsc --noEmit --jsx react-jsx --moduleResolution bundler --module esnext --target es2020 --allowJs false --skipLibCheck --esModuleInterop app/page.tsx 'app/[module]/page.tsx' app/pilot/page.tsx app/curriculum-import/page.tsx
+      - name: Build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://lztxpjsuzqvtgyasfnyj.supabase.co
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_7bv5GR0-ksXJn91sRHV0Mg_k4nblIGI
+        run: npm run build
+      - name: Governance and no-fabrication static assertions
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'NON-PRODUCTION' app/page.tsx
+          grep -q 'NOT ACTIVE' 'app/[module]/page.tsx'
+          grep -q 'NOT PUBLISHED' 'app/[module]/page.tsx'
+          grep -q 'INSUFFICIENT VERIFIED EVIDENCE' 'app/[module]/page.tsx'
+          grep -q 'AI ADVISORY' 'app/[module]/page.tsx'
+          grep -q '99 approved Course→PLO relationships' 'app/[module]/page.tsx'
+          grep -q '54 logical study-plan rows' 'app/[module]/page.tsx'
+          grep -qi 'no fabricated course' 'app/[module]/page.tsx'
+          ! grep -R -E 'CANONICAL_ACTIVATE|PRODUCTION_DEPLOY|AUTO_ADMIT_EVIDENCE' app --exclude-dir=api
+          echo 'CONTROLLED_PILOT_STATIC_GOVERNANCE_PASS'
+      - name: Boundary summary
+        run: |
+          echo 'Environment: NON-PRODUCTION'
+          echo 'Canonical activation: NOT ATTEMPTED'
+          echo 'Publication: NOT ATTEMPTED'
+          echo 'Audit Evidence admission: NOT ATTEMPTED'
+          echo 'PR merge: NOT ATTEMPTED'

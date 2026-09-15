@@ -1,0 +1,52 @@
+name: HEPE INGEST 02F Authenticated UI Positive Retest
+on:
+  push:
+    branches: [feat/hepe-ingest-02e-ui-binding]
+    paths: ['.github/workflows/hepe-ingest-02f-ui-positive-retest.yml']
+permissions:
+  contents: read
+jobs:
+  ui-positive-retest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SUPABASE_URL: https://lztxpjsuzqvtgyasfnyj.supabase.co
+      SUPABASE_PUBLISHABLE_KEY: sb_publishable_7bv5GR0-ksXJn91sRHV0Mg_k4nblIGI
+      SUPABASE_ADMIN: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      VERCEL_BYPASS: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+      PREVIEW_URL: https://hepe-ui-prototype-4ak4dc5l2-kasemch-3467s-projects.vercel.app
+      TESTED_APP_SHA: 5043b47a134ce7b81194b8236ae9fc92a904f62a
+      TARGET_PROGRAMME_CODE: '25510071103503'
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Authenticated UI positive retest with mandatory cleanup
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import crypto from 'node:crypto';
+          import { execFileSync } from 'node:child_process';
+          import { createClient } from '@supabase/supabase-js';
+          import { createServerClient } from '@supabase/ssr';
+          const E=process.env,fail=m=>{throw new Error(m)};
+          const admin=createClient(E.SUPABASE_URL,E.SUPABASE_ADMIN,{auth:{persistSession:false,autoRefreshToken:false}});
+          let actor=null,originalSubject=null,tempA=null,user=null,failure=null;
+          try{
+            const {data:f,error:fe}=await admin.from('wave6_persona_fixtures').select('actor_id,external_identity_subject').eq('persona_code','PREPARER_A').single();if(fe||!f)fail('FIXTURE');
+            const {data:a,error:ae}=await admin.from('actors').select('actor_id,external_identity_subject').eq('actor_id',f.actor_id).single();if(ae||!a||a.external_identity_subject!==f.external_identity_subject)fail('BASELINE_ACTOR');actor=a.actor_id;originalSubject=f.external_identity_subject;
+            const {data:p,error:pe}=await admin.from('programmes').select('programme_id').eq('programme_code',E.TARGET_PROGRAMME_CODE).single();if(pe||!p)fail('PROGRAMME');
+            const {count,error:ce}=await admin.from('authority_assignments').select('*',{count:'exact',head:true}).eq('actor_id',actor).eq('programme_id',p.programme_id).eq('status','ACTIVE');if(ce||(count??0)!==0)fail('PREEXISTING_TARGET_AUTHORITY');
+            const {data:r,error:re}=await admin.from('roles').select('role_id').eq('role_code','PREPARER').single();if(re||!r)fail('ROLE');
+            const {data:ta,error:te}=await admin.from('authority_assignments').insert({actor_id:actor,role_id:r.role_id,authority_level_code:'A0',scope_type:'PROGRAMME',programme_id:p.programme_id,status:'ACTIVE',valid_until:new Date(Date.now()+10*60*1000).toISOString(),assignment_source:'DIRECT'}).select('authority_assignment_id').single();if(te||!ta)fail('TEMP_A0');tempA=ta.authority_assignment_id;
+            const email=`hepe-ui-positive-${E.GITHUB_RUN_ID}-${crypto.randomBytes(4).toString('hex')}@example.invalid`,password=crypto.randomBytes(32).toString('base64url');const {data:ud,error:ue}=await admin.auth.admin.createUser({email,password,email_confirm:true,user_metadata:{hepe_synthetic_test:true,hepe_gate:'HEPE-INGEST-02F-UI-POSITIVE'}});if(ue||!ud.user)fail('AUTH_USER');user={id:ud.user.id,email,password};
+            const {error:be}=await admin.from('actors').update({external_identity_subject:user.id}).eq('actor_id',actor);if(be)fail('BIND');
+            const jar=new Map();const ssr=createServerClient(E.SUPABASE_URL,E.SUPABASE_PUBLISHABLE_KEY,{cookies:{getAll(){return [...jar].map(([name,value])=>({name,value}));},setAll(xs){for(const x of xs)jar.set(x.name,x.value);}}});const {data:s,error:se}=await ssr.auth.signInWithPassword({email,password});if(se||!s.session)fail('SESSION');const cookie=[...jar].map(([k,v])=>`${k}=${v}`).join('; ');if(!cookie)fail('COOKIE');
+            const marker='__H__';const out=execFileSync('curl',['--silent','--show-error','--max-time','30','-H',`x-vercel-protection-bypass: ${E.VERCEL_BYPASS}`,'-H',`cookie: ${cookie}`,'-H','Cache-Control: no-cache','-w',`${marker}%{http_code}`,`${E.PREVIEW_URL}/curriculum-import`],{encoding:'utf8',maxBuffer:5*1024*1024});const i=out.lastIndexOf(marker),body=out.slice(0,i),code=out.slice(i+marker.length).trim();if(code!=='200')fail(`HTTP_${code}`);
+            for(const m of ['AUTHENTICATED_VALIDATION_READ','Courses · 92','Course Groups · 16','Study Plan · 54','Study-plan Credits · 151','PLO · 7','Course→PLO I-R-M · 99','NON-PRODUCTION','CONTROLLED VALIDATION','NOT ACTIVE','f580fec8bb661181cbc0dff3c58473563c4b723f2dde5e863d91667ea4ec3557'])if(!body.includes(m))fail(`MARKER:${m}`);
+            console.log('AUTHENTICATED_UI_POSITIVE_PASS courses=92 groups=16 study=54 credits=151 plo=7 irm=99');
+          }catch(e){failure=e;console.error(`UI_POSITIVE_RETEST_FAIL:${e.message}`);}finally{const errs=[];try{if(tempA){const {error}=await admin.from('authority_assignments').delete().eq('authority_assignment_id',tempA);if(error)errs.push('A0_DELETE')}}catch{errs.push('A0_DELETE_EX')}try{if(actor&&originalSubject){const {error}=await admin.from('actors').update({external_identity_subject:originalSubject}).eq('actor_id',actor);if(error)errs.push('ACTOR_RESTORE')}}catch{errs.push('ACTOR_RESTORE_EX')}try{if(user?.id)await admin.auth.admin.deleteUser(user.id)}catch{errs.push('USER_DELETE')}if(errs.length){console.error(`MANDATORY_CLEANUP_FAIL:${errs.join(',')}`);process.exitCode=2}else console.log('MANDATORY_CLEANUP_PASS residual=0');}if(failure)process.exitCode=process.exitCode||1;
+          NODE
+      - name: Boundary summary
+        if: always()
+        run: echo 'NON-PRODUCTION temporary A0 synthetic-only; no Production, activation, publication, Audit Evidence admission or PR merge.'

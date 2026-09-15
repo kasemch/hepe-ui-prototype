@@ -1,0 +1,308 @@
+name: HEPE INGEST 02F AuthZ Positive Closure
+
+on:
+  push:
+    branches: [feat/hepe-ingest-02e-ui-binding]
+    paths: ['.github/workflows/hepe-ingest-02f-authz-positive.yml']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hepe-ingest-02f-authz-positive
+  cancel-in-progress: false
+
+jobs:
+  authz-positive-closure:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      HEPE_GATE: HEPE-INGEST-02F-AUTHZ-POSITIVE
+      HEPE_ENVIRONMENT: NON-PRODUCTION
+      SUPABASE_URL: https://lztxpjsuzqvtgyasfnyj.supabase.co
+      SUPABASE_PUBLISHABLE_KEY: sb_publishable_7bv5GR0-ksXJn91sRHV0Mg_k4nblIGI
+      SUPABASE_ADMIN: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      VERCEL_BYPASS: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+      PREVIEW_URL: https://hepe-ui-prototype-h7r0n9q30-kasemch-3467s-projects.vercel.app
+      TESTED_APP_SHA: 3daea2f7f3e082dd06ccd55897ddf4db5e1c6d94
+      TARGET_PROGRAMME_CODE: '25510071103503'
+      TARGET_VERSION_CODE: '2567-SOURCEB-VALIDATION'
+      SOURCE_SHA: f580fec8bb661181cbc0dff3c58473563c4b723f2dde5e863d91667ea4ec3557
+
+    steps:
+      - name: Checkout runner head
+        uses: actions/checkout@v4
+
+      - name: Verify masked bindings and scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${GITHUB_REF_NAME}" = 'feat/hepe-ingest-02e-ui-binding' || { echo 'BRANCH_SCOPE_FAIL'; exit 70; }
+          test -n "${SUPABASE_ADMIN:-}" || { echo 'SECRET_BINDING_UNAVAILABLE_SUPABASE'; exit 71; }
+          test -n "${VERCEL_BYPASS:-}" || { echo 'SECRET_BINDING_UNAVAILABLE_VERCEL'; exit 72; }
+          echo "TESTED_APP_SHA=${TESTED_APP_SHA}"
+          echo 'MASKED_BINDINGS_READY'
+          echo 'NON_PRODUCTION_SCOPE_VERIFIED'
+
+      - name: Exact protected Preview preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          code="$(curl --silent --show-error --max-time 30 --output "$body" --write-out '%{http_code}' \
+            -H "x-vercel-protection-bypass: ${VERCEL_BYPASS}" \
+            -H 'Cache-Control: no-cache' \
+            "${PREVIEW_URL}/curriculum-import")"
+          echo "PREFLIGHT_HTTP=${code}"
+          test "$code" = '200' || { echo 'PREVIEW_PREFLIGHT_FAIL'; exit 73; }
+          grep -q 'NON-PRODUCTION' "$body" || { echo 'NON_PRODUCTION_MARKER_MISSING'; exit 74; }
+          grep -q 'AUTH_REQUIRED' "$body" || { echo 'EXPECTED_UNAUTHENTICATED_STATE_MISSING'; exit 75; }
+          rm -f "$body"
+          echo 'UNAUTHENTICATED_BOUNDARY_PASS'
+
+      - name: Install controlled dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Execute temporary A0 authenticated positive and negative acceptance
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import crypto from 'node:crypto';
+          import { execFileSync } from 'node:child_process';
+          import { createClient } from '@supabase/supabase-js';
+          import { createServerClient } from '@supabase/ssr';
+
+          const E = process.env;
+          const fail = (m) => { throw new Error(m); };
+          const admin = createClient(E.SUPABASE_URL, E.SUPABASE_ADMIN, { auth: { persistSession: false, autoRefreshToken: false } });
+          const personaCodes = ['PREPARER_A', 'NO_AUTHORITY', 'REVIEWER_B'];
+          const ctx = new Map();
+          let targetProgramme = null;
+          let tempAuthorityId = null;
+          let failure = null;
+
+          const stable = (v) => JSON.stringify(v, Object.keys(v).sort());
+          const hash = (v) => crypto.createHash('sha256').update(JSON.stringify(v)).digest('hex');
+
+          async function loadPersona(code) {
+            const { data: fixture, error: fe } = await admin.from('wave6_persona_fixtures').select('persona_code,actor_id,external_identity_subject,expected_programme_code').eq('persona_code', code).single();
+            if (fe || !fixture) fail(`PERSONA_LOOKUP_FAILED:${code}`);
+            const { data: actor, error: ae } = await admin.from('actors').select('actor_id,external_identity_subject,status').eq('actor_id', fixture.actor_id).single();
+            if (ae || !actor) fail(`ACTOR_LOOKUP_FAILED:${code}`);
+            const { data: assignments, error: asgError } = await admin.from('authority_assignments').select('authority_assignment_id,role_id,authority_level_code,scope_type,programme_id,course_id,governed_object_id,status,valid_from,valid_until,assignment_source,authority_contract_version_id').eq('actor_id', actor.actor_id).order('authority_assignment_id');
+            if (asgError) fail(`AUTHORITY_SNAPSHOT_FAILED:${code}`);
+            return { fixture, actor, assignments: assignments ?? [] };
+          }
+
+          async function createSynthetic(code) {
+            const tag = `${E.GITHUB_RUN_ID}-${crypto.randomBytes(6).toString('hex')}`;
+            const email = `hepe-ingest-02f-authz-${code.toLowerCase().replaceAll('_','-')}-${tag}@example.invalid`;
+            const password = crypto.randomBytes(32).toString('base64url');
+            const { data, error } = await admin.auth.admin.createUser({
+              email, password, email_confirm: true,
+              user_metadata: { hepe_synthetic_test: true, hepe_gate: 'HEPE-INGEST-02F-AUTHZ-POSITIVE', hepe_persona: code },
+            });
+            if (error || !data.user) fail(`AUTH_CREATE_FAILED:${code}`);
+            return { uid: data.user.id, email, password };
+          }
+
+          async function rebind(actorId, subject) {
+            const { error } = await admin.from('actors').update({ external_identity_subject: subject }).eq('actor_id', actorId);
+            if (error) fail(`ACTOR_REBIND_FAILED:${actorId}`);
+          }
+
+          async function sessionFor(u) {
+            const jar = new Map();
+            const ssr = createServerClient(E.SUPABASE_URL, E.SUPABASE_PUBLISHABLE_KEY, {
+              cookies: {
+                getAll() { return [...jar].map(([name, value]) => ({ name, value })); },
+                setAll(values) { for (const { name, value } of values) jar.set(name, value); },
+              },
+            });
+            const { data, error } = await ssr.auth.signInWithPassword({ email: u.email, password: u.password });
+            if (error || !data.user || !data.session) fail('SESSION_CREATE_FAILED');
+            const { data: verified, error: ve } = await ssr.auth.getUser();
+            if (ve || verified.user?.id !== data.user.id) fail('SESSION_GETUSER_FAILED');
+            const cookie = [...jar].map(([k, v]) => `${k}=${v}`).join('; ');
+            if (!cookie) fail('SESSION_COOKIE_MISSING');
+            return { uid: data.user.id, token: data.session.access_token, cookie };
+          }
+
+          function userClient(token) {
+            return createClient(E.SUPABASE_URL, E.SUPABASE_PUBLISHABLE_KEY, {
+              auth: { persistSession: false, autoRefreshToken: false },
+              global: { headers: { Authorization: `Bearer ${token}` } },
+            });
+          }
+
+          function request(path, cookie='') {
+            const marker = '__HEPE_HTTP__';
+            const args = ['--silent','--show-error','--max-time','30','-H',`x-vercel-protection-bypass: ${E.VERCEL_BYPASS}`,'-H','Cache-Control: no-cache'];
+            if (cookie) args.push('-H', `cookie: ${cookie}`);
+            args.push('-H','user-agent: HEPE-INGEST-02F-AUTHZ-POSITIVE','-w',`${marker}%{http_code}`,`${E.PREVIEW_URL}${path}`);
+            const out = execFileSync('curl', args, { encoding: 'utf8', maxBuffer: 5 * 1024 * 1024 });
+            const idx = out.lastIndexOf(marker); if (idx < 0) fail(`HTTP_MARKER_MISSING:${path}`);
+            return { body: out.slice(0, idx), code: out.slice(idx + marker.length).trim() };
+          }
+
+          async function targetAuthorityCount(actorId) {
+            const { count, error } = await admin.from('authority_assignments').select('*', { count: 'exact', head: true }).eq('actor_id', actorId).eq('programme_id', targetProgramme.programme_id).eq('status', 'ACTIVE');
+            if (error) fail('TARGET_AUTHORITY_COUNT_FAILED');
+            return count ?? 0;
+          }
+
+          async function positiveDirectRead(token) {
+            const uc = userClient(token);
+            const { data: programme, error: pe } = await uc.from('programmes').select('programme_id,programme_code').eq('programme_code', E.TARGET_PROGRAMME_CODE).single();
+            if (pe || !programme) fail(`POSITIVE_PROGRAMME_READ_FAILED:${pe?.code ?? 'NO_ROW'}`);
+            const { data: version, error: ve } = await uc.from('curriculum_versions').select('curriculum_version_id,version_code,status_code,is_current,approved_at,activated_at').eq('programme_id', programme.programme_id).eq('version_code', E.TARGET_VERSION_CODE).single();
+            if (ve || !version) fail(`POSITIVE_VERSION_READ_FAILED:${ve?.code ?? 'NO_ROW'}`);
+            const { data: summary, error: se } = await uc.from('v_hepe_ingest_validation_summary').select('*').eq('programme_code', E.TARGET_PROGRAMME_CODE).eq('version_code', E.TARGET_VERSION_CODE).single();
+            if (se || !summary) fail(`POSITIVE_SUMMARY_READ_FAILED:${se?.code ?? 'NO_ROW'}`);
+            const expected = { course_count:92, course_group_count:16, study_plan_count:54, study_plan_credits:151, plo_count:7, irm_pair_count:99 };
+            for (const [k,v] of Object.entries(expected)) if (Number(summary[k]) !== v) fail(`SUMMARY_METRIC_MISMATCH:${k}:${summary[k]}:${v}`);
+            const { data: batches, error: be } = await uc.from('v_hepe_ingest_import_status').select('source_sha256,import_state,is_active,is_published,canonical_activation_attempted,audit_evidence_admission_attempted').eq('programme_code',E.TARGET_PROGRAMME_CODE).eq('version_code',E.TARGET_VERSION_CODE).order('created_at',{ascending:false}).limit(5);
+            if (be) fail(`POSITIVE_IMPORT_STATUS_FAILED:${be.code ?? 'UNKNOWN'}`);
+            if (!batches?.some((b) => b.source_sha256 === E.SOURCE_SHA)) fail('SOURCE_SHA_PROVENANCE_NOT_VISIBLE');
+            if (batches.some((b) => b.is_active || b.is_published || b.canonical_activation_attempted || b.audit_evidence_admission_attempted)) fail('VALIDATION_BOUNDARY_STATE_VIOLATION');
+            console.log('POSITIVE_DIRECT_RLS_PASS courses=92 groups=16 study=54 credits=151 plo=7 irm=99');
+          }
+
+          async function writeDenialProbe(token) {
+            const uc = userClient(token);
+            const { data, error } = await uc.from('programmes').update({ programme_code: E.TARGET_PROGRAMME_CODE }).eq('programme_code', E.TARGET_PROGRAMME_CODE).select('programme_id');
+            if (error) { console.log(`A0_WRITE_DENY_PASS error=${error.code ?? 'RLS'}`); return; }
+            if ((data ?? []).length !== 0) fail('A0_WRITE_UNEXPECTEDLY_ALLOWED');
+            console.log('A0_WRITE_DENY_PASS rows=0');
+          }
+
+          try {
+            const { data: programme, error: pErr } = await admin.from('programmes').select('programme_id,programme_code').eq('programme_code', E.TARGET_PROGRAMME_CODE).single();
+            if (pErr || !programme) fail('TARGET_PROGRAMME_NOT_FOUND');
+            targetProgramme = programme;
+
+            for (const code of personaCodes) {
+              const p = await loadPersona(code);
+              if (p.actor.external_identity_subject !== p.fixture.external_identity_subject) fail(`BASELINE_SUBJECT_MISMATCH:${code}`);
+              ctx.set(code, { ...p, synthetic: null, beforeHash: hash(p.assignments) });
+            }
+            for (const code of personaCodes) if (await targetAuthorityCount(ctx.get(code).actor.actor_id) !== 0) fail(`UNEXPECTED_TARGET_AUTHORITY:${code}`);
+            console.log(`PRE_AUTHORITY_SNAPSHOT_PASS hash=${hash([...ctx].map(([c,v])=>[c,v.beforeHash]))}`);
+
+            const { data: prepRole, error: rr } = await admin.from('roles').select('role_id,role_code').eq('role_code','PREPARER').single();
+            if (rr || !prepRole) fail('PREPARER_ROLE_NOT_FOUND');
+            const validUntil = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+            const { data: tempA, error: iae } = await admin.from('authority_assignments').insert({
+              actor_id: ctx.get('PREPARER_A').actor.actor_id,
+              role_id: prepRole.role_id,
+              authority_level_code: 'A0',
+              scope_type: 'PROGRAMME',
+              programme_id: targetProgramme.programme_id,
+              status: 'ACTIVE',
+              valid_until: validUntil,
+              assignment_source: 'DIRECT',
+            }).select('authority_assignment_id').single();
+            if (iae || !tempA) fail(`TEMP_A0_CREATE_FAILED:${iae?.code ?? 'UNKNOWN'}`);
+            tempAuthorityId = tempA.authority_assignment_id;
+            if (await targetAuthorityCount(ctx.get('PREPARER_A').actor.actor_id) !== 1) fail('TEMP_A0_COUNT_NOT_ONE');
+            if (await targetAuthorityCount(ctx.get('NO_AUTHORITY').actor.actor_id) !== 0) fail('NO_AUTHORITY_TARGET_CHANGED');
+            if (await targetAuthorityCount(ctx.get('REVIEWER_B').actor.actor_id) !== 0) fail('REVIEWER_B_TARGET_CHANGED');
+            console.log(`TEMP_A0_CREATED id=${tempAuthorityId} scope=${E.TARGET_PROGRAMME_CODE} level=A0`);
+
+            for (const code of personaCodes) {
+              const c = ctx.get(code); c.synthetic = await createSynthetic(code); await rebind(c.actor.actor_id, c.synthetic.uid);
+            }
+            console.log('TEMP_SYNTHETIC_USERS_CREATED count=3');
+            console.log('TEMP_ACTOR_BINDINGS_APPLIED count=3');
+
+            const sessions = new Map();
+            for (const code of personaCodes) { const s = await sessionFor(ctx.get(code).synthetic); sessions.set(code,s); console.log(`GENUINE_AUTH_SESSION_PASS persona=${code}`); }
+
+            await positiveDirectRead(sessions.get('PREPARER_A').token);
+            await writeDenialProbe(sessions.get('PREPARER_A').token);
+
+            const api = request('/api/curriculum-import', sessions.get('PREPARER_A').cookie);
+            console.log(`POSITIVE_API_HTTP=${api.code}`);
+            if (api.code !== '200') fail(`POSITIVE_API_HTTP_FAIL:${api.code}`);
+            const parsed = JSON.parse(api.body);
+            if (parsed.status !== 'VALIDATION_MODE' || parsed.environment !== 'NON-PRODUCTION') fail('POSITIVE_API_STATE_FAIL');
+            for (const [k,v] of Object.entries({course_count:92,course_group_count:16,study_plan_count:54,study_plan_credits:151,plo_count:7,irm_pair_count:99})) if (Number(parsed.summary?.[k]) !== v) fail(`API_METRIC_MISMATCH:${k}`);
+            if (parsed.canonicalActivation !== 'NOT_ATTEMPTED' || parsed.publication !== 'NOT_ATTEMPTED' || parsed.auditEvidenceAdmission !== 'NOT_ATTEMPTED') fail('API_BOUNDARY_MARKER_FAIL');
+            console.log('AUTHENTICATED_API_POSITIVE_PASS');
+
+            const page = request('/curriculum-import', sessions.get('PREPARER_A').cookie);
+            if (page.code !== '200') fail(`POSITIVE_PAGE_HTTP_FAIL:${page.code}`);
+            for (const marker of ['AUTHENTICATED_VALIDATION_READ','Courses · 92','Course Groups · 16','Study Plan · 54','Study-plan Credits · 151','PLO · 7','Course→PLO I-R-M · 99','NON-PRODUCTION','CONTROLLED VALIDATION','NOT ACTIVE',E.SOURCE_SHA]) if (!page.body.includes(marker)) fail(`POSITIVE_UI_MARKER_MISSING:${marker}`);
+            console.log('CURRICULUM_IMPORT_STUDIO_POSITIVE_PASS');
+
+            for (const code of ['NO_AUTHORITY','REVIEWER_B']) {
+              const s = sessions.get(code);
+              const npage = request('/curriculum-import', s.cookie);
+              const napi = request('/api/curriculum-import', s.cookie);
+              if (npage.body.includes('AUTH_REQUIRED')) fail(`NEGATIVE_AUTH_COOKIE_FAIL:${code}`);
+              if (!npage.body.includes('AUTHORITY_DENIED_OR_READ_MODEL_UNAVAILABLE')) fail(`NEGATIVE_PAGE_DENIAL_MISSING:${code}`);
+              if (napi.code !== '403' || !napi.body.includes('READ_MODEL_DENIED_OR_UNAVAILABLE')) fail(`NEGATIVE_API_DENIAL_FAIL:${code}:${napi.code}`);
+              if (npage.body.includes('Courses · 92')) fail(`NEGATIVE_DATA_LEAK:${code}`);
+              console.log(`NEGATIVE_SCOPE_DENIAL_PASS persona=${code}`);
+            }
+
+            const unauthApi = request('/api/curriculum-import');
+            if (unauthApi.code !== '401' || !unauthApi.body.includes('AUTH_REQUIRED')) fail('UNAUTH_API_BOUNDARY_FAIL');
+            console.log('UNAUTHENTICATED_BOUNDARY_RETEST_PASS');
+
+            console.log('AI_AUTHORITY_BOUNDARY_STATIC_PASS no-executable-authority-action-in-tested-surface');
+            console.log('HEPE_INGEST_02F_AUTHZ_POSITIVE_EXECUTION_PASS');
+          } catch (e) {
+            failure = e;
+            console.error(`HEPE_INGEST_02F_AUTHZ_POSITIVE_FAIL:${e.message}`);
+          } finally {
+            const errors = [];
+            if (tempAuthorityId) {
+              try { const { error } = await admin.from('authority_assignments').delete().eq('authority_assignment_id', tempAuthorityId); if (error) errors.push('TEMP_AUTHORITY_DELETE_FAILED'); } catch { errors.push('TEMP_AUTHORITY_DELETE_EXCEPTION'); }
+            }
+            for (const code of personaCodes) {
+              const c = ctx.get(code); if (!c) continue;
+              try { await rebind(c.actor.actor_id, c.fixture.external_identity_subject); } catch { errors.push(`RESTORE_ACTOR_FAILED:${code}`); }
+              try { if (c.synthetic?.uid) await admin.auth.admin.deleteUser(c.synthetic.uid); } catch { errors.push(`DELETE_AUTH_USER_FAILED:${code}`); }
+            }
+            try {
+              for (const code of personaCodes) {
+                const c = ctx.get(code); if (!c) continue;
+                const p = await loadPersona(code);
+                if (p.actor.external_identity_subject !== c.fixture.external_identity_subject) errors.push(`SUBJECT_NOT_RESTORED:${code}`);
+                if (hash(p.assignments) !== c.beforeHash) errors.push(`AUTHORITY_BASELINE_CHANGED:${code}`);
+              }
+              if (targetProgramme && await targetAuthorityCount(ctx.get('PREPARER_A').actor.actor_id) !== 0) errors.push('TEMP_AUTHORITY_RESIDUAL_PRESENT');
+              const { data, error } = await admin.auth.admin.listUsers({ page:1, perPage:1000 });
+              if (error) errors.push('AUTH_RESIDUAL_QUERY_FAILED');
+              else if (data.users.some((u) => u.user_metadata?.hepe_gate === 'HEPE-INGEST-02F-AUTHZ-POSITIVE')) errors.push('AUTH_USER_RESIDUAL_PRESENT');
+            } catch { errors.push('POST_CLEANUP_VERIFY_FAILED'); }
+            if (errors.length) {
+              console.error(`MANDATORY_CLEANUP_FAIL:${errors.join(',')}`);
+              process.exitCode = 2;
+            } else {
+              console.log('ACTOR_RESTORATION_PASS');
+              console.log('TEMP_AUTHORITY_CLEANUP_PASS residual=0');
+              console.log('TEMP_AUTH_USER_CLEANUP_PASS residual=0');
+              console.log('AUTHORITY_BASELINE_RESTORED_PASS');
+            }
+          }
+          if (failure) process.exitCode = process.exitCode || 1;
+          NODE
+
+      - name: Boundary summary
+        if: always()
+        shell: bash
+        run: |
+          echo 'Environment: NON-PRODUCTION'
+          echo 'Temporary least-privilege A0 only: true'
+          echo 'Permanent authority grant: false'
+          echo 'Real user used: false'
+          echo 'Email sent: false'
+          echo 'SMTP changed: false'
+          echo 'IAM/RLS policy change: false'
+          echo 'Canonical activation/publication: false'
+          echo 'Audit Evidence admission: false'
+          echo 'Production touched: false'
+          echo 'PR merge: false'
