@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState } from "react";\nimport type { ReactNode } from "react";
 
 type Role = "STUDENT" | "LECTURER" | "PROGRAMME_CHAIR" | "QA" | "DEPARTMENT_HEAD" | "SYSTEM_ADMIN";
 type NavKey = "dashboard" | "workspace" | "people" | "programmes" | "courses" | "teaching" | "students" | "evidence" | "qa" | "authority" | "audit" | "admin";
@@ -61,15 +61,15 @@ function Stat({ label, value, note, tone = "blue" }: { label: string; value: str
   return <article className={"stat tone-" + tone}><div className="statLabel">{label}</div><div className="statValue">{value}</div><div className="statNote">{note}</div></article>;
 }
 
-function Status({ children, tone = "neutral" }: { children: React.ReactNode; tone?: string }) {
+function Status({ children, tone = "neutral" }: { children: ReactNode; tone?: string }) {
   return <span className={"status status-" + tone}>{children}</span>;
 }
 
-function Panel({ title, kicker, children, action }: { title: string; kicker?: string; children: React.ReactNode; action?: React.ReactNode }) {
+function Panel({ title, kicker, children, action }: { title: string; kicker?: string; children: ReactNode; action?: ReactNode }) {
   return <section className="panel"><div className="panelHead"><div>{kicker && <div className="kicker">{kicker}</div>}<h3>{title}</h3></div>{action}</div>{children}</section>;
 }
 
-function Table({ headers, rows }: { headers: string[]; rows: React.ReactNode[][] }) {
+function Table({ headers, rows }: { headers: string[]; rows: ReactNode[][] }) {
   return <div className="tableWrap"><table><thead><tr>{headers.map(h => <th key={h}>{h}</th>)}</tr></thead><tbody>{rows.map((r,i) => <tr key={i}>{r.map((c,j)=><td key={j}>{c}</td>)}</tr>)}</tbody></table></div>;
 }
 
