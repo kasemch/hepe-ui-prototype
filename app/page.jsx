@@ -1,148 +1,394 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
-const ROLES = [
-  ["STUDENT","นักศึกษา (Student A)","SELF · SYN2569A","blue"],
-  ["LECTURER","อาจารย์ผู้สอน (Lecturer A)","TEACHING_INSTANCE · SYN-STU-A1","teal"],
-  ["PROGRAMME_CHAIR","ประธานหลักสูตร","PROGRAMME · SYN-HEPE-A","violet"],
-  ["QA","ผู้รับผิดชอบ QA","PROGRAMME · SYN-HEPE-A","amber"],
-  ["DEPARTMENT_HEAD","หัวหน้าภาควิชา","DEPARTMENT · RU-EDU-DPE","red"],
-  ["SYSTEM_ADMIN","ผู้ดูแลระบบ","SYSTEM · TECHNICAL ONLY","slate"],
-];
+const roleConfig = {
+  STUDENT: {
+    label: "นักศึกษา · Student A",
+    scope: "SELF · SYN2569A",
+    pages: ["Dashboard","My Workspace","Courses","Students"],
+  },
+  LECTURER: {
+    label: "อาจารย์ผู้สอน · Lecturer A",
+    scope: "TEACHING_INSTANCE · SYN-STU-A1",
+    pages: ["Dashboard","My Workspace","People","Courses","Teaching","Students","Evidence"],
+  },
+  PROGRAMME_CHAIR: {
+    label: "ประธานหลักสูตร",
+    scope: "PROGRAMME · SYN-HEPE-A",
+    pages: ["Dashboard","My Workspace","People","Programmes","Courses","Teaching","Students","Evidence","QA","Authority"],
+  },
+  QA: {
+    label: "ผู้รับผิดชอบ QA",
+    scope: "PROGRAMME · SYN-HEPE-A",
+    pages: ["Dashboard","My Workspace","People","Programmes","Courses","Evidence","QA","Authority","Audit"],
+  },
+  DEPARTMENT_HEAD: {
+    label: "หัวหน้าภาควิชา",
+    scope: "DEPARTMENT · A5",
+    pages: ["Dashboard","My Workspace","People","Programmes","Courses","Teaching","Students","Evidence","QA","Authority","Audit"],
+  },
+  SYSTEM_ADMIN: {
+    label: "ผู้ดูแลระบบ",
+    scope: "SYSTEM · TECHNICAL ONLY",
+    pages: ["Dashboard","My Workspace","People","Authority","Audit","Administration"],
+  },
+};
 
-const NAV = [
-  ["dashboard","⌂","Dashboard",["STUDENT","LECTURER","PROGRAMME_CHAIR","QA","DEPARTMENT_HEAD","SYSTEM_ADMIN"]],
-  ["workspace","◫","My Workspace",["STUDENT","LECTURER","PROGRAMME_CHAIR","QA","DEPARTMENT_HEAD","SYSTEM_ADMIN"]],
-  ["people","◎","People",["LECTURER","PROGRAMME_CHAIR","QA","DEPARTMENT_HEAD","SYSTEM_ADMIN"]],
-  ["programmes","▦","Programmes",["LECTURER","PROGRAMME_CHAIR","QA","DEPARTMENT_HEAD"]],
-  ["courses","▤","Courses",["STUDENT","LECTURER","PROGRAMME_CHAIR","QA","DEPARTMENT_HEAD"]],
-  ["teaching","△","Teaching",["LECTURER","PROGRAMME_CHAIR","DEPARTMENT_HEAD"]],
-  ["students","◉","Students",["STUDENT","LECTURER","PROGRAMME_CHAIR","DEPARTMENT_HEAD"]],
-  ["evidence","◇","Evidence",["LECTURER","PROGRAMME_CHAIR","QA","DEPARTMENT_HEAD"]],
-  ["qa","✓","QA",["PROGRAMME_CHAIR","QA","DEPARTMENT_HEAD"]],
-  ["authority","◆","Authority",["PROGRAMME_CHAIR","QA","DEPARTMENT_HEAD","SYSTEM_ADMIN"]],
-  ["audit","≡","Audit",["QA","DEPARTMENT_HEAD","SYSTEM_ADMIN"]],
-  ["admin","⚙","Administration",["SYSTEM_ADMIN"]],
-];
-
-const PROGRAMMES = [
-  ["SYN-HEPE-A","ศษ.บ. สุขศึกษาและพลศึกษา","2567","ACTIVE / EFFECTIVE","12/14"],
-  ["SYN-HEPE-B","ศษ.บ. พลศึกษา","2567-D","DRAFT / LATEST","8/14"],
-];
-
-const EVIDENCE = [
-  ["EVD-001","Curriculum approval evidence","CURRICULUM","VERIFIED","Programme · PLO"],
-  ["EVD-002","Teaching responsibility source","TEACHING","PENDING","Course · Offering"],
-];
-
-function Status({children,tone="neutral"}) {
-  return <span className={"status status-"+tone}>{children}</span>;
-}
-function Stat({label,value,note,tone="blue"}) {
-  return <article className={"stat tone-"+tone}><div className="statLabel">{label}</div><div className="statValue">{value}</div><div className="statNote">{note}</div></article>;
-}
-function Panel({title,kicker,children}) {
-  return <section className="panel"><div className="panelHead"><div>{kicker&&<div className="kicker">{kicker}</div>}<h3>{title}</h3></div></div>{children}</section>;
-}
-function DataTable({headers,rows}) {
-  return <div className="tableWrap"><table><thead><tr>{headers.map(h=><th key={h}>{h}</th>)}</tr></thead><tbody>{rows.map((r,i)=><tr key={i}>{r.map((c,j)=><td key={j}>{c}</td>)}</tr>)}</tbody></table></div>;
-}
-function Denied({children}) {
-  return <div className="denied"><div className="deniedIcon">⊘</div><strong>Access not available in this role</strong><span>{children}</span></div>;
-}
-function Header({eyebrow,title,desc,badge,tone}) {
-  return <div className="hero"><div><div className="eyebrow">{eyebrow}</div><h2>{title}</h2><p>{desc}</p></div>{badge&&<Status tone={tone}>{badge}</Status>}</div>;
+function Badge({ children, tone = "blue" }) {
+  return <span className={"status status-" + tone}>{children}</span>;
 }
 
-function Dashboard({role}) {
-  if(role==="STUDENT") return <div className="screen">
-    <Header eyebrow="MY LEARNING" title="สวัสดี นักศึกษาทดสอบ A" desc="มองเห็นเฉพาะข้อมูลของตนเองผ่าน self-scoped RLS และ enrollment ที่ได้รับอนุญาต" badge="SELF · VERIFIED BINDING" tone="blue"/>
-    <div className="stats"><Stat label="My Courses" value="1" note="ภาค 1/2569"/><Stat label="Activities" value="5" note="2 รายการกำลังทำ" tone="teal"/><Stat label="Feedback" value="3" note="มีรายการใหม่ 1" tone="violet"/><Stat label="Portfolio" value="72%" note="ความครบถ้วน" tone="amber"/></div>
-    <div className="grid2"><Panel title="วิชาของฉัน" kicker="SELF-SCOPED COURSE SUMMARY"><div className="courseCard"><div><Status tone="green">ENROLLED</Status><h4>SYN-STU-A1 · การประเมินสุขภาพในโรงเรียน</h4><p>ปีการศึกษา 2569 · ภาค 1</p></div><button className="primary">เปิดรายวิชา</button></div></Panel><Panel title="Privacy boundary" kicker="NEGATIVE TEST"><div className="privacy"><strong>Student A → Student B</strong><Status tone="red">DENY</Status><p>ไม่มี lateral student navigation และไม่มี caller-selected student_id</p></div></Panel></div>
-  </div>;
-
-  if(role==="LECTURER") return <div className="screen">
-    <Header eyebrow="TEACHING WORKSPACE" title="Lecturer A · Assigned Offering" desc="การเห็นนักศึกษาเกิดจาก active instructor assignment ไม่ใช่ IAM authority" badge="TEACHING_INSTANCE · ACTIVE" tone="teal"/>
-    <div className="stats"><Stat label="Assigned Courses" value="1" note="SYN-STU-A1" tone="teal"/><Stat label="Students" value="2" note="เฉพาะ offering นี้"/><Stat label="Evidence Pending" value="1" note="verification" tone="amber"/><Stat label="Academic Authority" value="0" note="teaching ≠ authority" tone="red"/></div>
-    <div className="grid2"><Panel title="Teaching Coverage" kicker="ASSIGNED TEACHING"><DataTable headers={["Course","Term","Students","State"]} rows={[["SYN-STU-A1","1/2569","2",<Status tone="green" key="s">ACTIVE</Status>]]}/></Panel><Panel title="Authority boundary" kicker="SECURITY INVARIANT"><div className="boundaryBox"><div>Teaching assignment</div><span>≠</span><div>Academic authority</div></div><p className="muted">creates_system_authority = false</p></Panel></div>
-  </div>;
-
-  if(role==="PROGRAMME_CHAIR") return <div className="screen">
-    <Header eyebrow="PROGRAMME GOVERNANCE" title="Programme Chair · SYN-HEPE-A" desc="ภาพรวมหลักสูตร หลักฐาน และงานกำกับภายใน programme scope" badge="PROGRAMME · A-SCOPE" tone="violet"/>
-    <div className="stats"><Stat label="Curriculum" value="2567" note="ACTIVE / EFFECTIVE" tone="violet"/><Stat label="PLO" value="8" note="programme-level"/><Stat label="Evidence" value="12/14" note="2 gaps" tone="amber"/><Stat label="Open Reviews" value="1" note="scope only" tone="teal"/></div>
-    <Panel title="Programme health" kicker="CANONICAL READ MODEL"><DataTable headers={["Programme","Version","Lifecycle","Evidence"]} rows={PROGRAMMES.slice(0,1).map(p=>[p[0],p[2],<Status tone="green" key="x">{p[3]}</Status>,p[4]])}/></Panel>
-  </div>;
-
-  if(role==="QA") return <div className="screen">
-    <Header eyebrow="QUALITY ASSURANCE" title="Evidence-first QA Workspace" desc="ค้นหา → reuse → verify → link → finding → improvement โดยไม่อัปโหลดหลักฐานซ้ำ" badge="PROGRAMME QA SCOPE" tone="amber"/>
-    <div className="stats"><Stat label="Evidence Current" value="1" note="verified" tone="green"/><Stat label="Pending" value="1" note="sufficiency" tone="amber"/><Stat label="Findings" value="2" note="open" tone="red"/><Stat label="Actions" value="3" note="tracked"/></div>
-    <Panel title="Evidence health" kicker="TRACEABLE EVIDENCE"><DataTable headers={["Code","Evidence","Verification","Usage"]} rows={EVIDENCE.map(e=>[e[0],e[1],<Status tone={e[3]==="VERIFIED"?"green":"amber"} key="v">{e[3]}</Status>,e[4]])}/></Panel>
-  </div>;
-
-  if(role==="DEPARTMENT_HEAD") return <div className="screen">
-    <Header eyebrow="DEPARTMENT COMMAND CENTER" title="ภาควิชาพลานามัย · Executive Overview" desc="Programme / Teaching / QA / Evidence พร้อม A5 governance เฉพาะเมื่อ state อนุญาต" badge="DEPARTMENT_HEAD · A5" tone="red"/>
-    <div className="stats"><Stat label="Programmes" value="2" note="1 active · 1 draft" tone="red"/><Stat label="Teaching Coverage" value="94%" note="synthetic projection" tone="teal"/><Stat label="Evidence Health" value="86%" note="2 gaps" tone="amber"/><Stat label="Governance Actions" value="2" note="FREEZE · SUPERSEDE" tone="violet"/></div>
-    <div className="grid2"><Panel title="Programme portfolio" kicker="AGGREGATE-FIRST"><DataTable headers={["Programme","Lifecycle","Evidence"]} rows={PROGRAMMES.map(p=>[p[0],<Status tone={p[3].includes("ACTIVE")?"green":"blue"} key="x">{p[3]}</Status>,p[4]])}/></Panel><Panel title="A5 Governance" kicker="STATE + AUTHORITY REQUIRED"><div className="actionStack"><button className="dangerSoft">Freeze governed record</button><button className="secondary">Supersede version</button><p className="muted">SYSTEM_ADMIN ไม่ได้รับปุ่มเหล่านี้</p></div></Panel></div>
-  </div>;
-
-  return <div className="screen">
-    <Header eyebrow="TECHNICAL ADMINISTRATION" title="System Administration" desc="บัญชี การเชื่อมต่อ และ security diagnostics เท่านั้น ไม่มี academic governance" badge="SYSTEM · TECHNICAL ONLY" tone="slate"/>
-    <div className="stats"><Stat label="Anon SECURITY DEFINER" value="0" note="callable" tone="green"/><Stat label="Auth RPC Review" value="94" note="advisor inventory" tone="amber"/><Stat label="RLS No Policy" value="69" note="classify, do not bulk-fix"/><Stat label="Academic Actions" value="0" note="DENY by contract" tone="red"/></div>
-    <div className="grid2"><Panel title="Technical controls" kicker="ALLOWED"><div className="chips"><Status tone="green">Account diagnostics</Status><Status tone="green">RLS diagnostics</Status><Status tone="green">RPC inventory</Status></div></Panel><Panel title="Academic governance" kicker="DENIED"><Denied>FREEZE, SUPERSEDE, ACTIVATE และ academic decision ถูกแยกออกจาก SYSTEM_ADMIN</Denied></Panel></div>
-  </div>;
+function Card({ title, value, note, tone = "blue" }) {
+  return (
+    <article className={"stat tone-" + tone}>
+      <div className="statLabel">{title}</div>
+      <div className="statValue">{value}</div>
+      <div className="statNote">{note}</div>
+    </article>
+  );
 }
 
-function Screen({active,role}) {
-  if(active==="workspace") return <div className="screen"><Header eyebrow="PERSONAL WORK QUEUE" title="My Workspace" desc="งานที่ต้องทำตาม role + scope ปัจจุบัน"/><div className="grid3"><Panel title="Pending"><div className="task"><span>Review evidence sufficiency</span><Status tone="amber">TODAY</Status></div><div className="task"><span>Check programme status</span><Status tone="blue">OPEN</Status></div></Panel><Panel title="Recent"><p className="muted">Synthetic audit events and recent documents appear here.</p></Panel><Panel title="Scope"><p className="muted">Role-aware backend remains authoritative.</p></Panel></div></div>;
-  if(active==="people") return <div className="screen"><Header eyebrow="PEOPLE & RESPONSIBILITY" title="People" desc="Academic Person ≠ Actor ≠ Authority"/><Panel title="Department People"><DataTable headers={["Person","Affiliation","Teaching","Verification"]} rows={[["อาจารย์ทดสอบ A","RU-EDU-DPE","SYN-STU-A1",<Status tone="amber" key="1">SYNTHETIC</Status>],["หัวหน้าภาควิชาทดสอบ","RU-EDU-DPE","—",<Status tone="amber" key="2">SYNTHETIC</Status>]]}/></Panel></div>;
-  if(active==="programmes") return <div className="screen"><Header eyebrow="ACADEMIC STRUCTURE" title="Programmes" desc="LATEST RECORD แยกจาก ACTIVE / EFFECTIVE อย่างชัดเจน"/><Panel title="Programme Registry"><DataTable headers={["Code","Programme","Version","Lifecycle","Evidence"]} rows={PROGRAMMES.map(p=>[p[0],p[1],p[2],<Status tone={p[3].includes("ACTIVE")?"green":"blue"} key="s">{p[3]}</Status>,p[4]])}/></Panel><div className="callout">LATEST RECORD ≠ ACTIVE / EFFECTIVE RECORD</div></div>;
-  if(active==="courses") return <div className="screen"><Header eyebrow="COURSE MASTER + OFFERING" title="Courses" desc="Course master แยกจาก teaching instance"/><div className="grid2"><Panel title="Course Master"><h4>SYN-STU-A1</h4><p>การประเมินสุขภาพในโรงเรียน</p><div className="metaRows"><span>Canonical: courses</span><span>Context: curriculum_courses</span></div></Panel><Panel title="Current Offering"><h4>1/2569</h4><p>Teaching Instance → course_offerings</p><Status tone="blue">DRAFT · SYNTHETIC</Status></Panel></div></div>;
-  if(active==="teaching") return ["LECTURER","PROGRAMME_CHAIR","DEPARTMENT_HEAD"].includes(role)?<div className="screen"><Header eyebrow="TEACHING INSTANCE" title="Teaching" desc="Teaching responsibility ไม่สร้าง academic authority"/><Panel title="Teaching Assignments"><DataTable headers={["Course","Term","Instructor","Role","Authority"]} rows={[["SYN-STU-A1","1/2569","อาจารย์ทดสอบ A","INSTRUCTOR",<Status tone="red" key="a">NO IAM AUTHORITY</Status>]]}/></Panel></div>:<Denied>Teaching workspace requires assigned teaching/governance scope.</Denied>;
-  if(active==="students"){
-    if(["QA","SYSTEM_ADMIN"].includes(role)) return <Denied>Student-level records are hidden by default for this role.</Denied>;
-    if(role==="STUDENT") return <div className="screen"><Header eyebrow="SELF ONLY" title="My Student Record" desc="RLS self boundary"/><Panel title="Enrollment"><DataTable headers={["Student","Course","Term","Status"]} rows={[["SYN2569A","SYN-STU-A1","1/2569",<Status tone="green" key="e">ENROLLED</Status>]]}/></Panel></div>;
-    return <div className="screen"><Header eyebrow="OFFERING-SCOPED" title="Students" desc="แสดงเฉพาะนักศึกษาใน offering ที่ได้รับมอบหมาย"/><Panel title="Enrolled Students"><DataTable headers={["Student","Offering","Status"]} rows={[["SYN2569A","SYN-STU-A1",<Status tone="green" key="a">ENROLLED</Status>],["SYN2569B","SYN-STU-A1",<Status tone="green" key="b">ENROLLED</Status>]]}/></Panel></div>;
-  }
-  if(active==="evidence") return <div className="screen"><Header eyebrow="EVIDENCE-FIRST" title="Evidence Explorer" desc="Evidence → Version → Verification → Governed Object → QA/Course"/><Panel title="Evidence Registry"><DataTable headers={["Code","Title","Type","Verification","Usage"]} rows={EVIDENCE.map(e=>[e[0],e[1],e[2],<Status tone={e[3]==="VERIFIED"?"green":"amber"} key="v">{e[3]}</Status>,e[4]])}/></Panel><div className="lineage">{["Evidence","Version","Verification","Governed Object","QA / Course"].map((x,i)=><span key={x}>{i?<>→ {x}</>:x}</span>)}</div></div>;
-  if(active==="qa") return ["PROGRAMME_CHAIR","QA","DEPARTMENT_HEAD"].includes(role)?<div className="screen"><Header eyebrow="QUALITY WORKFLOW" title="QA & Improvement" desc="Criterion → Evidence → Verification → Finding → Improvement"/><div className="workflow">{["Criterion","Evidence","Verification","Finding","Improvement"].map((x,i)=><div className="workflowStep" key={x}><span>{i+1}</span><strong>{x}</strong></div>)}</div></div>:<Denied>QA workspace requires governance scope.</Denied>;
-  if(active==="authority") return <div className="screen"><Header eyebrow="EXPLICIT AUTHORITY" title="Authority Explorer" desc="Role + Scope + Period + Source"/><Panel title="Authority Register"><DataTable headers={["Persona","Role","Level","Scope","Academic Decision"]} rows={[["Department Head","DEPARTMENT_HEAD","A5","SYSTEM",<Status tone="green" key="1">GOVERNANCE</Status>],["System Admin","SYSTEM_ADMIN","A5","SYSTEM",<Status tone="red" key="2">DENY</Status>],["Lecturer A","Teaching assignment","—","Offering",<Status tone="red" key="3">NO IAM AUTHORITY</Status>]]}/></Panel></div>;
-  if(active==="audit") return <div className="screen"><Header eyebrow="APPEND-ONLY TRACE" title="Audit Timeline" desc="Actor + Authority + Action + Object + Correlation"/><div className="timeline"><div><span>03:42</span><strong>Authority policy hardened</strong><p>SYSTEM_ADMIN removed from academic governance command families.</p></div><div><span>03:18</span><strong>Student scope verified</strong><p>Student A cannot view Student B.</p></div><div><span>02:56</span><strong>RPC exposure reduced</strong><p>Internal template metadata RPCs restricted.</p></div></div></div>;
-  if(active==="admin") return role==="SYSTEM_ADMIN"?<div className="screen"><Header eyebrow="TECHNICAL ONLY" title="Administration" desc="Technical diagnostics without academic governance"/><div className="grid3"><Panel title="Authentication"><Status tone="amber">SANDBOX</Status><p className="muted">Synthetic identities only.</p></Panel><Panel title="RPC Security"><strong className="big">94</strong><p className="muted">authenticated SECURITY DEFINER</p></Panel><Panel title="Anonymous"><strong className="big">0</strong><p className="muted">SECURITY DEFINER callable</p></Panel></div><Denied>Academic governance actions intentionally excluded.</Denied></div>:<Denied>Administration is restricted to System Admin.</Denied>;
-  return null;
-}
-
-export default function Home(){
-  const [role,setRole]=useState("DEPARTMENT_HEAD");
-  const [active,setActive]=useState("dashboard");
-  const current=ROLES.find(r=>r[0]===role);
-  const allowed=useMemo(()=>NAV.filter(n=>n[3].includes(role)),[role]);
-  const activeLabel=(NAV.find(n=>n[0]===active)||[])[2]||"Dashboard";
-
-  function changeRole(next){
-    setRole(next);
-    setActive(next==="QA"?"qa":next==="SYSTEM_ADMIN"?"admin":"dashboard");
-  }
-
-  return <div className="app">
-    <div className="sandboxBanner">SANDBOX · TEST DATA ONLY · NON-PRODUCTION</div>
-    <aside className="sidebar">
-      <div className="brand"><div className="mark">H</div><div><strong>HEPE</strong><span>Department Platform</span></div></div>
-      <nav>{allowed.map(item=><button key={item[0]} onClick={()=>setActive(item[0])} className={active===item[0]?"navItem active":"navItem"}><span>{item[1]}</span>{item[2]}</button>)}</nav>
-      <div className="sideFoot"><span>HEPE-DIGITAL</span><strong>Visual Pilot · 11D</strong></div>
-    </aside>
-    <main className="main">
-      <header className="topbar">
-        <div><div className="breadcrumb">HEPE / {activeLabel}</div><h1>{activeLabel}</h1></div>
-        <div className="topActions">
-          <div className={"scopeBadge "+current[3]}><span>{current[1]}</span><small>{current[2]}</small></div>
-          <select aria-label="Synthetic pilot role" value={role} onChange={e=>changeRole(e.target.value)}>
-            {ROLES.map(r=><option value={r[0]} key={r[0]}>{r[1]}</option>)}
-          </select>
+function Panel({ title, kicker, children }) {
+  return (
+    <section className="panel">
+      <div className="panelHead">
+        <div>
+          {kicker ? <div className="kicker">{kicker}</div> : null}
+          <h3>{title}</h3>
         </div>
-      </header>
-      <div className="content">{active==="dashboard"?<Dashboard role={role}/>:<Screen active={active} role={role}/>}</div>
-      <footer><span>Canonical backend · RLS enforced · synthetic fixtures</span><span>Production publishing locked</span></footer>
-    </main>
-  </div>;
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function Header({ title, description, badge, tone = "blue" }) {
+  return (
+    <div className="hero">
+      <div>
+        <div className="eyebrow">HEPE DEPARTMENT PLATFORM</div>
+        <h2>{title}</h2>
+        <p>{description}</p>
+      </div>
+      <Badge tone={tone}>{badge}</Badge>
+    </div>
+  );
+}
+
+function SimpleTable({ rows }) {
+  return (
+    <div className="tableWrap">
+      <table>
+        <thead>
+          <tr><th>รายการ</th><th>บริบท</th><th>สถานะ</th></tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={row[0]}>
+              <td>{row[0]}</td>
+              <td>{row[1]}</td>
+              <td><Badge tone={row[3] || "blue"}>{row[2]}</Badge></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function Denied({ children }) {
+  return (
+    <div className="denied">
+      <div className="deniedIcon">⊘</div>
+      <strong>Access denied by role/scope contract</strong>
+      <span>{children}</span>
+    </div>
+  );
+}
+
+function Dashboard({ role }) {
+  if (role === "STUDENT") {
+    return (
+      <div className="screen">
+        <Header title="My Learning" description="ข้อมูลตนเองและรายวิชาที่ลงทะเบียนเท่านั้น" badge="SELF · VERIFIED" />
+        <div className="stats">
+          <Card title="My Courses" value="1" note="1/2569" />
+          <Card title="Enrollment" value="1" note="ENROLLED" tone="teal" />
+          <Card title="Other Student" value="0" note="DENY" tone="red" />
+          <Card title="Portfolio" value="72%" note="synthetic" tone="amber" />
+        </div>
+        <div className="grid2">
+          <Panel title="วิชาของฉัน" kicker="SELF-SCOPED">
+            <SimpleTable rows={[["SYN-STU-A1","ภาค 1/2569","ENROLLED","green"]]} />
+          </Panel>
+          <Panel title="Privacy Boundary" kicker="NEGATIVE TEST">
+            <Denied>Student A → Student B ถูกปฏิเสธโดย backend RLS และ UI ไม่มี lateral navigation</Denied>
+          </Panel>
+        </div>
+      </div>
+    );
+  }
+
+  if (role === "LECTURER") {
+    return (
+      <div className="screen">
+        <Header title="Teaching Workspace" description="เข้าถึงเฉพาะ offering ที่ได้รับมอบหมาย" badge="ASSIGNED TEACHING" tone="teal" />
+        <div className="stats">
+          <Card title="Assigned Courses" value="1" note="SYN-STU-A1" tone="teal" />
+          <Card title="Students" value="2" note="same offering" />
+          <Card title="Academic Authority" value="0" note="teaching ≠ authority" tone="red" />
+          <Card title="Evidence Pending" value="1" note="verification" tone="amber" />
+        </div>
+        <Panel title="Teaching Responsibility" kicker="SECURITY INVARIANT">
+          <SimpleTable rows={[
+            ["SYN-STU-A1","Instructor assignment","ACTIVE","green"],
+            ["Academic approval","Not derived from teaching","DENY","red"],
+          ]} />
+        </Panel>
+      </div>
+    );
+  }
+
+  if (role === "PROGRAMME_CHAIR") {
+    return (
+      <div className="screen">
+        <Header title="Programme Governance" description="การกำกับภายใน programme scope" badge="SYN-HEPE-A" tone="violet" />
+        <div className="stats">
+          <Card title="Curriculum" value="2567" note="ACTIVE / EFFECTIVE" tone="violet" />
+          <Card title="Evidence" value="12/14" note="2 gaps" tone="amber" />
+          <Card title="Courses" value="94" note="canonical master" />
+          <Card title="Open Reviews" value="1" note="programme scope" tone="teal" />
+        </div>
+        <Panel title="Programme Status" kicker="LATEST ≠ EFFECTIVE">
+          <SimpleTable rows={[
+            ["SYN-HEPE-A","Curriculum 2567","ACTIVE / EFFECTIVE","green"],
+            ["SYN-HEPE-B","Draft record","DRAFT / LATEST","blue"],
+          ]} />
+        </Panel>
+      </div>
+    );
+  }
+
+  if (role === "QA") {
+    return (
+      <div className="screen">
+        <Header title="QA & Evidence" description="Evidence-first workflow: reuse ก่อนสร้างหลักฐานใหม่" badge="QA SCOPE" tone="amber" />
+        <div className="stats">
+          <Card title="Verified" value="1" note="current evidence" tone="green" />
+          <Card title="Pending" value="1" note="sufficiency" tone="amber" />
+          <Card title="Findings" value="2" note="open" tone="red" />
+          <Card title="Actions" value="3" note="tracked" />
+        </div>
+        <div className="workflow">
+          {["Criterion","Evidence","Verification","Finding","Improvement"].map((item, index) => (
+            <div className="workflowStep" key={item}><span>{index + 1}</span><strong>{item}</strong></div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (role === "DEPARTMENT_HEAD") {
+    return (
+      <div className="screen">
+        <Header title="Department Command Center" description="ภาพรวม Programme, Teaching, QA และ Evidence" badge="DEPARTMENT_HEAD · A5" tone="red" />
+        <div className="stats">
+          <Card title="Programmes" value="2" note="synthetic portfolio" tone="red" />
+          <Card title="Teaching Coverage" value="94%" note="pilot projection" tone="teal" />
+          <Card title="Evidence Health" value="86%" note="2 gaps" tone="amber" />
+          <Card title="A5 Actions" value="2" note="FREEZE · SUPERSEDE" tone="violet" />
+        </div>
+        <div className="grid2">
+          <Panel title="Programme Portfolio" kicker="AGGREGATE-FIRST">
+            <SimpleTable rows={[
+              ["SYN-HEPE-A","Curriculum 2567","ACTIVE","green"],
+              ["SYN-HEPE-B","Draft version","DRAFT","blue"],
+            ]} />
+          </Panel>
+          <Panel title="Academic Governance" kicker="STATE + AUTHORITY">
+            <div className="actionStack">
+              <button className="dangerSoft">Freeze governed record</button>
+              <button className="secondary">Supersede version</button>
+              <p className="muted">ปุ่มนี้ไม่มีใน System Admin</p>
+            </div>
+          </Panel>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="screen">
+      <Header title="System Administration" description="Technical administration เท่านั้น ไม่มี academic governance" badge="TECHNICAL ONLY" tone="slate" />
+      <div className="stats">
+        <Card title="Anon SECURITY DEFINER" value="0" note="callable" tone="green" />
+        <Card title="Auth RPC Review" value="94" note="advisor inventory" tone="amber" />
+        <Card title="Academic Actions" value="0" note="DENY" tone="red" />
+        <Card title="Environment" value="SBX" note="NON-PRODUCTION" />
+      </div>
+      <Denied>FREEZE, SUPERSEDE, ACTIVATE และ academic decision ไม่อยู่ในสิทธิ์ SYSTEM_ADMIN</Denied>
+    </div>
+  );
+}
+
+function GenericPage({ name, role }) {
+  if (name === "Administration") {
+    if (role !== "SYSTEM_ADMIN") return <Denied>Administration สำหรับ technical administrator เท่านั้น</Denied>;
+    return (
+      <div className="screen">
+        <Header title="Administration" description="Auth, RLS, RPC และ integration diagnostics" badge="TECHNICAL" tone="slate" />
+        <div className="grid3">
+          <Panel title="Authentication"><Badge tone="amber">SANDBOX</Badge><p className="muted">Synthetic identities only</p></Panel>
+          <Panel title="RPC"><strong className="big">94</strong><p className="muted">authenticated SECURITY DEFINER inventory</p></Panel>
+          <Panel title="Anonymous"><strong className="big">0</strong><p className="muted">SECURITY DEFINER callable</p></Panel>
+        </div>
+      </div>
+    );
+  }
+
+  if (name === "Students") {
+    if (role === "STUDENT") {
+      return <div className="screen"><Header title="My Student Record" description="SELF only" badge="SELF" /><Panel title="Enrollment"><SimpleTable rows={[["SYN2569A","SYN-STU-A1","ENROLLED","green"]]} /></Panel></div>;
+    }
+    if (role === "LECTURER" || role === "PROGRAMME_CHAIR" || role === "DEPARTMENT_HEAD") {
+      return <div className="screen"><Header title="Students" description="Offering-scoped student visibility" badge="SCOPED" tone="teal" /><Panel title="SYN-STU-A1"><SimpleTable rows={[["SYN2569A","Assigned offering","ENROLLED","green"],["SYN2569B","Assigned offering","ENROLLED","green"]]} /></Panel></div>;
+    }
+    return <Denied>Student-level records ไม่เปิดให้ role นี้โดย default</Denied>;
+  }
+
+  if (name === "Authority") {
+    return (
+      <div className="screen">
+        <Header title="Authority Explorer" description="Role + Scope + Period + Source" badge="EXPLICIT AUTHORITY" tone="violet" />
+        <Panel title="Boundary Register">
+          <SimpleTable rows={[
+            ["Department Head","A5 SYSTEM","GOVERNANCE","green"],
+            ["System Admin","A5 TECHNICAL","ACADEMIC DENY","red"],
+            ["Lecturer A","Teaching assignment","NO IAM AUTHORITY","red"],
+          ]} />
+        </Panel>
+      </div>
+    );
+  }
+
+  if (name === "Evidence") {
+    return (
+      <div className="screen">
+        <Header title="Evidence Explorer" description="Evidence → Version → Verification → Governed Object" badge="EVIDENCE-FIRST" tone="amber" />
+        <Panel title="Evidence Registry">
+          <SimpleTable rows={[
+            ["EVD-001","Programme / PLO","VERIFIED","green"],
+            ["EVD-002","Course / Offering","PENDING","amber"],
+          ]} />
+        </Panel>
+      </div>
+    );
+  }
+
+  if (name === "Programmes") {
+    return (
+      <div className="screen">
+        <Header title="Programmes" description="Lifecycle และ version context" badge="ACADEMIC STRUCTURE" tone="violet" />
+        <Panel title="Programme Registry">
+          <SimpleTable rows={[
+            ["SYN-HEPE-A","Version 2567","ACTIVE / EFFECTIVE","green"],
+            ["SYN-HEPE-B","Version 2567-D","DRAFT / LATEST","blue"],
+          ]} />
+        </Panel>
+        <div className="callout">LATEST RECORD ≠ ACTIVE / EFFECTIVE RECORD</div>
+      </div>
+    );
+  }
+
+  if (name === "Teaching") {
+    return (
+      <div className="screen">
+        <Header title="Teaching" description="Teaching Instance → course_offerings" badge="ASSIGNMENT-BASED" tone="teal" />
+        <Panel title="Current Assignment">
+          <SimpleTable rows={[
+            ["SYN-STU-A1","Instructor A","ACTIVE","green"],
+            ["IAM authority","Not created by teaching","FALSE","red"],
+          ]} />
+        </Panel>
+      </div>
+    );
+  }
+
+  if (name === "QA") {
+    return (
+      <div className="screen">
+        <Header title="QA & Improvement" description="Evidence-first quality workflow" badge="TRACEABLE" tone="amber" />
+        <div className="workflow">
+          {["Criterion","Evidence","Verification","Finding","Improvement"].map((item, index) => (
+            <div className="workflowStep" key={item}><span>{index + 1}</span><strong>{item}</strong></div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (name === "Audit") {
+    return (
+      <div className="screen">
+        <Header title="Audit Timeline" description="Append-only privileged action trace" badge="READ ONLY" tone="slate" />
+        <div className="timeline">
+          <div><span>01</span><strong>System Admin academic governance denied</strong><p>Technical Admin ≠ Academic Governor</p></div>
+          <div><span>02</span><strong>Student lateral access denied</strong><p>Student A → Student B = DENY</p></div>
+          <div><span>03</span><strong>Internal RPC exposure reduced</strong><p>Template metadata RPCs restricted</p></div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="screen">
+      <Header title={name} description="Role-aware HEPE Department Platform workspace" badge={roleConfig[role].scope} tone="blue" />
+      <Panel title="Pilot Contract">
+        <p className="muted">หน้านี้แสดงเฉพาะ synthetic information ที่ role ปัจจุบันได้รับอนุญาต</p>
+      </Panel>
+    </div>
+  );
+}
+
+export default function Home() {
+  const [role, setRole] = useState("DEPARTMENT_HEAD");
+  const [page, setPage] = useState("Dashboard");
+  const config = roleConfig[role];
+
+  function changeRole(event) {
+    const nextRole = event.target.value;
+    setRole(nextRole);
+    setPage(nextRole === "SYSTEM_ADMIN" ? "Administration" : "Dashboard");
+  }
+
+  return (
+    <div className="app">
+      <div className="sandboxBanner">SANDBOX · TEST DATA ONLY · NON-PRODUCTION</div>
+      <aside className="sidebar">
+        <div className="brand"><div className="mark">H</div><div><strong>HEPE</strong><span>Department Platform</span></div></div>
+        <nav>
+          {config.pages.map((item) => (
+            <button key={item} onClick={() => setPage(item)} className={page === item ? "navItem active" : "navItem"}>
+              <span>•</span>{item}
+            </button>
+          ))}
+        </nav>
+        <div className="sideFoot"><span>HEPE-DIGITAL</span><strong>Visual Pilot · 11D</strong></div>
+      </aside>
+      <main className="main">
+        <header className="topbar">
+          <div><div className="breadcrumb">HEPE / {page}</div><h1>{page}</h1></div>
+          <div className="topActions">
+            <div className="scopeBadge blue"><span>{config.label}</span><small>{config.scope}</small></div>
+            <select aria-label="Synthetic pilot role" value={role} onChange={changeRole}>
+              {Object.entries(roleConfig).map(([key, item]) => <option key={key} value={key}>{item.label}</option>)}
+            </select>
+          </div>
+        </header>
+        <div className="content">{page === "Dashboard" ? <Dashboard role={role} /> : <GenericPage name={page} role={role} />}</div>
+        <footer><span>Canonical backend · synthetic pilot</span><span>Production publishing locked</span></footer>
+      </main>
+    </div>
+  );
 }
