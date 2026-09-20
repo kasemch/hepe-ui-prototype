@@ -11,22 +11,22 @@ const roleConfig = {
   LECTURER: {
     label: "อาจารย์ผู้สอน · Lecturer A",
     scope: "TEACHING_INSTANCE · SYN-STU-A1",
-    pages: ["Dashboard","My Workspace","People","Courses","Teaching","Students","Evidence"],
+    pages: ["Dashboard","My Workspace","People","Courses","Teaching","Students","Evidence","Documents","Research"],
   },
   PROGRAMME_CHAIR: {
     label: "ประธานหลักสูตร",
     scope: "PROGRAMME · SYN-HEPE-A",
-    pages: ["Dashboard","My Workspace","People","Programmes","Courses","Teaching","Students","Evidence","QA","Authority"],
+    pages: ["Dashboard","My Workspace","People","Programmes","Courses","Teaching","Students","Evidence","Documents","Meetings","Requests","Research","QA","Reports","Authority"],
   },
   QA: {
     label: "ผู้รับผิดชอบ QA",
     scope: "PROGRAMME · SYN-HEPE-A",
-    pages: ["Dashboard","My Workspace","People","Programmes","Courses","Evidence","QA","Authority","Audit"],
+    pages: ["Dashboard","My Workspace","People","Programmes","Courses","Evidence","Documents","Meetings","Research","QA","Reports","Authority","Audit"],
   },
   DEPARTMENT_HEAD: {
     label: "หัวหน้าภาควิชา",
     scope: "DEPARTMENT · A5",
-    pages: ["Dashboard","My Workspace","People","Programmes","Courses","Teaching","Students","Evidence","QA","Authority","Audit"],
+    pages: ["Dashboard","My Workspace","People","Programmes","Courses","Teaching","Students","Evidence","Documents","Meetings","Requests","Research","QA","Reports","Authority","Audit"],
   },
   SYSTEM_ADMIN: {
     label: "ผู้ดูแลระบบ",
@@ -255,6 +255,82 @@ function GenericPage({ name, role }) {
       return <div className="screen"><Header title="Students" description="Offering-scoped student visibility" badge="SCOPED" tone="teal" /><Panel title="SYN-STU-A1"><SimpleTable rows={[["SYN2569A","Assigned offering","ENROLLED","green"],["SYN2569B","Assigned offering","ENROLLED","green"]]} /></Panel></div>;
     }
     return <Denied>Student-level records ไม่เปิดให้ role นี้โดย default</Denied>;
+  }
+
+  if (name === "Meetings") {
+    return (
+      <div className="screen">
+        <Header title="Meetings & Resolutions" description="วาระ การประชุม เรื่องเวียนมติ มติ และ action items" badge="DEPARTMENT OPERATIONS" tone="violet" />
+        <Panel title="Meeting Lifecycle">
+          <SimpleTable rows={[
+            ["Agenda candidate","Draft agenda item","DRAFT","blue"],
+            ["Circulation","Resolution circulation","PENDING","amber"],
+            ["Resolution","Meeting decision record","APPROVED","green"],
+          ]} />
+        </Panel>
+        <div className="callout">Task/Action Item ≠ Authority Assignment · ทุกมติต้องมี source, authority และ audit trail</div>
+      </div>
+    );
+  }
+
+  if (name === "Requests") {
+    return (
+      <div className="screen">
+        <Header title="Course Request Portal" description="ขอเปิดวิชา เพิ่มวิชา และของดสอน โดยดึง metadata จาก canonical course/programme" badge="CONTROLLED REQUEST" tone="teal" />
+        <Panel title="Request Pipeline">
+          <SimpleTable rows={[
+            ["OPEN_NEW_OFFERING","DRAFT → REVIEW → RESOLUTION","CONTROLLED","blue"],
+            ["ADD_OFFERING","DRAFT → REVIEW → RESOLUTION","CONTROLLED","blue"],
+            ["CANCEL_OFFERING","DRAFT → REVIEW → RESOLUTION","CONTROLLED","amber"],
+          ]} />
+        </Panel>
+      </div>
+    );
+  }
+
+  if (name === "Documents") {
+    return (
+      <div className="screen">
+        <Header title="Document Studio" description="Document Intelligence, versioning, provenance และ smart dispatch" badge="DOCUMENT INTELLIGENCE" tone="amber" />
+        <Panel title="Document Control">
+          <SimpleTable rows={[
+            ["document_records","Canonical metadata","ACTIVE","green"],
+            ["document_versions","Version lineage","VERSIONED","green"],
+            ["Smart Dispatch","Routing rule candidate","SANDBOX","blue"],
+          ]} />
+        </Panel>
+      </div>
+    );
+  }
+
+  if (name === "Research") {
+    return (
+      <div className="screen">
+        <Header title="Research Command" description="Department-level research pipeline โดยไม่แทน AWOS personal research workspace" badge="RESEARCH & ACADEMIC WORK" tone="teal" />
+        <Panel title="Lifecycle">
+          <SimpleTable rows={[
+            ["Idea → Proposal","Research development","TRACKED","blue"],
+            ["Ethics → Data → Analysis","Research execution","CONTROLLED","amber"],
+            ["Manuscript → Publication","Academic output","TRACEABLE","green"],
+          ]} />
+        </Panel>
+      </div>
+    );
+  }
+
+  if (name === "Reports") {
+    return (
+      <div className="screen">
+        <Header title="Analytics & Reports" description="ภาพรวมหลักสูตร การสอน QA งานวิจัย และหลักฐาน" badge="DERIVED READ MODEL" tone="slate" />
+        <Panel title="Report Families">
+          <SimpleTable rows={[
+            ["Programme Health","Curriculum / Evidence / QA","DERIVED","green"],
+            ["Teaching Coverage","Offering / Assignment","DERIVED","green"],
+            ["Research & Outputs","Projects / Publications","DERIVED","blue"],
+          ]} />
+        </Panel>
+      </div>
+    );
   }
 
   if (name === "Authority") {
