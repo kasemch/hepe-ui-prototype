@@ -6,32 +6,32 @@ const roleConfig = {
   STUDENT: {
     label: "นักศึกษา · Student A",
     scope: "SELF · SYN2569A",
-    pages: ["Dashboard","My Workspace","Courses","Students"],
+    pages: ["Dashboard","My Workspace","Search","Notifications","Courses","Students"],
   },
   LECTURER: {
     label: "อาจารย์ผู้สอน · Lecturer A",
     scope: "TEACHING_INSTANCE · SYN-STU-A1",
-    pages: ["Dashboard","My Workspace","People","Courses","Teaching","Students","Evidence","Documents","Research"],
+    pages: ["Dashboard","My Workspace","Search","Quick Capture","Notifications","Ask HEPE","People","Courses","Teaching","Students","Evidence","Documents","Research"],
   },
   PROGRAMME_CHAIR: {
     label: "ประธานหลักสูตร",
     scope: "PROGRAMME · SYN-HEPE-A",
-    pages: ["Dashboard","My Workspace","People","Programmes","Courses","Teaching","Students","Evidence","Documents","Meetings","Requests","Research","QA","Reports","Authority"],
+    pages: ["Dashboard","My Workspace","Search","Quick Capture","Notifications","Ask HEPE","People","Programmes","Courses","Teaching","Students","Evidence","Documents","Meetings","Requests","Research","QA","Reports","Authority"],
   },
   QA: {
     label: "ผู้รับผิดชอบ QA",
     scope: "PROGRAMME · SYN-HEPE-A",
-    pages: ["Dashboard","My Workspace","People","Programmes","Courses","Evidence","Documents","Meetings","Research","QA","Reports","Authority","Audit"],
+    pages: ["Dashboard","My Workspace","Search","Quick Capture","Notifications","Ask HEPE","People","Programmes","Courses","Evidence","Documents","Meetings","Research","QA","Reports","Authority","Audit"],
   },
   DEPARTMENT_HEAD: {
     label: "หัวหน้าภาควิชา",
     scope: "DEPARTMENT · A5",
-    pages: ["Dashboard","My Workspace","People","Programmes","Courses","Teaching","Students","Evidence","Documents","Meetings","Requests","Research","QA","Reports","Authority","Audit"],
+    pages: ["Dashboard","My Workspace","Search","Quick Capture","Notifications","Ask HEPE","People","Programmes","Courses","Teaching","Students","Evidence","Documents","Meetings","Requests","Research","QA","Reports","Authority","Audit"],
   },
   SYSTEM_ADMIN: {
     label: "ผู้ดูแลระบบ",
     scope: "SYSTEM · TECHNICAL ONLY",
-    pages: ["Dashboard","My Workspace","People","Authority","Audit","Administration"],
+    pages: ["Dashboard","My Workspace","Search","Notifications","People","Authority","Audit","Administration"],
   },
 };
 
@@ -255,6 +255,67 @@ function GenericPage({ name, role }) {
       return <div className="screen"><Header title="Students" description="Offering-scoped student visibility" badge="SCOPED" tone="teal" /><Panel title="SYN-STU-A1"><SimpleTable rows={[["SYN2569A","Assigned offering","ENROLLED","green"],["SYN2569B","Assigned offering","ENROLLED","green"]]} /></Panel></div>;
     }
     return <Denied>Student-level records ไม่เปิดให้ role นี้โดย default</Denied>;
+  }
+
+  if (name === "Search") {
+    return (
+      <div className="screen">
+        <Header title="Universal Search" description="ค้นหาข้ามระบบโดยให้ RLS/permission กรองก่อนคืนผลลัพธ์" badge="PERMISSION-AWARE" tone="blue" />
+        <Panel title="Search Contract">
+          <SimpleTable rows={[
+            ["Programmes","Scoped read model","ENABLED","green"],
+            ["Meetings / Work Items / Requests","RLS-filtered sources","ENABLED","green"],
+            ["Evidence","Dedicated safe RPC required","FAIL-CLOSED","amber"],
+          ]} />
+        </Panel>
+      </div>
+    );
+  }
+
+  if (name === "Quick Capture") {
+    return (
+      <div className="screen">
+        <Header title="Quick Capture" description="พิมพ์ภาษาธรรมชาติ → AI เสนอประเภท/บริบท/กำหนดส่ง → ผู้ใช้ยืนยันก่อนสร้างรายการจริง" badge="DRAFT ONLY" tone="teal" />
+        <Panel title="Example">
+          <p className="muted">“เตรียมวาระทวนสอบข้อสอบ HED3505 ภายในศุกร์นี้”</p>
+          <SimpleTable rows={[
+            ["Candidate Type","Agenda / Work Item","SUGGESTED","blue"],
+            ["Course Context","HED3505","SUGGESTED","blue"],
+            ["Official Submission","Requires human confirmation","NOT AUTOMATIC","amber"],
+          ]} />
+        </Panel>
+      </div>
+    );
+  }
+
+  if (name === "Notifications") {
+    return (
+      <div className="screen">
+        <Header title="Notifications" description="CRITICAL / WARNING / NOTICE พร้อม deduplication และ self-scoped inbox" badge="SELF-SCOPED" tone="amber" />
+        <Panel title="Notification Inbox">
+          <SimpleTable rows={[
+            ["Work item assigned","Synthetic assignment","NOTICE","blue"],
+            ["Evidence gap","Programme context","WARNING","amber"],
+            ["Deadline / Security","Governed condition","CRITICAL","red"],
+          ]} />
+        </Panel>
+      </div>
+    );
+  }
+
+  if (name === "Ask HEPE") {
+    return (
+      <div className="screen">
+        <Header title="Ask HEPE" description="Evidence-grounded assistant ที่ค้นเฉพาะข้อมูลซึ่ง role/scope อนุญาต" badge="GROUNDED AI" tone="violet" />
+        <Panel title="AI Boundary">
+          <SimpleTable rows={[
+            ["Search / Explain / Summarise","Permission-safe sources","ALLOW","green"],
+            ["Draft workflow text","Human review required","ALLOW","green"],
+            ["Approve / Vote / Grade / Publish","Governance action","DENY","red"],
+          ]} />
+        </Panel>
+      </div>
+    );
   }
 
   if (name === "Meetings") {
