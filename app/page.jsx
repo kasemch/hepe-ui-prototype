@@ -517,6 +517,7 @@ export default function Home() {
         <header className="topbar">
           <div><div className="breadcrumb">HEPE / {page}</div><h1>{page}</h1></div>
           <div className="topActions">
+            <a className="authLink" href="/auth/login">Pilot Login</a>
             <div className="scopeBadge blue"><span>{config.label}</span><small>{config.scope}</small></div>
             <select aria-label="Synthetic pilot role" value={role} onChange={changeRole}>
               {Object.entries(roleConfig).map(([key, item]) => <option key={key} value={key}>{item.label}</option>)}
