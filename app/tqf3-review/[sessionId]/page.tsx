@@ -52,8 +52,15 @@ export default async function Tqf3ReviewPage({
       getAll() {
         return cookieStore.getAll();
       },
-      setAll() {
-        // Server Component is read-only. Auth callback owns cookie mutation.
+      setAll(cookiesToSet) {
+        try {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            cookieStore.set(name, value, options);
+          });
+        } catch {
+          // Cookie mutation can be unavailable in a Server Component.
+          // The auth callback route remains the authoritative session writer.
+        }
       },
     },
   });
@@ -87,7 +94,6 @@ export default async function Tqf3ReviewPage({
   const clos = Array.isArray(sections.clos) ? sections.clos : [];
   const assessments = Array.isArray(sections.assessment_items) ? sections.assessment_items : [];
   const weeks = Array.isArray(sections.weekly_plan) ? sections.weekly_plan : [];
-  const validation = content?.validation_summary ?? {};
   const blockingFindings = ((findings ?? []) as Finding[]).filter((f) => f.is_blocking && !f.resolved);
   const exportLocked = !session.authoritative_export_allowed || blockingFindings.length > 0;
 
