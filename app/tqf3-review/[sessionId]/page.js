@@ -221,29 +221,36 @@ export default async function Tqf3ReviewPage({ params }) {
         </p>
 
         <div style={{ display: "grid", gap: 12 }}>
-          <article style={{ border: "1px solid #fecaca", borderRadius: 14, padding: 16, background: "#fffafa" }}>
+          <article style={{ border: "1px solid #bbf7d0", borderRadius: 14, padding: 16, background: "#f0fdf4" }}>
             <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
               <strong>OFFICIAL_PLO_SOURCE_MISSING</strong>
-              {badge("BLOCKING", "danger")}
+              {badge("RESOLVED", "ok")}
             </div>
             <p style={{ lineHeight: 1.6 }}>
-              ต้องมีแหล่ง PLO ทางการจาก มคอ.2/เอกสารหลักสูตรที่ตรวจสอบ authority ได้ ก่อนจัดทำ CLO–PLO และ I-R-M mapping เพื่อใช้ใน controlled review
+              พบ PLO1–PLO7 ทางการแล้วในหมวดที่ 4 ของเอกสารหลักสูตร ศษ.บ. สุขศึกษาและพลศึกษา (ปรับปรุง พ.ศ. 2567)
             </p>
-            <div style={{ fontSize: 13, color: "#475569" }}>
-              Required evidence: official PLO text · source document · source locator/page · authority/verification status
+          </article>
+
+          <article style={{ border: "1px solid #bbf7d0", borderRadius: 14, padding: 16, background: "#f0fdf4" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+              <strong>CREDIT_PATTERN_CONFLICT</strong>
+              {badge("RESOLVED", "ok")}
             </div>
+            <p style={{ lineHeight: 1.6 }}>
+              เอกสารหลักสูตรระบุ HED2503 = 3 (3-0-6) โดยตรง ส่วน 3 (2-2-5) เป็นของ HED2504 จึงปิด conflict นี้ได้
+            </p>
           </article>
 
           <article style={{ border: "1px solid #fecaca", borderRadius: 14, padding: 16, background: "#fffafa" }}>
             <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-              <strong>CREDIT_PATTERN_CONFLICT</strong>
+              <strong>CLO_PLO_IRM_MAPPING_NOT_ESTABLISHED</strong>
               {badge("BLOCKING", "danger")}
             </div>
             <p style={{ lineHeight: 1.6 }}>
-              ต้องยืนยันรูปแบบหน่วยกิตจากแหล่งที่มีอำนาจ ระหว่าง canonical 3(3-0-6) กับ working source 3(2-2-5) ก่อน controlled release
+              พบ PLO ทางการแล้ว แต่ CLO Candidate ของ HED2503 ยังไม่มี CLO–PLO/I-R-M mapping ที่ผ่าน human academic review
             </p>
             <div style={{ fontSize: 13, color: "#475569" }}>
-              Required evidence: authoritative course credit pattern · source document · source locator · human decision on conflict resolution
+              Next evidence step: prepare mapping candidate from PLO1–PLO7 + HED2503 CLO candidates, then human review before Submit for Review
             </div>
           </article>
         </div>
