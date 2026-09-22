@@ -63,6 +63,14 @@ export default async function Tqf3ReviewPage({ params }) {
     .eq("document_preview_session_id", sessionId)
     .order("is_blocking", { ascending: false });
 
+  const { data: improvementItems } = await supabase
+    .from("improvement_items")
+    .select("improvement_item_id,category_code,provenance_status,issue_text,recommendation_text,action_plan_text,priority_code,item_status")
+    .in("improvement_item_id", [
+      "5b32721f-bf08-4c1d-8035-7a0f9137e635",
+      "0348070a-1f92-4d56-a923-c858fd39503d",
+    ]);
+
   if (!session) {
     return (
       <main style={{ maxWidth: 900, margin: "40px auto", padding: 24 }}>
@@ -81,6 +89,7 @@ export default async function Tqf3ReviewPage({ params }) {
   const weeks = Array.isArray(sections.weekly_plan) ? sections.weekly_plan : [];
   const allFindings = Array.isArray(findings) ? findings : [];
   const blockingFindings = allFindings.filter((f) => f.is_blocking && !f.resolved);
+  const improvements = Array.isArray(improvementItems) ? improvementItems : [];
 
   return (
     <main style={{ maxWidth: 1180, margin: "28px auto", padding: "0 20px 48px", fontFamily: "system-ui, sans-serif", color: "#0f172a" }}>
@@ -205,6 +214,67 @@ export default async function Tqf3ReviewPage({ params }) {
         </div>
       </section>
 
+      <section style={{ marginBottom: 28 }}>
+        <h2>Blocker Resolution Workspace</h2>
+        <p style={{ color: "#64748b", lineHeight: 1.6 }}>
+          ส่วนนี้ใช้สำหรับเตรียมหลักฐานและการตัดสินใจของมนุษย์เท่านั้น ระบบจะไม่ทำเครื่องหมาย blocker ว่า resolved และจะไม่แก้ canonical curriculum data อัตโนมัติ
+        </p>
+
+        <div style={{ display: "grid", gap: 12 }}>
+          <article style={{ border: "1px solid #fecaca", borderRadius: 14, padding: 16, background: "#fffafa" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+              <strong>OFFICIAL_PLO_SOURCE_MISSING</strong>
+              {badge("BLOCKING", "danger")}
+            </div>
+            <p style={{ lineHeight: 1.6 }}>
+              ต้องมีแหล่ง PLO ทางการจาก มคอ.2/เอกสารหลักสูตรที่ตรวจสอบ authority ได้ ก่อนจัดทำ CLO–PLO และ I-R-M mapping เพื่อใช้ใน controlled review
+            </p>
+            <div style={{ fontSize: 13, color: "#475569" }}>
+              Required evidence: official PLO text · source document · source locator/page · authority/verification status
+            </div>
+          </article>
+
+          <article style={{ border: "1px solid #fecaca", borderRadius: 14, padding: 16, background: "#fffafa" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+              <strong>CREDIT_PATTERN_CONFLICT</strong>
+              {badge("BLOCKING", "danger")}
+            </div>
+            <p style={{ lineHeight: 1.6 }}>
+              ต้องยืนยันรูปแบบหน่วยกิตจากแหล่งที่มีอำนาจ ระหว่าง canonical 3(3-0-6) กับ working source 3(2-2-5) ก่อน controlled release
+            </p>
+            <div style={{ fontSize: 13, color: "#475569" }}>
+              Required evidence: authoritative course credit pattern · source document · source locator · human decision on conflict resolution
+            </div>
+          </article>
+        </div>
+
+        <h3 style={{ marginTop: 24 }}>Curriculum Improvement Register</h3>
+        <div style={{ display: "grid", gap: 10 }}>
+          {improvements.map((item) => (
+            <article key={item.improvement_item_id} style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: 14, background: "white" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                <strong>{item.category_code}</strong>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  {badge(item.item_status || "OPEN", "warn")}
+                  {badge(item.provenance_status || "UNVERIFIED", "neutral")}
+                  {badge(item.priority_code || "—", "neutral")}
+                </div>
+              </div>
+              <p style={{ lineHeight: 1.6 }}>{item.issue_text}</p>
+              <div style={{ fontSize: 13, lineHeight: 1.6, color: "#475569" }}>
+                <strong>Recommendation:</strong> {item.recommendation_text}
+              </div>
+              <div style={{ fontSize: 13, lineHeight: 1.6, color: "#475569", marginTop: 6 }}>
+                <strong>Action plan:</strong> {item.action_plan_text}
+              </div>
+              <div style={{ fontSize: 12, color: "#64748b", marginTop: 8 }}>
+                Improvement item: {item.improvement_item_id}
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
       <ReviewActions
         sessionId={session.document_preview_session_id}
         previewStatus={session.preview_status}
@@ -213,7 +283,7 @@ export default async function Tqf3ReviewPage({ params }) {
       />
 
       <footer style={{ marginTop: 32, color: "#64748b", fontSize: 12 }}>
-        TQF3-UI-08B · authority-aware workflow · academic authority remains human-controlled
+        TQF3-UI-09 · blocker-resolution workspace · academic authority remains human-controlled
       </footer>
     </main>
   );
