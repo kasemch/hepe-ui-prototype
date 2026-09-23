@@ -1,25 +1,2 @@
-export default function Home() {
-  return (
-    <main style={{maxWidth:820,margin:"40px auto",padding:24,background:"white",borderRadius:16}}>
-      <h1>HEPE · BED-HEPE</h1>
-      <p><strong>Prototype · synthetic data · NON-PRODUCTION</strong></p>
-      <h2>Academic Command Center</h2>
-      <p>This canonicalized source package preserves the HEPE prototype identity while adding a controlled authentication callback route.</p>
-      <p>No real-user provisioning, email delivery, or production authorization is contained in this package.</p>
-
-      <section style={{marginTop:28,padding:18,border:"1px solid #e2e8f0",borderRadius:14}}>
-        <h3 style={{marginTop:0}}>TQF3 Human Review Pilot</h3>
-        <p>HED2503 · มคอ.3 v8 · DRAFT / DESIGN_CANDIDATE</p>
-        <a
-          href="/tqf3-review/8c29c180-7b42-4da7-ae32-663287866dc2"
-          style={{display:"inline-block",padding:"10px 14px",background:"#0f172a",color:"white",borderRadius:10,textDecoration:"none",fontWeight:700}}
-        >
-          Open TQF3 Review Workspace
-        </a>
-        <p style={{color:"#64748b",fontSize:13}}>
-          Human review actions are authority-gated. Controlled export remains locked while blocking findings are unresolved.
-        </p>
-      </section>
-    </main>
-  );
-}
+const nav=[["หน้าหลัก","/"],["งานของฉัน","/my-work"],["หลักสูตร","#"],["รายวิชา","/courses/HED3505"],["เอกสาร มคอ.","/documents/HED3505-mko3"],["หลักฐาน","/evidence"],["Mapping","#"],["ตรวจสอบ/อนุมัติ","/tqf3-review/8c29c180-7b42-4da7-ae32-663287866dc2"],["รายงาน","#"],["ปฏิทิน","#"],["แม่แบบ","#"],["ตั้งค่า","#"]];
+export default function Home(){return <div className="shell"><aside className="side"><div className="brand">🎓 HEPE Fast TQF</div><div className="nav">{nav.map(([n,h],i)=><a className={i===0?"active":""} href={h} key={n}>{n}</a>)}</div></aside><main className="main"><div className="top"><div className="search">ค้นหารายวิชา หลักสูตร อาจารย์ หรือเอกสาร…</div><span className="badge">NON-PRODUCTION · 1/2569</span></div><section className="hero"><h1>ศูนย์บัญชาการหลักสูตร</h1><div className="muted">ภาพรวม Fast TQF: เห็นงานค้าง ความพร้อม และการตรวจสอบในจุดเดียว</div></section><div className="grid4"><div className="card"><b>มคอ.3</b><div className="metric blue">12/15</div><div className="progress"><span style={{width:"80%"}}/></div></div><div className="card"><b>มคอ.5</b><div className="metric green">9/15</div><div className="progress"><span style={{width:"60%"}}/></div></div><div className="card"><b>หลักฐาน</b><div className="metric violet">128</div><span className="status s-green">เชื่อมโยงแล้ว 71%</span></div><div className="card"><b>Review Queue</b><div className="metric amber">6</div><span className="status s-amber">รอพิจารณา</span></div></div><div className="grid2" style={{marginTop:14}}><div className="card"><h3>งานที่ต้องดำเนินการ</h3>{[["HED3505","จัดทำ มคอ.3","วันนี้"],["HED2503","แก้ตามข้อเสนอแนะ","2 วัน"],["PED1101","อัปโหลดหลักฐาน","5 วัน"]].map(x=><div className="task" key={x[0]}><b>{x[0]}</b><span>{x[1]}</span><span className="red">{x[2]}</span><a className="btn" href="/my-work">ดำเนินการ</a></div>)}</div><div className="card"><h3>Quick Actions</h3><p><a className="btn" href="/my-work">เปิดงานของฉัน</a></p><p><a className="btn alt" href="/courses/HED3505">Course Cockpit</a></p><p><a className="btn alt" href="/evidence">Evidence Explorer</a></p></div></div><div className="footer-note">UI/UX Architecture Freeze v1.0 · Wave A01 · Human Academic Authority preserved</div></main></div>}
