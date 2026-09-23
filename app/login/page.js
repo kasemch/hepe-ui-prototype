@@ -2,11 +2,8 @@
 
 import { useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
-import { useSearchParams } from "next/navigation";
 
 export default function LoginPage() {
-  const params = useSearchParams();
-  const next = params.get("next") || "/";
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -21,10 +18,13 @@ export default function LoginPage() {
     setBusy(true);
     setMessage("");
     const supabase = createBrowserClient(url, key);
+    const params = new URLSearchParams(window.location.search);
+    const requestedNext = params.get("next") || "/";
+    const safeNext = requestedNext.startsWith("/") ? requestedNext : "/";
     const redirectTo =
       window.location.origin +
       "/auth/callback?next=" +
-      encodeURIComponent(next.startsWith("/") ? next : "/");
+      encodeURIComponent(safeNext);
 
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
