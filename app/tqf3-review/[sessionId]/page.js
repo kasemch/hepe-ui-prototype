@@ -334,7 +334,7 @@ export default async function Tqf3ReviewPage({ params }) {
       />
 
       <footer style={{ marginTop: 32, color: "#64748b", fontSize: 12 }}>
-        TQF3-MAPPING-12A · authority-aware Human Review Gate · preview acceptance pending · academic authority remains human-controlled
+        TQF3-MAPPING-12A · authority-aware Human Review Gate · Git integration reconnected · academic authority remains human-controlled
       </footer>
     </main>
   );
