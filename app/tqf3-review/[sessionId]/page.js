@@ -52,6 +52,24 @@ export default async function Tqf3ReviewPage({ params }) {
     },
   });
 
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    const next = encodeURIComponent("/tqf3-review/" + sessionId);
+    return (
+      <main style={{ maxWidth: 760, margin: "48px auto", padding: 24, fontFamily: "system-ui, sans-serif" }}>
+        <h1>TQF3 Review Workspace</h1>
+        <p>หน้านี้ต้องใช้ HEPE/Supabase session ก่อนจึงจะอ่าน review session ได้</p>
+        <a
+          href={"/login?next=" + next}
+          style={{display:"inline-block",padding:"10px 14px",background:"#0f172a",color:"white",borderRadius:10,textDecoration:"none",fontWeight:700}}
+        >
+          Sign in with Google
+        </a>
+      </main>
+    );
+  }
+
   const { data: session } = await supabase
     .from("document_preview_sessions")
     .select("document_preview_session_id,preview_status,bundle_snapshot,required_watermark,authoritative_export_allowed,target_format")
@@ -83,7 +101,7 @@ export default async function Tqf3ReviewPage({ params }) {
     return (
       <main style={{ maxWidth: 900, margin: "40px auto", padding: 24 }}>
         <h1>TQF3 Review Workspace</h1>
-        <p>ไม่พบ review session นี้ หรือบัญชีปัจจุบันไม่มีสิทธิ์อ่านข้อมูล</p>
+        <p>พบ Supabase session แล้ว แต่ review session นี้ไม่อยู่ใน scope ที่บัญชีปัจจุบันอ่านได้ หรือ session id ไม่ถูกต้อง</p>
         <code>{sessionId}</code>
       </main>
     );
