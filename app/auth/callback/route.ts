@@ -6,6 +6,8 @@ export async function GET(request: NextRequest) {
   const code = requestUrl.searchParams.get("code");
   const error = requestUrl.searchParams.get("error");
   const errorDescription = requestUrl.searchParams.get("error_description");
+  const requestedNext = requestUrl.searchParams.get("next");
+  const safeNext = requestedNext && requestedNext.startsWith("/") ? requestedNext : "/";
 
   if (error) {
     const target = new URL("/auth/callback/status", requestUrl.origin);
@@ -32,7 +34,7 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const response = NextResponse.redirect(new URL("/auth/callback/status?status=verified", requestUrl.origin));
+  const response = NextResponse.redirect(new URL(safeNext, requestUrl.origin));
 
   const supabase = createServerClient(
     supabaseUrl,
