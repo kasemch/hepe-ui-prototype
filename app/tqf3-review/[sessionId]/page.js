@@ -215,6 +215,41 @@ export default async function Tqf3ReviewPage({ params }) {
       </section>
 
       <section style={{ marginBottom: 28 }}>
+        <h2>CLO–PLO / I-R-M Mapping Candidate</h2>
+        <p style={{ color: "#64748b", lineHeight: 1.6 }}>
+          Candidate นี้สร้างจาก CLO Candidate ของ HED2503 และ PLO1–PLO7 ที่ถอดจากเอกสารหลักสูตร พ.ศ. 2567 โดยยังอยู่สถานะ PROPOSED และต้องผ่าน Human Academic Review
+        </p>
+        <div style={{ overflowX: "auto", border: "1px solid #e2e8f0", borderRadius: 14, background: "white" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 760 }}>
+            <thead>
+              <tr style={{ background: "#f8fafc" }}>
+                {["CLO","PLO","I-R-M","Rationale","Status"].map((h) => (
+                  <th key={h} style={{ textAlign: "left", padding: 12, borderBottom: "1px solid #e2e8f0" }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {[
+                ["HED2503-CLO-P01","PLO2","R","เคารพความแตกต่างระหว่างบุคคล","PROPOSED"],
+                ["HED2503-CLO-P01","PLO3","R","ความรู้และความเข้าใจเนื้อหาเพศวิถีในสาขาวิชาเฉพาะ","PROPOSED"],
+                ["HED2503-CLO-P02","PLO3","R","วิเคราะห์และประยุกต์เนื้อหาเฉพาะด้านเพศวิถี","PROPOSED"],
+                ["HED2503-CLO-P03","PLO2","R","การสื่อสาร การให้คำปรึกษา และการเคารพสิทธิ/ความแตกต่าง","PROPOSED"],
+                ["HED2503-CLO-P03","PLO5","R","จริยธรรม ความเป็นส่วนตัว และสิทธิ","PROPOSED"],
+                ["HED2503-CLO-P04","PLO4","R","ออกแบบการจัดการเรียนรู้และการวัดประเมินผล","PROPOSED"],
+              ].map((row) => (
+                <tr key={row[0] + row[1]}>
+                  {row.slice(0,4).map((cell, i) => (
+                    <td key={i} style={{ padding: 12, borderBottom: "1px solid #f1f5f9", verticalAlign: "top" }}>{cell}</td>
+                  ))}
+                  <td style={{ padding: 12, borderBottom: "1px solid #f1f5f9" }}>{badge(row[4], "warn")}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section style={{ marginBottom: 28 }}>
         <h2>Blocker Resolution Workspace</h2>
         <p style={{ color: "#64748b", lineHeight: 1.6 }}>
           ส่วนนี้ใช้สำหรับเตรียมหลักฐานและการตัดสินใจของมนุษย์เท่านั้น ระบบจะไม่ทำเครื่องหมาย blocker ว่า resolved และจะไม่แก้ canonical curriculum data อัตโนมัติ
@@ -243,14 +278,14 @@ export default async function Tqf3ReviewPage({ params }) {
 
           <article style={{ border: "1px solid #fecaca", borderRadius: 14, padding: 16, background: "#fffafa" }}>
             <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-              <strong>CLO_PLO_IRM_MAPPING_NOT_ESTABLISHED</strong>
+              <strong>CLO_PLO_IRM_MAPPING_AWAITING_HUMAN_REVIEW</strong>
               {badge("BLOCKING", "danger")}
             </div>
             <p style={{ lineHeight: 1.6 }}>
-              พบ PLO ทางการแล้ว แต่ CLO Candidate ของ HED2503 ยังไม่มี CLO–PLO/I-R-M mapping ที่ผ่าน human academic review
+              มี mapping candidate แล้ว 6 ความสัมพันธ์ในสถานะ PROPOSED แต่ยังไม่ได้ผ่าน Human Academic Review/Programme Review
             </p>
             <div style={{ fontSize: 13, color: "#475569" }}>
-              Next evidence step: prepare mapping candidate from PLO1–PLO7 + HED2503 CLO candidates, then human review before Submit for Review
+              Next gate: authorized human review of mapping rationale and I-R-M level before Submit for Review
             </div>
           </article>
         </div>
@@ -290,7 +325,7 @@ export default async function Tqf3ReviewPage({ params }) {
       />
 
       <footer style={{ marginTop: 32, color: "#64748b", fontSize: 12 }}>
-        TQF3-UI-09 · blocker-resolution workspace · academic authority remains human-controlled
+        TQF3-MAPPING-11 · provisional CLO–PLO/I-R-M mapping · academic authority remains human-controlled
       </footer>
     </main>
   );
