@@ -1,0 +1,141 @@
+# closure-recovery-trigger: source-and-workflow
+name: HEPE WORKFLOW 04 Exact Preview Closure
+
+on:
+  push:
+    branches: [feat/hepe-academic-workflow-03-exec]
+    paths: ['.github/workflows/hepe-workflow-04-closure.yml']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hepe-workflow-04-exact-closure
+  cancel-in-progress: false
+
+jobs:
+  exact-closure:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      HEPE_ENVIRONMENT: NON-PRODUCTION
+      SUPABASE_URL: https://lztxpjsuzqvtgyasfnyj.supabase.co
+      SUPABASE_PUBLISHABLE_KEY: sb_publishable_7bv5GR0-ksXJn91sRHV0Mg_k4nblIGI
+      SUPABASE_ADMIN: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      VERCEL_BYPASS: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+      PREVIEW_URL: https://hepe-ui-prototype-git-feat-hepe-a-37ab37-kasemch-3467s-projects.vercel.app
+      TARGET_PROGRAMME_CODE: '25510071103503'
+      TARGET_VERSION_CODE: '2567-SOURCEB-VALIDATION'
+      TARGET_COURSE_CODE: 'HED2503'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify masked bindings and exact-SHA Preview
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${SUPABASE_ADMIN:-}" || { echo 'SUPABASE_ADMIN_BINDING_UNAVAILABLE'; exit 71; }
+          test -n "${VERCEL_BYPASS:-}" || { echo 'VERCEL_BYPASS_BINDING_UNAVAILABLE'; exit 72; }
+          ok=0
+          for i in $(seq 1 48); do
+            body="$(curl --silent --show-error --max-time 20 -H "x-vercel-protection-bypass: ${VERCEL_BYPASS}" -H 'Cache-Control: no-cache' "${PREVIEW_URL}/api/pilot-build-meta" || true)"
+            if printf '%s' "$body" | grep -Fq "\"applicationSha\":\"${GITHUB_SHA}\"" && printf '%s' "$body" | grep -Fq '"environment":"NON-PRODUCTION"' && printf '%s' "$body" | grep -Fq '"production":false'; then
+              ok=1; echo "EXACT_SHA_PREVIEW_PASS application_sha=${GITHUB_SHA}"; break
+            fi
+            sleep 10
+          done
+          test "$ok" = 1 || { echo 'EXACT_SHA_PREVIEW_NOT_READY'; exit 73; }
+
+      - name: Install controlled dependencies
+        run: |
+          npm install --ignore-scripts --no-audit --no-fund
+          npm install --no-save --ignore-scripts --no-audit --no-fund playwright @axe-core/playwright
+          npx playwright install --with-deps chromium
+
+      - name: Authenticated runtime acceptance with mandatory cleanup
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import crypto from 'node:crypto';
+          import { execFileSync } from 'node:child_process';
+          import { createClient } from '@supabase/supabase-js';
+          import { createServerClient } from '@supabase/ssr';
+          const E=process.env;
+          const admin=createClient(E.SUPABASE_URL,E.SUPABASE_ADMIN,{auth:{persistSession:false,autoRefreshToken:false}});
+          let prep=null,noauth=null,programme=null,version=null,course=null,termId=null,offeringId=null,assignmentId=null,tempChairId=null,docId=null,improvementId=null,failure=null;
+          const fail=(m)=>{throw new Error(m)};
+          async function persona(code){const {data:f,error}=await admin.from('wave6_persona_fixtures').select('persona_code,actor_id,external_identity_subject').eq('persona_code',code).single();if(error||!f)fail(`PERSONA_LOOKUP_FAILED:${code}`);return f;}
+          async function synthetic(code){const email=`hepe-wf04-${code.toLowerCase()}-${E.GITHUB_RUN_ID}-${crypto.randomBytes(4).toString('hex')}@example.invalid`;const password=crypto.randomBytes(32).toString('base64url');const {data,error}=await admin.auth.admin.createUser({email,password,email_confirm:true,user_metadata:{hepe_synthetic_test:true,hepe_gate:'HEPE-WORKFLOW-04-CLOSURE',hepe_persona:code}});if(error||!data.user)fail(`AUTH_CREATE_FAILED:${code}`);return {uid:data.user.id,email,password};}
+          async function session(u){const jar=new Map();const ssr=createServerClient(E.SUPABASE_URL,E.SUPABASE_PUBLISHABLE_KEY,{cookies:{getAll(){return [...jar].map(([name,value])=>({name,value}))},setAll(v){for(const {name,value} of v)jar.set(name,value)}}});const {data,error}=await ssr.auth.signInWithPassword({email:u.email,password:u.password});if(error||!data.session)fail('SIGNIN_FAILED');const cookie=[...jar].map(([k,v])=>`${k}=${v}`).join('; ');if(!cookie)fail('COOKIE_MISSING');return cookie;}
+          function http(path,{cookie='',method='GET',body=null}={}){const marker='__HTTP__';const args=['--silent','--show-error','--max-time','30','-H',`x-vercel-protection-bypass: ${E.VERCEL_BYPASS}`,'-H','Cache-Control: no-cache'];if(cookie)args.push('-H',`cookie: ${cookie}`);if(body!==null)args.push('-H','content-type: application/json','--data',JSON.stringify(body));if(method!=='GET')args.push('-X',method);args.push('-w',`${marker}%{http_code}`,`${E.PREVIEW_URL}${path}`);const out=execFileSync('curl',args,{encoding:'utf8',maxBuffer:8*1024*1024});const i=out.lastIndexOf(marker);return {body:out.slice(0,i),code:out.slice(i+marker.length).trim()};}
+          try{
+            const {data:p,error:pe}=await admin.from('programmes').select('programme_id').eq('programme_code',E.TARGET_PROGRAMME_CODE).single();if(pe||!p)fail('PROGRAMME_NOT_FOUND');programme=p;
+            const {data:v,error:ve}=await admin.from('curriculum_versions').select('curriculum_version_id').eq('programme_id',p.programme_id).eq('version_code',E.TARGET_VERSION_CODE).single();if(ve||!v)fail('VERSION_NOT_FOUND');version=v;
+            const {data:c,error:ce}=await admin.from('courses').select('course_id').eq('course_code',E.TARGET_COURSE_CODE).single();if(ce||!c)fail('COURSE_NOT_FOUND');course=c;
+            prep={fixture:await persona('PREPARER_A'),user:await synthetic('PREPARER_A')};noauth={fixture:await persona('NO_AUTHORITY'),user:await synthetic('NO_AUTHORITY')};
+            for(const x of [prep,noauth]){const {error}=await admin.from('actors').update({external_identity_subject:x.user.uid}).eq('actor_id',x.fixture.actor_id);if(error)fail('ACTOR_REBIND_FAILED');}
+            const academicYear=`SYN-WF04-${E.GITHUB_RUN_ID}`;
+            const {data:t,error:te}=await admin.from('academic_terms').insert({academic_year:academicYear,term_code:'SYN',term_label:'Synthetic Closure',status:'DRAFT',source_type:'SYNTHETIC_TEST',source_reference:'HEPE-WORKFLOW-04-CLOSURE'}).select('academic_term_id').single();if(te||!t)fail(`TERM_CREATE_FAILED:${te?.code??''}`);termId=t.academic_term_id;
+            const {data:o,error:oe}=await admin.from('course_offerings').insert({programme_id:p.programme_id,curriculum_version_id:v.curriculum_version_id,course_id:c.course_id,academic_term_id:termId,offering_status:'DRAFT',source_status:'SYNTHETIC_TEST',source_reference:'HEPE-WORKFLOW-04-CLOSURE'}).select('course_offering_id').single();if(oe||!o)fail(`OFFERING_CREATE_FAILED:${oe?.code??''}`);offeringId=o.course_offering_id;
+            const {data:ia,error:iae}=await admin.from('instructor_assignments').insert({course_offering_id:offeringId,actor_id:prep.fixture.actor_id,assignment_role:'INSTRUCTOR',status:'ACTIVE',source_reference:'HEPE-WORKFLOW-04-CLOSURE'}).select('instructor_assignment_id').single();if(iae||!ia)fail('ASSIGNMENT_CREATE_FAILED');assignmentId=ia.instructor_assignment_id;
+            const {data:role,error:re}=await admin.from('roles').select('role_id').eq('role_code','PROGRAMME_CHAIR').single();if(re||!role)fail('CHAIR_ROLE_NOT_FOUND');
+            const {data:ta,error:ae}=await admin.from('authority_assignments').insert({actor_id:prep.fixture.actor_id,role_id:role.role_id,authority_level_code:'A4',scope_type:'PROGRAMME',programme_id:p.programme_id,status:'ACTIVE',valid_until:new Date(Date.now()+20*60*1000).toISOString(),assignment_source:'DIRECT'}).select('authority_assignment_id').single();if(ae||!ta)fail(`TEMP_CHAIR_FAILED:${ae?.code??''}`);tempChairId=ta.authority_assignment_id;
+            const prepCookie=await session(prep.user), noCookie=await session(noauth.user);
+            const unauth=http('/api/workflow-documents');if(unauth.code!=='401'||!unauth.body.includes('AUTH_REQUIRED'))fail('DOC_UNAUTH_BOUNDARY_FAIL');
+            const d=http('/api/workflow-documents',{cookie:prepCookie,method:'POST',body:{programme_id:p.programme_id,course_offering_id:offeringId,document_type:'TQF3',title:`Synthetic Closure Document ${E.GITHUB_RUN_ID}`,source_reference:'HEPE-WORKFLOW-04-CLOSURE'}});if(d.code!=='201'||!d.body.includes('"state":"CREATED"')||!d.body.includes('"status":"DRAFT"'))fail(`DOC_POST_FAIL:${d.code}:${d.body.slice(0,180)}`);docId=JSON.parse(d.body).record.document_record_id;
+            const dg=http('/api/workflow-documents',{cookie:prepCookie});if(dg.code!=='200'||!dg.body.includes(docId))fail('DOC_GET_AUTH_FAIL');
+            const ng=http('/api/workflow-documents',{cookie:noCookie});if(ng.code!=='200'||ng.body.includes(docId))fail('DOC_NOAUTH_LEAK');
+            const imp=http('/api/workflow-improvements',{cookie:prepCookie,method:'POST',body:{programme_id:p.programme_id,course_offering_id:offeringId,title:'Synthetic Closure Recommendation',category:'ASSESSMENT',description:'Synthetic runtime acceptance only',priority:'MEDIUM',source_reference:'HEPE-WORKFLOW-04-CLOSURE'}});if(imp.code!=='201'||!imp.body.includes('RECOMMENDATION_CANDIDATE'))fail(`IMPROVEMENT_POST_FAIL:${imp.code}:${imp.body.slice(0,180)}`);improvementId=JSON.parse(imp.body).item.improvement_item_id;
+            console.log('AUTHENTICATED_RUNTIME_ACCEPTANCE_PASS documents=POST_GET_RLS improvements=POST_RLS noauthority=no_leak');
+          }catch(e){failure=e;console.error(`AUTH_RUNTIME_FAIL:${e.message}`)}finally{
+            if(improvementId)await admin.from('improvement_items').delete().eq('improvement_item_id',improvementId);
+            if(docId)await admin.from('document_records').delete().eq('document_record_id',docId);
+            if(tempChairId)await admin.from('authority_assignments').delete().eq('authority_assignment_id',tempChairId);
+            if(assignmentId)await admin.from('instructor_assignments').delete().eq('instructor_assignment_id',assignmentId);
+            if(offeringId)await admin.from('course_offerings').delete().eq('course_offering_id',offeringId);
+            if(termId)await admin.from('academic_terms').delete().eq('academic_term_id',termId);
+            for(const x of [prep,noauth])if(x){await admin.from('actors').update({external_identity_subject:x.fixture.external_identity_subject}).eq('actor_id',x.fixture.actor_id);await admin.auth.admin.deleteUser(x.user.uid);}
+            const marker='HEPE-WORKFLOW-04-CLOSURE';
+            const [dr,ir,or,tr]=await Promise.all([
+              admin.from('document_records').select('*',{count:'exact',head:true}).eq('source_snapshot_reference',marker),
+              admin.from('improvement_items').select('*',{count:'exact',head:true}).eq('source_reference',marker),
+              admin.from('course_offerings').select('*',{count:'exact',head:true}).eq('source_reference',marker),
+              admin.from('academic_terms').select('*',{count:'exact',head:true}).eq('source_reference',marker)
+            ]);
+            for(const [name,r] of [['documents',dr],['improvements',ir],['offerings',or],['terms',tr]])if(r.error&&!failure)failure=new Error(`CLEANUP_COUNT_ERROR:${name}:${r.error.code}`);
+            const dc=dr.count??0,ic=ir.count??0,oc=or.count??0,tc=tr.count??0;
+            if((dc!==0||ic!==0||oc!==0||tc!==0)&&!failure)failure=new Error('CLEANUP_RESIDUAL');
+            console.log(`MANDATORY_CLEANUP_VERIFIED documents=${dc} improvements=${ic} offerings=${oc} terms=${tc}`);
+          }
+          if(failure)throw failure;
+          NODE
+
+      - name: Responsive route and scoped accessibility acceptance
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import {chromium} from 'playwright';
+          import AxeBuilder from '@axe-core/playwright';
+          const base=process.env.PREVIEW_URL,bypass=process.env.VERCEL_BYPASS;
+          const routes=[['/','Academic Command Center'],['/pilot','Controlled Pilot Readiness'],['/programme','Programme Overview'],['/curriculum','Curriculum Structure'],['/study-plan','Study Plan'],['/traceability','PLO / Course Traceability'],['/mapping','PLO × Course / I-R-M'],['/evidence','Evidence Explorer'],['/qa','INSUFFICIENT VERIFIED EVIDENCE'],['/reviews','Review Queue'],['/calendar','Academic Tasks'],['/audit','Provenance'],['/ai','AI ADVISORY'],['/governance','Settings / Governance'],['/curriculum-import','AUTH_REQUIRED'],['/tqf3','มคอ.3'],['/tqf5','มคอ.5'],['/verification','ทวนสอบ'],['/tqf7','มคอ.7'],['/course-review','Course Review'],['/approval','Academic Approval Workflow'],['/documents','Document Preview, Print & Export'],['/improvement-hub','ข้อเสนอเพื่อการปรับปรุงหลักสูตร']];
+          const viewports=[['desktop',1440,900],['laptop',1024,800],['tablet',768,900],['mobile',390,844]];
+          const browser=await chromium.launch({headless:true});let failures=[];
+          for(const [vp,w,h] of viewports){const context=await browser.newContext({viewport:{width:w,height:h},extraHTTPHeaders:{'x-vercel-protection-bypass':bypass,'Cache-Control':'no-cache'}});for(const [path,marker] of routes){const page=await context.newPage();const res=await page.goto(base+path,{waitUntil:'networkidle',timeout:45000});const code=res?.status()??0,text=await page.locator('body').innerText();if(code!==200)failures.push(`${vp}:${path}:HTTP_${code}`);if(!text.includes(marker))failures.push(`${vp}:${path}:MARKER_MISSING`);if(!text.includes('NON-PRODUCTION'))failures.push(`${vp}:${path}:NON_PRODUCTION_MISSING`);const dims=await page.evaluate(()=>({sw:document.documentElement.scrollWidth,cw:document.documentElement.clientWidth}));if(dims.sw>dims.cw+2)failures.push(`${vp}:${path}:HORIZONTAL_OVERFLOW`);if(await page.locator('h1').count()!==1)failures.push(`${vp}:${path}:H1`);if(await page.locator('main').count()!==1)failures.push(`${vp}:${path}:MAIN`);const axe=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa']).analyze();const serious=axe.violations.filter(v=>['serious','critical'].includes(v.impact||''));if(serious.length)failures.push(`${vp}:${path}:AXE:${serious.map(v=>v.id).join(',')}`);await page.close();}await context.close();}
+          await browser.close();if(failures.length){console.error('BROWSER_ACCEPTANCE_FAIL\n'+failures.join('\n'));process.exit(1);}console.log('RESPONSIVE_ACCEPTANCE_PASS viewports=1440,1024,768,390');console.log('SCOPED_AUTOMATED_ACCESSIBILITY_ACCEPTANCE PASS wcag2a,wcag2aa serious_critical=0');console.log('FULL_ROUTE_BROWSER_ACCEPTANCE_PASS routes=23');
+          NODE
+
+      - name: Closure candidate boundary summary
+        run: |
+          echo "APPLICATION_SHA=${GITHUB_SHA}"
+          echo 'ENVIRONMENT=NON-PRODUCTION'
+          echo 'EXACT_SHA_PREVIEW=PASS'
+          echo 'AUTHENTICATED_RUNTIME=PASS'
+          echo 'RESPONSIVE_BROWSER=PASS'
+          echo 'SCOPED_AUTOMATED_ACCESSIBILITY=PASS'
+          echo 'PRODUCTION=NOT_TOUCHED'
+          echo 'PR_MERGE=NOT_ATTEMPTED'
+          echo 'CANONICAL_ACTIVATION=NOT_ATTEMPTED'
+          echo 'PUBLICATION=NOT_ATTEMPTED'
+          echo 'AUDIT_EVIDENCE_ADMISSION=NOT_ATTEMPTED'
