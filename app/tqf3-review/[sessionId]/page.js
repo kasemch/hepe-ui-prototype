@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 import ReviewActions from "./ReviewActions";
+import MappingReviewActions from "./MappingReviewActions";
 
 function badge(text, tone = "neutral") {
   const palette = {
@@ -71,6 +72,13 @@ export default async function Tqf3ReviewPage({ params }) {
       "0348070a-1f92-4d56-a923-c858fd39503d",
     ]);
 
+  const { data: mappingRows } = await supabase
+    .from("working_mapping_proposals")
+    .select("working_mapping_proposal_id,irm_level,rationale,governance_status,source_working_outcome_id,target_outcome_id")
+    .eq("curriculum_course_id", "cce2ca98-d2c3-4e21-94fb-01a1fc88c4e4")
+    .eq("mapping_kind", "CLO_TO_PLO")
+    .neq("governance_status", "REJECTED");
+
   if (!session) {
     return (
       <main style={{ maxWidth: 900, margin: "40px auto", padding: 24 }}>
@@ -90,6 +98,15 @@ export default async function Tqf3ReviewPage({ params }) {
   const allFindings = Array.isArray(findings) ? findings : [];
   const blockingFindings = allFindings.filter((f) => f.is_blocking && !f.resolved);
   const improvements = Array.isArray(improvementItems) ? improvementItems : [];
+  const mappings = Array.isArray(mappingRows) ? mappingRows : [];
+  const mappingLabels = {
+    "dae566ba-9332-48d7-bc6f-959ba7464eea": ["HED2503-CLO-P01", "PLO2"],
+    "05a4af7e-c0fa-487c-8eec-2d5016691f12": ["HED2503-CLO-P01", "PLO3"],
+    "9445898e-d2e9-4ed2-8daf-382ba02cc1d3": ["HED2503-CLO-P02", "PLO3"],
+    "3409cd73-dc06-4d7a-a3be-b8d0a834ed39": ["HED2503-CLO-P03", "PLO2"],
+    "577c2291-82f3-4f6b-8f00-ab0febe11195": ["HED2503-CLO-P03", "PLO5"],
+    "8dd3c5d5-9b04-464b-8d07-f72134d7f51b": ["HED2503-CLO-P04", "PLO4"],
+  };
 
   return (
     <main style={{ maxWidth: 1180, margin: "28px auto", padding: "0 20px 48px", fontFamily: "system-ui, sans-serif", color: "#0f172a" }}>
@@ -215,37 +232,29 @@ export default async function Tqf3ReviewPage({ params }) {
       </section>
 
       <section style={{ marginBottom: 28 }}>
-        <h2>CLO–PLO / I-R-M Mapping Candidate</h2>
+        <h2>CLO–PLO / I-R-M Human Review Gate</h2>
         <p style={{ color: "#64748b", lineHeight: 1.6 }}>
-          Candidate นี้สร้างจาก CLO Candidate ของ HED2503 และ PLO1–PLO7 ที่ถอดจากเอกสารหลักสูตร พ.ศ. 2567 โดยยังอยู่สถานะ PROPOSED และต้องผ่าน Human Academic Review
+          Mapping ทุกแถวเป็น candidate จาก TQF3-MAPPING-11. Course-level review เปลี่ยนสถานะเป็น WORKING; Programme Review ต้องใช้สิทธิ์ A3 และจะเปลี่ยนเป็น PROGRAMME_REVIEWED. ไม่มี action ใดเลื่อนเป็น APPROVED_OPERATIONAL_USE อัตโนมัติ
         </p>
-        <div style={{ overflowX: "auto", border: "1px solid #e2e8f0", borderRadius: 14, background: "white" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 760 }}>
-            <thead>
-              <tr style={{ background: "#f8fafc" }}>
-                {["CLO","PLO","I-R-M","Rationale","Status"].map((h) => (
-                  <th key={h} style={{ textAlign: "left", padding: 12, borderBottom: "1px solid #e2e8f0" }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {[
-                ["HED2503-CLO-P01","PLO2","R","เคารพความแตกต่างระหว่างบุคคล","PROPOSED"],
-                ["HED2503-CLO-P01","PLO3","R","ความรู้และความเข้าใจเนื้อหาเพศวิถีในสาขาวิชาเฉพาะ","PROPOSED"],
-                ["HED2503-CLO-P02","PLO3","R","วิเคราะห์และประยุกต์เนื้อหาเฉพาะด้านเพศวิถี","PROPOSED"],
-                ["HED2503-CLO-P03","PLO2","R","การสื่อสาร การให้คำปรึกษา และการเคารพสิทธิ/ความแตกต่าง","PROPOSED"],
-                ["HED2503-CLO-P03","PLO5","R","จริยธรรม ความเป็นส่วนตัว และสิทธิ","PROPOSED"],
-                ["HED2503-CLO-P04","PLO4","R","ออกแบบการจัดการเรียนรู้และการวัดประเมินผล","PROPOSED"],
-              ].map((row) => (
-                <tr key={row[0] + row[1]}>
-                  {row.slice(0,4).map((cell, i) => (
-                    <td key={i} style={{ padding: 12, borderBottom: "1px solid #f1f5f9", verticalAlign: "top" }}>{cell}</td>
-                  ))}
-                  <td style={{ padding: 12, borderBottom: "1px solid #f1f5f9" }}>{badge(row[4], "warn")}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div style={{ display: "grid", gap: 12 }}>
+          {mappings.map((m) => {
+            const labels = mappingLabels[m.working_mapping_proposal_id] || ["CLO", "PLO"];
+            return (
+              <article key={m.working_mapping_proposal_id} style={{ border: "1px solid #e2e8f0", borderRadius: 14, padding: 16, background: "white" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                  <strong>{labels[0]} → {labels[1]} · {m.irm_level}</strong>
+                  {badge(m.governance_status, m.governance_status === "PROGRAMME_REVIEWED" ? "ok" : "warn")}
+                </div>
+                <p style={{ lineHeight: 1.6 }}>{m.rationale}</p>
+                <MappingReviewActions
+                  mappingId={m.working_mapping_proposal_id}
+                  status={m.governance_status}
+                  irmLevel={m.irm_level}
+                  rationale={m.rationale}
+                />
+              </article>
+            );
+          })}
         </div>
       </section>
 
@@ -325,7 +334,7 @@ export default async function Tqf3ReviewPage({ params }) {
       />
 
       <footer style={{ marginTop: 32, color: "#64748b", fontSize: 12 }}>
-        TQF3-MAPPING-11 · provisional CLO–PLO/I-R-M mapping · academic authority remains human-controlled
+        TQF3-MAPPING-12 · authority-aware Human Review Gate · academic authority remains human-controlled
       </footer>
     </main>
   );
