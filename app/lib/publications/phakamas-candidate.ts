@@ -4,9 +4,9 @@ export const PHAKAMAS_CANDIDATE = {
  key:"candidate:phakamas-ratanabuth",
  nameTh:"ผกามาศ รัตนบุษย์",
  suppliedRomanized:"Phakanas Ratanabuth",
- alternateSearchNames:["Phakanas Ratanabuth","Phakamas Ratanabuth","Phakamas Rattanabuth","ผกามาศ รัตนบุษย์"],
+ alternateSearchNames:["Phakanas Ratanabuth","Phakamas Ratanabuth","ผกามาศ รัตนบุษย์"],
  identityStatus:"NEEDS_IDENTITY_RECONCILIATION",
- source:"User-supplied name; controlled curriculum bibliography has this co-author string",
+ source:"User-confirmed surname spelling: Ratanabuth; controlled curriculum bibliography has the Thai co-author string",
  notes:"No matching canonical academic_people row confirmed by exact Thai-name query. Existing DR.PHAKAMAS alias points to a separate unverified academic_person_id and must NOT be bound automatically."
 } as const;
 export const PHAKAMAS_CANDIDATES:Publication[]=[
