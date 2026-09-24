@@ -12,7 +12,7 @@ export function fiveYearWindow(councilDate:string){
  const end=dateParts(councilDate);if(!end)return null;
  const anniversary=new Date(end.getTime());anniversary.setUTCFullYear(end.getUTCFullYear()-5);
  const start=new Date(anniversary.getTime());start.setUTCDate(start.getUTCDate()+1);
- return {start:iso(start),end:iso(end),years:[0,1,2,3,4].map(i=>end.getUTCFullYear()-4+i+543)};
+ return {start:iso(start),end:iso(end),years:Array.from({length:end.getUTCFullYear()-start.getUTCFullYear()+1},(_,i)=>start.getUTCFullYear()+i+543)};
 }
 export function assess2570Work(p:Publication,date:string,approvalStatus:ApprovalDateStatus,review?:WorkReview):{status:WorkDecision;reason:string}{
  const w=fiveYearWindow(date);
