@@ -15,8 +15,10 @@ export function generateHED3505ControlledManifest(): ControlledExportManifest {
   const validation = validateHED3505();
   const version = HED3505_TQF3_VERSIONS[0];
 
-  const reviewState = "NOT_SUBMITTED" as const;
-  const approvalState = "MISSING" as const;
+  const getReviewState = (): ControlledExportManifest["reviewState"] => "NOT_SUBMITTED";
+  const getApprovalState = (): ControlledExportManifest["approvalState"] => "MISSING";
+  const reviewState = getReviewState();
+  const approvalState = getApprovalState();
 
   const artifactBase = [
     ["hed3505-mko3", "HED3505_MKO3.preview.pdf", "DOCUMENT", version.snapshotHash, validation.ready ? "READY_FOR_PREVIEW" : "BLOCKED", "structured version model"],
