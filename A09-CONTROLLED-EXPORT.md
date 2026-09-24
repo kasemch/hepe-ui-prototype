@@ -28,3 +28,9 @@ Required labels:
 - NOT FOR INSTITUTIONAL SUBMISSION
 
 No official institutional export is authorized.
+
+
+## Build recovery checkpoint
+A prior preview build failed after introduction of the manifest generator. The generator was adjusted to avoid overly narrow literal-state inference for review/approval governance states. This document change intentionally creates a fresh exact-head preview candidate after that fix.
+
+Acceptance remains fail-closed: A09 is not PASS until the deployment for this exact head is READY.
