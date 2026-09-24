@@ -19,10 +19,16 @@ export const PANYA_PUBLICATIONS: Publication[] = [
 export type WindowMode = "CALENDAR" | "ACADEMIC" | "FISCAL";
 export function assess(item:Publication,yearBE:number,mode:WindowMode,policyConfirmed:boolean):{status:RuleDecision;reason:string} {
  const startYear=yearBE-4;
- if(mode==="FISCAL" && !item.publishedOn) return {status:"NEEDS_EVIDENCE",reason:"ไม่ทราบวันเผยแพร่ที่แน่นอนสำหรับรอบปีงบประมาณ"};
+
  const start=mode==="FISCAL"?`${startYear-544}-10-01`:null;
  const end=mode==="FISCAL"?`${yearBE-543}-09-30`:null;
- const inside=mode==="FISCAL" ? !!item.publishedOn&&item.publishedOn>=start!&&item.publishedOn<=end! : item.yearBE>=startYear&&item.yearBE<=yearBE;
+ const yearFirst=`${item.yearBE-543}-01-01`;
+ const yearLast=`${item.yearBE-543}-12-31`;
+ if(mode==="FISCAL" && !item.publishedOn) {
+   if(yearLast<start! || yearFirst>end!) return {status:"OUTSIDE_WINDOW",reason:"ทั้งปีเผยแพร่อยู่นอกช่วงปีงบประมาณ"};
+   if(yearFirst<start! || yearLast>end!) return {status:"NEEDS_EVIDENCE",reason:"ปีเผยแพร่ทับเส้นแบ่งปีงบประมาณ ต้องตรวจวันที่เผยแพร่หรือวันตอบรับ Full paper"};
+ }
+ const inside=mode==="FISCAL" ? (item.publishedOn ? item.publishedOn>=start!&&item.publishedOn<=end! : true) : item.yearBE>=startYear&&item.yearBE<=yearBE;
  if(!inside)return {status:"OUTSIDE_WINDOW",reason:"อยู่นอกช่วงเวลา 5 ปีที่เลือก"};
  if(item.evidence==="NEEDS_ORIGINAL")return {status:"NEEDS_EVIDENCE",reason:"ต้องตรวจสอบหลักฐานต้นฉบับ"};
  if(item.requiresSpecialPolicy && !policyConfirmed)return {status:"NEEDS_POLICY_REVIEW",reason:"ต้องตรวจ Full paper วันเผยแพร่ และเกณฑ์การประชุมที่ใช้กับหลักสูตร"};
