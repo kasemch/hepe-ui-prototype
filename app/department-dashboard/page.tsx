@@ -46,7 +46,7 @@ export default function DepartmentDashboard() {
  })().catch(e=>{if(active)setError(e.message||"ไม่สามารถโหลดข้อมูลได้");}).finally(()=>{if(active)setLoading(false)});return()=>{active=false};},[]);
  const courseMap=useMemo(()=>new Map((data?.courses||[]).map(x=>[x.course_id,x])),[data]);
  const versionMap=useMemo(()=>new Map((data?.versions||[]).map(x=>[x.curriculum_version_id,x.programme_id])),[data]);
- const rows=useMemo(()=> (data?.members||[]).map(m=>{
+ const allRows=useMemo(()=> (data?.members||[]).map(m=>{
    const programme=versionMap.get(m.curriculum_version_id);const c=courseMap.get(m.course_id);
    const os=data?.offerings.filter(o=>o.programme_id===programme&&o.course_id===m.course_id&&(term===""||o.academic_term_id===term))||[];
    const offeringIds=new Set(os.map(x=>x.course_offering_id));
@@ -55,9 +55,10 @@ export default function DepartmentDashboard() {
    const ids=new Set(t5.map(x=>x.tqf5_record_id));
    const results=data?.results.filter(x=>ids.has(x.tqf5_record_id))||[];
    return {...m,programme,course_code:c?.course_code||"—",title_th:c?.title_th||"ไม่พบชื่อวิชา",credit_value:c?.credit_value,offerings:os,t3,t5,results};
- }).filter(x=>(selected==="all"||x.programme===selected)&&((x.course_code+" "+x.title_th).toLowerCase().includes(search.toLowerCase()))),[data,courseMap,versionMap,selected,term,search]);
+ }),[data,courseMap,versionMap,term]);
+ const rows=allRows.filter(x=>(selected==="all"||x.programme===selected)&&((x.course_code+" "+x.title_th).toLowerCase().includes(search.toLowerCase())));
  const terms=[...new Set((data?.offerings||[]).map(x=>x.academic_term_id).filter(Boolean))];
- const summary=(id:string)=>{const mine=rows.filter(x=>x.programme===id);return {courses:mine.length,offerings:mine.reduce((n,x)=>n+x.offerings.length,0),t3:mine.reduce((n,x)=>n+x.t3.length,0),t5:mine.reduce((n,x)=>n+x.t5.length,0),results:mine.reduce((n,x)=>n+x.results.length,0)}};
+ const summary=(id:string)=>{const mine=allRows.filter(x=>x.programme===id);return {courses:mine.length,offerings:mine.reduce((n,x)=>n+x.offerings.length,0),t3:mine.reduce((n,x)=>n+x.t3.length,0),t5:mine.reduce((n,x)=>n+x.t5.length,0),results:mine.reduce((n,x)=>n+x.results.length,0)}};
  return <main className="hepe-dashboard">
   <header className="hepe-header"><div><span className="hepe-eyebrow">HEPE FAST TQF PORTAL · NON-PRODUCTION</span><h1>ภาพรวมหลักสูตรภาควิชาพลานามัย</h1><p>ทะเบียนรายวิชา · มคอ.3 · มคอ.5 · รายงานผลการสอบ</p></div><span className="hepe-security">ข้อมูลตามสิทธิ์ของบัญชีที่เข้าสู่ระบบ</span></header>
   {loading&&<div className="hepe-message">กำลังอ่านข้อมูลจาก Supabase…</div>}
