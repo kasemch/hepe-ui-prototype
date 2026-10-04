@@ -1,6 +1,6 @@
 # HEPE Phase 2B — Controlled Security Remediation
 
-Status: PREPARED / NOT APPLIED
+Status: SEC-01 + SEC-02 APPLIED TO SANDBOX / VERIFIED / NOT MERGED
 
 ## Scope
 This branch contains the reversible implementation artifacts for:
@@ -10,8 +10,10 @@ This branch contains the reversible implementation artifacts for:
 SEC-03 (HED3505 anonymous progress identity binding) is deliberately excluded and remains under separate threat-model review.
 
 ## Safety boundary
-Nothing in this branch authorizes:
-- applying SQL to Supabase,
+Nothing in this branch authorizes additional Supabase changes beyond the approved HG-P2B-02 sandbox application.
+
+Still prohibited:
+- further SQL changes without the next approval,
 - production deployment,
 - production merge,
 - authority changes outside the reviewed SQL,
