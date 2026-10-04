@@ -1,0 +1,5 @@
+[functions.hepe-username-login]
+verify_jwt = false
+
+[functions.hepe-account-setup]
+verify_jwt = true
