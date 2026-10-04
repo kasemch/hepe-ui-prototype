@@ -2,28 +2,32 @@
 
 Status: NON-PRODUCTION / CONTROLLED PILOT.
 
-This branch adds username/password sign-in on top of Supabase Auth without exposing
-the user's email to the browser.
-
-Security model:
-- Username is resolved only on the server.
-- Password is passed directly to Supabase Auth and is never stored by this app.
-- Login account/attempt tables are service-role only with deny-all client RLS.
-- A durable per-username and HMAC-IP throttling layer complements Supabase Auth rate limits.
-- Only an Auth user already linked to a VERIFIED academic_person_actor_binding can finish first setup.
+Architecture:
+- GitHub Pages-compatible static UI.
+- Supabase Edge Function `hepe-username-login` resolves Username server-side.
+- Supabase Edge Function `hepe-account-setup` completes first-login setup.
+- No service/secret key is present in the browser or GitHub Pages bundle.
+- Passwords are handled only by Supabase Auth.
+- Durable throttling is recorded in `hepe_login_attempts`.
+- Login account records are service-role only and client RLS is explicit deny-all.
+- Only an existing VERIFIED person↔actor binding can complete account setup.
 - Authentication never creates HEPE business authority.
 
-Required server-only environment variables:
-- SUPABASE_SECRET_KEY (preferred) or SUPABASE_SERVICE_ROLE_KEY
-- HEPE_LOGIN_IP_HMAC_SECRET
+Current controlled database state:
+- `hepe_login_accounts` and `hepe_login_attempts` exist in the HEPE Sandbox.
+- Only the verified bound account requested for the pilot has Username `kasem.ch`.
+- No password was created or changed from chat content.
 
-Required public environment variables:
-- NEXT_PUBLIC_SUPABASE_URL
-- NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY (or legacy NEXT_PUBLIC_SUPABASE_ANON_KEY)
+Edge Functions:
+- `hepe-username-login`: deployed, public invocation with custom credential verification and throttling.
+- `hepe-account-setup`: deployed, JWT required.
 
-Human gates before preview activation:
-1. Configure the two server-only secrets in the preview runtime.
-2. Confirm Auth URL allow-list for the preview URL.
-3. Run build/typecheck and login negative tests.
-4. Confirm account recovery path before real-user rollout.
-5. Do not merge or publish until the controlled preview is accepted.
+Build:
+- Static export is configured in `next.config.mjs`.
+- CI workflow builds only. It does NOT publish GitHub Pages.
+
+Human gate before public preview:
+1. Review CI build result.
+2. Confirm GitHub Pages publication scope.
+3. Confirm Auth redirect URL allow-list for the intended Pages URL.
+4. Confirm account recovery flow before wider user rollout.
