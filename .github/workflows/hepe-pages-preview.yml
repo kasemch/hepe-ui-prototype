@@ -1,9 +1,6 @@
 name: HEPE Controlled Pages Preview
 
 on:
-  pull_request:
-    branches:
-      - feature/four-programme-dashboard-20260924
   workflow_dispatch:
 
 permissions:
@@ -17,7 +14,6 @@ concurrency:
 
 jobs:
   build:
-    if: github.event_name == 'workflow_dispatch' || github.head_ref == 'feature/hepe-login-03b-controlled-auth'
     runs-on: ubuntu-latest
     env:
       NEXT_PUBLIC_SUPABASE_URL: https://lztxpjsuzqvtgyasfnyj.supabase.co
@@ -41,7 +37,6 @@ jobs:
           path: ./out
 
   deploy:
-    if: github.event_name == 'workflow_dispatch' || github.head_ref == 'feature/hepe-login-03b-controlled-auth'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
