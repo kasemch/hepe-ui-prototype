@@ -19,6 +19,9 @@ jobs:
   build:
     if: github.event_name == 'workflow_dispatch' || github.head_ref == 'feature/hepe-login-03b-controlled-auth'
     runs-on: ubuntu-latest
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: https://lztxpjsuzqvtgyasfnyj.supabase.co
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_7bv5GR0-ksXJn91sRHV0Mg_k4nblIGI
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
