@@ -19,4 +19,8 @@ jobs:
         with:
           node-version: "22"
       - run: npm install
+      - name: Dependency inventory
+        run: npm list --depth=0
+      - name: Dependency security audit
+        run: npm audit --omit=dev || true
       - run: npm run build
