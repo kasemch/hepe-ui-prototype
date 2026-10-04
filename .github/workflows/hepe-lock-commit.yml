@@ -1,9 +1,9 @@
 name: HEPE Commit Reviewed Lockfile
 
 on:
-  push:
+  pull_request:
     branches:
-      - feature/hepe-login-03b-controlled-auth
+      - feature/four-programme-dashboard-20260924
 
 permissions:
   contents: write
@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   commit-lock:
-    if: github.actor != 'github-actions[bot]'
+    if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
