@@ -1,5 +1,5 @@
 export type ComplianceStatus = 'READY' | 'REVIEW' | 'HOLD' | 'INCOMPLETE';
-export type VerificationStatus = 'VERIFIED' | 'PENDING' | 'REJECTED' | 'MISSING';
+export type VerificationStatus = 'VERIFIED' | 'PENDING' | 'REJECTED' | 'MISSING' | 'CONFLICT';
 export type ClearanceStatus = 'APPROVED' | 'PENDING';
 
 export type StudentReadiness = {
@@ -17,6 +17,7 @@ export type StudentReadiness = {
   requirementVersionMatch?: boolean;
   transferCredit?: boolean;
   professionalEquivalencyApproved?: boolean;
+  controlledExemptionApproved?: boolean;
 };
 
 export type ComplianceResult = { status: ComplianceStatus; reasons: string[]; clearanceStatus: ClearanceStatus };
@@ -34,17 +35,18 @@ export function evaluateReadiness(student: StudentReadiness): ComplianceResult {
   student.plcCycles.forEach((complete, i) => {
     if (!complete) reasons.push(`PLC_CYCLE_${i + 1}_INCOMPLETE`);
   });
-  if (student.financialLiteracy === 'UNVERIFIED_REQUIREMENT') reasons.push('AUTHORITATIVE_REQUIREMENT_PENDING');
+  if (student.financialLiteracy === 'UNVERIFIED_REQUIREMENT') reasons.push('FINLIT_REQUIREMENT_UNVERIFIED');
   if (student.financialLiteracy === 'INCOMPLETE') reasons.push('FINLIT_INCOMPLETE');
   if (student.evidence === 'MISSING') reasons.push('EVIDENCE_MISSING');
   if (student.evidence === 'PENDING') reasons.push('EVIDENCE_PENDING');
   if (student.evidence === 'REJECTED') reasons.push('EVIDENCE_REJECTED');
+  if (student.evidence === 'CONFLICT') reasons.push('EVIDENCE_CONFLICT');
   if (student.requirementVersionMatch === false) reasons.push('REQUIREMENT_VERSION_MISMATCH');
-  if (student.transferCredit && !student.professionalEquivalencyApproved) reasons.push('PROFESSIONAL_EQUIVALENCY_PENDING');
+  if (student.transferCredit && !student.professionalEquivalencyApproved && !student.controlledExemptionApproved) reasons.push('PROFESSIONAL_EQUIVALENCY_PENDING');
 
   const clearanceStatus: ClearanceStatus = student.humanClearance ? 'APPROVED' : 'PENDING';
   const incomplete = reasons.some(r => r.includes('INCOMPLETE') || r === 'EVIDENCE_MISSING');
-  const hold = reasons.some(r => r === 'EVIDENCE_REJECTED' || r === 'REQUIREMENT_VERSION_MISMATCH');
+  const hold = reasons.some(r => r === 'EVIDENCE_REJECTED' || r === 'EVIDENCE_CONFLICT' || r === 'REQUIREMENT_VERSION_MISMATCH');
   if (hold) return { status: 'HOLD', reasons, clearanceStatus };
   if (incomplete) return { status: 'INCOMPLETE', reasons, clearanceStatus };
   if (reasons.length) return { status: 'REVIEW', reasons, clearanceStatus };
