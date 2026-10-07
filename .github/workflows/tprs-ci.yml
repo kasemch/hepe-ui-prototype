@@ -4,6 +4,7 @@ on:
     paths:
       - 'app/tprs/**'
       - 'scripts/tprs-**'
+      - 'supabase/migrations/**'
       - '.github/workflows/tprs-ci.yml'
       - 'package.json'
 jobs:
@@ -18,6 +19,8 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: Deterministic compliance acceptance
         run: node scripts/tprs-compliance-test.mjs
+      - name: Backend migration static acceptance
+        run: node scripts/tprs-backend-static-test.mjs
       - name: TypeScript check
         run: npx tsc --noEmit
       - name: Next.js production build
