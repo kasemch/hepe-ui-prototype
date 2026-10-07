@@ -1,0 +1,11 @@
+import { StudentReadiness } from './domain';
+
+export const syntheticStudents: StudentReadiness[] = [
+  { id:'SYN-001', displayName:'นักศึกษาจำลอง 001', entryCohort:'2567', curriculumVersion:'BED-HEPE-2567', registrationStatus:'REGISTERED', academicProgression:'Practicum candidate', eplcHours:[3,5,5,11], plcCycles:[true,true,true], financialLiteracy:'VERIFIED', evidence:'VERIFIED', humanClearance:true },
+  { id:'SYN-002', displayName:'นักศึกษาจำลอง 002', entryCohort:'2567', curriculumVersion:'BED-HEPE-2567', registrationStatus:'REGISTERED', academicProgression:'Flexible progression', eplcHours:[2,5,5,12], plcCycles:[true,true,true], financialLiteracy:'VERIFIED', evidence:'VERIFIED', humanClearance:false },
+  { id:'SYN-003', displayName:'นักศึกษาจำลอง 003', entryCohort:'2567', curriculumVersion:'BED-HEPE-2567', registrationStatus:'INTERRUPTED', academicProgression:'Interrupted registration', eplcHours:[3,5,5,11], plcCycles:[true,true,false], financialLiteracy:'VERIFIED', evidence:'VERIFIED', humanClearance:false },
+  { id:'SYN-004', displayName:'นักศึกษาจำลอง 004', entryCohort:'2566', curriculumVersion:'BED-HEPE-2567', registrationStatus:'REGISTERED', academicProgression:'Academically advanced', eplcHours:[3,5,5,11], plcCycles:[true,true,true], financialLiteracy:'INCOMPLETE', evidence:'VERIFIED', humanClearance:false },
+  { id:'SYN-005', displayName:'นักศึกษาจำลอง 005', entryCohort:'2567', curriculumVersion:'BED-HEPE-2567', registrationStatus:'REGISTERED', academicProgression:'Practicum candidate', eplcHours:[3,5,5,11], plcCycles:[true,true,true], financialLiteracy:'VERIFIED', evidence:'PENDING', humanClearance:false },
+  { id:'SYN-006', displayName:'นักศึกษาจำลอง 006', entryCohort:'2565', curriculumVersion:'LEGACY-MAPPED', registrationStatus:'REGISTERED', academicProgression:'Curriculum transition', eplcHours:[3,5,5,11], plcCycles:[true,true,true], financialLiteracy:'UNVERIFIED_REQUIREMENT', evidence:'VERIFIED', humanClearance:false },
+  { id:'SYN-007', displayName:'นักศึกษาจำลอง 007', entryCohort:'2564', curriculumVersion:'LEGACY-MAPPED', registrationStatus:'NOT_REGISTERED', academicProgression:'Delayed progression', eplcHours:[3,5,5,11], plcCycles:[true,true,true], financialLiteracy:'VERIFIED', evidence:'VERIFIED', humanClearance:false }
+];
