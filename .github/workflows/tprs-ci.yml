@@ -14,8 +14,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
-      - run: npm ci
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
       - name: Deterministic compliance acceptance
         run: node scripts/tprs-compliance-test.mjs
       - name: TypeScript check
