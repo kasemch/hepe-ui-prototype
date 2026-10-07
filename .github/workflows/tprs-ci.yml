@@ -1,0 +1,24 @@
+name: HEPE-TPRS CI
+on:
+  pull_request:
+    paths:
+      - 'app/tprs/**'
+      - 'scripts/tprs-**'
+      - '.github/workflows/tprs-ci.yml'
+      - 'package.json'
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Deterministic compliance acceptance
+        run: node scripts/tprs-compliance-test.mjs
+      - name: TypeScript check
+        run: npx tsc --noEmit
+      - name: Next.js production build
+        run: npm run build
