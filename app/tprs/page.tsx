@@ -2,15 +2,37 @@ import Link from 'next/link';
 import { syntheticStudents } from './lib/fixtures';
 import { evaluateReadiness } from './lib/domain';
 
+const statusTone: Record<string, { bg: string; fg: string }> = {
+  READY: { bg: '#dcfce7', fg: '#166534' }, REVIEW: { bg: '#fef3c7', fg: '#92400e' },
+  HOLD: { bg: '#fee2e2', fg: '#991b1b' }, INCOMPLETE: { bg: '#ffe4e6', fg: '#9f1239' },
+};
+const card = { border: '1px solid #e2e8f0', borderRadius: 16, padding: 18, background: '#fff' } as const;
+
 export default function TprsDashboard() {
   const rows = syntheticStudents.map(student => ({ student, result: evaluateReadiness(student) }));
   const count = (status: string) => rows.filter(r => r.result.status === status).length;
-  return <main style={{maxWidth:1200,margin:'0 auto',padding:'32px 20px',fontFamily:'system-ui'}}>
-    <p style={{margin:0,color:'#555'}}>HEPE · Ramkhamhaeng University · Non-production prototype</p><h1>Teacher Professional Readiness</h1>
-    <p>ติดตามความพร้อมตามเส้นทางจริงของนักศึกษาในบริบทตลาดวิชา โดยแยก Academic Progression ออกจาก Professional Readiness</p>
-    <nav style={{display:'flex',gap:16,flexWrap:'wrap',margin:'20px 0'}}><Link href="/tprs/requirements">Requirement Registry</Link><Link href="/tprs/exceptions">Exceptions</Link><Link href="/tprs/clearance">Clearance Matrix</Link></nav>
-    <section style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))',gap:12,margin:'24px 0'}}>{['READY','REVIEW','HOLD','INCOMPLETE'].map(s=><article key={s} style={{border:'1px solid #ddd',borderRadius:12,padding:16}}><strong>{s}</strong><div style={{fontSize:32}}>{count(s)}</div></article>)}</section>
-    <div style={{overflowX:'auto'}}><table style={{width:'100%',borderCollapse:'collapse'}}><thead><tr>{['Student','Cohort','Curriculum','Registration','Academic progression','E-PLC','PLC','FinLit','Evidence','Status / reason'].map(h=><th key={h} style={{textAlign:'left',padding:10,borderBottom:'2px solid #222'}}>{h}</th>)}</tr></thead><tbody>{rows.map(({student:s,result:r})=><tr key={s.id}><td style={{padding:10,borderBottom:'1px solid #ddd'}}><Link href={`/tprs/students/${s.id}`}>{s.id}</Link></td><td>{s.entryCohort}</td><td>{s.curriculumVersion}</td><td>{s.registrationStatus}</td><td>{s.academicProgression}</td><td>{s.eplcHours.join('+')} = {s.eplcHours.reduce((a,b)=>a+b,0)}h</td><td>{s.plcCycles.filter(Boolean).length}/3</td><td>{s.financialLiteracy}</td><td>{s.evidence}</td><td><strong>{r.status}</strong><br/><small>{r.reasons.join(', ') || 'All system checks complete'}</small></td></tr>)}</tbody></table></div>
-    <p style={{marginTop:24,fontSize:14,color:'#555'}}>Synthetic data only · Financial Literacy authoritative rule remains evidence-gated · Final clearance remains Human Academic Authority.</p>
+  const total = rows.length;
+  const ready = count('READY');
+  const pendingEvidence = rows.filter(r => r.student.evidence === 'PENDING').length;
+  const finlitAttention = rows.filter(r => r.student.financialLiteracy !== 'VERIFIED').length;
+  const cycleAttention = rows.filter(r => r.student.plcCycles.some(v => !v)).length;
+  return <main style={{minHeight:'100vh',background:'#f8fafc',fontFamily:'system-ui',color:'#0f172a'}}>
+    <header style={{background:'#0f2f57',color:'#fff',padding:'18px 24px'}}><div style={{maxWidth:1280,margin:'0 auto',display:'flex',justifyContent:'space-between',gap:16,flexWrap:'wrap'}}><div><strong style={{fontSize:22}}>HEPE-TPRS</strong><div style={{fontSize:13,opacity:.85}}>Teacher Professional Readiness System · Controlled Pilot</div></div><div style={{fontSize:13}}>SYNTHETIC DATA ONLY · Human Academic Authority</div></div></header>
+    <div style={{maxWidth:1280,margin:'0 auto',padding:'24px 20px'}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'end',gap:16,flexWrap:'wrap'}}><div><p style={{margin:0,color:'#64748b'}}>หลักสูตร ศษ.บ. สุขศึกษาและพลศึกษา</p><h1 style={{margin:'4px 0'}}>Student Readiness Command Center</h1><p style={{margin:0,color:'#475569'}}>Academic Progress ≠ Professional Readiness · Year Level ≠ Automatic Requirement Completion</p></div><nav style={{display:'flex',gap:10,flexWrap:'wrap'}}>{[['Requirements','/tprs/requirements'],['Evidence','/tprs/evidence'],['Verification','/tprs/verification'],['Exceptions','/tprs/exceptions'],['Clearance','/tprs/clearance'],['Reports','/tprs/reports'],['Audit','/tprs/audit']].map(([label,href])=><Link key={href} href={href} style={{padding:'8px 11px',border:'1px solid #cbd5e1',borderRadius:9,background:'#fff',textDecoration:'none',color:'#0f2f57'}}>{label}</Link>)}</nav></div>
+      <section style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:12,margin:'24px 0'}}>
+        <article style={card}><small>Requirement-applicable</small><div style={{fontSize:32,fontWeight:750}}>{total}</div></article>
+        {['READY','REVIEW','HOLD','INCOMPLETE'].map(s=><article key={s} style={{...card,background:statusTone[s].bg}}><small style={{color:statusTone[s].fg,fontWeight:700}}>{s}</small><div style={{fontSize:32,fontWeight:750,color:statusTone[s].fg}}>{count(s)}</div><small>{Math.round(count(s)/total*100)}%</small></article>)}
+      </section>
+      <section style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(230px,1fr))',gap:12,marginBottom:24}}>
+        <article style={card}><strong>System readiness</strong><div style={{fontSize:28,marginTop:8}}>{ready}/{total}</div><p style={{color:'#64748b',marginBottom:0}}>ผ่าน system checks; ไม่เท่ากับการอนุมัติฝึกปฏิบัติวิชาชีพ</p></article>
+        <article style={card}><strong>ประเด็นที่ต้องติดตาม</strong><p>Evidence pending <b>{pendingEvidence}</b></p><p>Financial Literacy attention <b>{finlitAttention}</b></p><p>PLC cycle attention <b>{cycleAttention}</b></p></article>
+        <article style={card}><strong>Pre-Practicum Gate</strong><p>E-PLC 4 stages → PLC 3 cycles → Financial Literacy → Evidence → System readiness → Human clearance</p><Link href="/tprs/clearance">เปิด Clearance Matrix →</Link></article>
+      </section>
+      <section style={card}><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,flexWrap:'wrap'}}><div><h2 style={{margin:0}}>Student readiness matrix</h2><p style={{margin:'5px 0 15px',color:'#64748b'}}>เลือกนักศึกษาเพื่อเปิด Professional Passport และดูเหตุผลระดับรายบุคคล</p></div><span style={{fontSize:12,padding:'6px 10px',borderRadius:20,background:'#e0f2fe'}}>Controlled Pilot</span></div>
+        <div style={{overflowX:'auto'}}><table style={{width:'100%',borderCollapse:'collapse',minWidth:900}}><thead><tr>{['Student','Curriculum','Registration','E-PLC','PLC','FinLit','Evidence','System status','Human clearance'].map(h=><th key={h} style={{textAlign:'left',padding:10,borderBottom:'2px solid #cbd5e1',fontSize:13}}>{h}</th>)}</tr></thead><tbody>{rows.map(({student:s,result:r})=><tr key={s.id}><td style={{padding:10,borderBottom:'1px solid #e2e8f0'}}><Link href={`/tprs/students/${s.id}`} style={{fontWeight:700}}>{s.id}</Link><br/><small>{s.displayName}</small></td><td>{s.curriculumVersion}</td><td>{s.registrationStatus}</td><td>{s.eplcHours.reduce((a,b)=>a+b,0)}/24 h</td><td>{s.plcCycles.filter(Boolean).length}/3</td><td>{s.financialLiteracy}</td><td>{s.evidence}</td><td><span style={{display:'inline-block',padding:'4px 8px',borderRadius:12,background:statusTone[r.status].bg,color:statusTone[r.status].fg,fontWeight:700}}>{r.status}</span><br/><small>{r.reasons[0] || 'All system checks complete'}</small></td><td>{r.clearanceStatus}</td></tr>)}</tbody></table></div>
+      </section>
+      <p style={{fontSize:13,color:'#64748b',marginTop:18}}>Financial Literacy authoritative criteria remain evidence-gated. No unverified criterion is treated as an official rule.</p>
+    </div>
   </main>;
 }
