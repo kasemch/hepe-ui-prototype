@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { evaluateReadiness } from '../app/tprs/lib/domain.ts';
-import { can } from '../app/tprs/lib/rbac.ts';
+import { can, requirePermission } from '../app/tprs/lib/rbac.ts';
 
 const base = {
   id:'TEST', displayName:'Synthetic', entryCohort:'2567', curriculumVersion:'BED-HEPE-2567',
@@ -40,6 +40,8 @@ assert.ok(run({financialLiteracy:'UNVERIFIED_REQUIREMENT'}).reasons.includes('FI
 assert.equal(run({registrationStatus:'INTERRUPTED'}).status,'READY');
 assert.equal(run({registrationStatus:'NOT_REGISTERED'}).status,'READY');
 
+assert.equal(can(null,'READ_SELF'),false);
+assert.equal(can(undefined,'READ_COHORT'),false);
 assert.equal(can('STUDENT','VERIFY_EVIDENCE'),false);
 assert.equal(can('STUDENT','REVIEW_CLEARANCE'),false);
 assert.equal(can('STUDENT','MANAGE_REQUIREMENTS'),false);
@@ -47,5 +49,7 @@ assert.equal(can('ADVISOR','MANAGE_REQUIREMENTS'),false);
 assert.equal(can('VERIFIER','VERIFY_EVIDENCE'),true);
 assert.equal(can('VERIFIER','MANAGE_REQUIREMENTS'),false);
 assert.equal(can('PROGRAMME_CHAIR','MANAGE_REQUIREMENTS'),true);
+assert.throws(()=>requirePermission(undefined,'READ_SELF'),/TPRS_ACCESS_DENIED/);
+assert.doesNotThrow(()=>requirePermission('VERIFIER','VERIFY_EVIDENCE'));
 
-console.log(`HEPE-TPRS production evaluator acceptance: ${cases.length}/${cases.length} PASS; invariants + RBAC negative assertions PASS`);
+console.log(`HEPE-TPRS production evaluator acceptance: ${cases.length}/${cases.length} PASS; invariants + deny-by-default RBAC assertions PASS`);
