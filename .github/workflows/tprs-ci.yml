@@ -6,6 +6,8 @@ on:
       - 'scripts/tprs-**'
       - '.github/workflows/tprs-ci.yml'
       - 'package.json'
+      - 'vercel.json'
+      - 'docs/HEPE-TPRS-DEPLOYMENT-GOVERNANCE.md'
 jobs:
   validate:
     runs-on: ubuntu-latest

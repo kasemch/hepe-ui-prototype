@@ -7,7 +7,7 @@ const base = {
 };
 
 export const syntheticStudents: StudentReadiness[] = [
-  { ...base, id:'SYN-001', displayName:'นักศึกษาจำลอง 001', academicProgression:'Fully complete', humanClearance:true },
+  { ...base, id:'SYN-001', displayName:'นักศึกษาจำลอง 001', academicProgression:'System READY · Human clearance pending' },
   { ...base, id:'SYN-002', displayName:'นักศึกษาจำลอง 002', academicProgression:'24h total but Stage 1 below minimum', eplcHours:[2,6,5,11] },
   { ...base, id:'SYN-003', displayName:'นักศึกษาจำลอง 003', academicProgression:'Stage 2 below minimum', eplcHours:[3,4,6,11] },
   { ...base, id:'SYN-004', displayName:'นักศึกษาจำลอง 004', academicProgression:'Stage 3 below minimum', eplcHours:[3,5,4,12] },
@@ -20,6 +20,6 @@ export const syntheticStudents: StudentReadiness[] = [
   { ...base, id:'SYN-011', displayName:'นักศึกษาจำลอง 011', academicProgression:'Requirement-version mismatch', requirementVersionMatch:false },
   { ...base, id:'SYN-012', displayName:'นักศึกษาจำลอง 012', academicProgression:'System READY · Human clearance pending' },
   { ...base, id:'SYN-013', displayName:'นักศึกษาจำลอง 013', academicProgression:'Financial authoritative rule unverified', financialLiteracy:'UNVERIFIED_REQUIREMENT' },
-  { ...base, id:'SYN-014', displayName:'นักศึกษาจำลอง 014', academicProgression:'Controlled professional equivalency approved', transferCredit:true, professionalEquivalencyApproved:true },
+  { ...base, id:'SYN-014', displayName:'นักศึกษาจำลอง 014', academicProgression:'Interrupted registration · controlled professional equivalency approved', registrationStatus:'INTERRUPTED', transferCredit:true, professionalEquivalencyApproved:true },
   { ...base, id:'SYN-015', displayName:'นักศึกษาจำลอง 015', academicProgression:'Conflicting evidence requires resolution', evidence:'CONFLICT' }
 ];
