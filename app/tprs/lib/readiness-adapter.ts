@@ -1,6 +1,6 @@
-import type { StudentReadiness, VerificationStatus } from './domain';
-import { controlledPilotFinLitFact } from './controlled-pilot-facts';
-import type { PersistentEvidenceRow, PersistentReadinessRow } from './persistence';
+import type { StudentReadiness, VerificationStatus } from './domain.ts';
+import { controlledPilotFinLitFact } from './controlled-pilot-facts.ts';
+import type { PersistentEvidenceRow, PersistentReadinessRow } from './persistence.ts';
 
 export type IndependentPilotFacts = {
   learnerReference: string;
