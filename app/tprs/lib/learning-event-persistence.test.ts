@@ -10,6 +10,13 @@ describe('learning event persistence security contract', () => {
     expect(source).toContain('assertFinlitAuthorityBoundary(event)');
   });
 
+  it('requires callers to classify synthetic versus real operational events explicitly', () => {
+    const source = fs.readFileSync(path.join(process.cwd(), 'app/tprs/lib/learning-event-persistence.ts'), 'utf8');
+    expect(source).toContain('synthetic: boolean');
+    expect(source).toContain('${options.synthetic}');
+    expect(source).not.toContain('${idempotencyKey},true');
+  });
+
   it('keeps the SQL ledger append-only and guards FinLit authority semantics', () => {
     const sql = fs.readFileSync(path.join(process.cwd(), 'db/tprs-vnext-learning-events.sql'), 'utf8');
     expect(sql).toContain('BEFORE UPDATE OR DELETE ON tprs.learning_events');
