@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - 'app/tprs/**'
+      - 'db/tprs-**'
       - 'scripts/tprs-**'
       - '.github/workflows/tprs-ci.yml'
       - 'package.json'
@@ -20,5 +21,7 @@ jobs:
         run: node --experimental-strip-types scripts/tprs-compliance-test.mjs
       - name: TypeScript check
         run: npx tsc --noEmit
+      - name: vNext learning event unit + security tests
+        run: npm run test:tprs-vnext
       - name: Next.js production build
         run: npm run build
