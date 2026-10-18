@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "test:tprs-vnext": "vitest run app/tprs/lib/learning-events.test.ts app/tprs/lib/learning-event-persistence.test.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.0.2",
@@ -19,6 +20,7 @@
     "@types/node": "^20.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "typescript": "^5.1.0"
+    "typescript": "^5.1.0",
+    "vitest": "^3.2.4"
   }
 }
