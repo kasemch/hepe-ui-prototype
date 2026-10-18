@@ -1,5 +1,6 @@
 -- HEPE-TPRS vNext learning event ledger
--- NON-PRODUCTION / ADDITIVE / SYNTHETIC-PILOT BASELINE
+-- ADDITIVE / APPEND-ONLY / EVIDENCE-GATED BASELINE
+-- Validated on an isolated Neon branch before Production migration.
 
 BEGIN;
 
@@ -41,12 +42,10 @@ CREATE INDEX IF NOT EXISTS learning_events_object_idx
 CREATE INDEX IF NOT EXISTS learning_events_correlation_idx
   ON tprs.learning_events(correlation_id) WHERE correlation_id IS NOT NULL;
 
+-- E-string function body is semantically equivalent to dollar quoting but is
+-- compatible with the validated Neon execution path used by this project.
 CREATE OR REPLACE FUNCTION tprs.reject_learning_event_mutation()
-RETURNS trigger LANGUAGE plpgsql AS $$
-BEGIN
-  RAISE EXCEPTION 'TPRS_LEARNING_EVENTS_APPEND_ONLY';
-END;
-$$;
+RETURNS trigger LANGUAGE plpgsql AS E'BEGIN\n  RAISE EXCEPTION ''TPRS_LEARNING_EVENTS_APPEND_ONLY'';\nEND;';
 
 DROP TRIGGER IF EXISTS learning_events_append_only ON tprs.learning_events;
 CREATE TRIGGER learning_events_append_only
