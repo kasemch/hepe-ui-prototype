@@ -10,9 +10,18 @@ export type AppendLearningEventResult =
   | { status: 'INSERTED'; eventId: string }
   | { status: 'DUPLICATE'; eventId: string };
 
+export type AppendLearningEventOptions = {
+  /**
+   * Synthetic status is mandatory so a caller cannot accidentally classify
+   * a real operational event as test data, or vice versa.
+   */
+  synthetic: boolean;
+};
+
 export async function appendLearningEvent(
   event: LearningEvent,
   idempotencyKey: string,
+  options: AppendLearningEventOptions,
 ): Promise<AppendLearningEventResult> {
   assertFinlitAuthorityBoundary(event);
   if (!idempotencyKey.trim()) throw new Error('TPRS_EVENT_IDEMPOTENCY_KEY_REQUIRED');
@@ -32,7 +41,7 @@ export async function appendLearningEvent(
       ${JSON.stringify(event.payload)}::jsonb,${event.context ? JSON.stringify(event.context) : null}::jsonb,
       ${event.result ? JSON.stringify(event.result) : null}::jsonb,
       ${event.correlationId ?? null}::uuid,${event.causationId ?? null}::uuid,
-      ${idempotencyKey},true
+      ${idempotencyKey},${options.synthetic}
     )
     ON CONFLICT (idempotency_key) DO NOTHING
     RETURNING id
