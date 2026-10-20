@@ -22,13 +22,15 @@ export type ParticipantWorkspace = {
   }>;
 };
 
+type ParticipantDeniedReason = 'UNAUTHENTICATED' | 'IDENTITY_UNBOUND' | 'ACCOUNT_INACTIVE' | 'OUT_OF_SCOPE' | 'RUNTIME_NOT_CONFIGURED';
+
 export type ParticipantWorkspaceResult =
-  | { allowed: false; reason: 'UNAUTHENTICATED' | 'IDENTITY_UNBOUND' | 'ACCOUNT_INACTIVE' | 'OUT_OF_SCOPE' | 'RUNTIME_NOT_CONFIGURED' }
+  | { allowed: false; reason: ParticipantDeniedReason }
   | { allowed: true; workspace: ParticipantWorkspace };
 
 export async function readParticipantWorkspace(authSubject: string | null | undefined): Promise<ParticipantWorkspaceResult> {
   const authority = await authorizeLearnerSelf(authSubject);
-  if (!authority.allowed) return authority;
+  if (authority.allowed === false) return { allowed: false, reason: authority.reason };
   const url = process.env.TPRS_DATABASE_URL;
   if (!url || !authority.learnerId) return { allowed: false, reason: 'RUNTIME_NOT_CONFIGURED' };
   const sql = neon(url);
