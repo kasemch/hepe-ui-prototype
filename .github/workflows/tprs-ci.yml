@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - 'app/tprs/**'
+      - 'app/layout.tsx'
       - 'db/tprs-**'
       - 'scripts/tprs-**'
       - '.github/workflows/tprs-ci.yml'
