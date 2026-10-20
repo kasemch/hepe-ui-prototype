@@ -1,6 +1,6 @@
 export const metadata = {
-  title: "HEPE · BED-HEPE Prototype",
-  description: "NON-PRODUCTION HEPE Curriculum Governance & Development prototype"
+  title: "HEPE-TPRS · E-PLC & Financial Literacy",
+  description: "HEPE Teacher Professional Readiness System — governed E-PLC, evidence, and Financial Literacy operations"
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
