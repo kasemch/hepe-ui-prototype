@@ -19,7 +19,7 @@ function Denied({ reason }: { reason: string }) {
 export default async function ParticipantPage() {
   const identity = await readTprsSessionIdentity();
   const result = await readParticipantWorkspace(identity?.authSubject ?? null);
-  if (!result.allowed) return <Denied reason={result.reason} />;
+  if (result.allowed === false) return <Denied reason={result.reason} />;
 
   const { workspace } = result;
   const recorded = workspace.stages.reduce((sum, stage) => sum + stage.recordedHours, 0);
