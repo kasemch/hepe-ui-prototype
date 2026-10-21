@@ -8,20 +8,20 @@ const page = fs.readFileSync(path.join(root, 'app/tprs/staff/page.tsx'), 'utf8')
 
 describe('protected staff workspace contract', () => {
   it('is server-only and assignment scoped', () => {
-    expect(source).toMatch(/import 'server-only'/);
-    expect(source).toMatch(/staff_user_id/);
-    expect(source).toMatch(/FACILITATOR/);
-    expect(source).toMatch(/ASSESSOR/);
-    expect(source).toMatch(/sa\.synthetic = false/);
-    expect(source).toMatch(/l\.synthetic = false/);
-    expect(source).toMatch(/e\.synthetic = false/);
-    expect(source).toMatch(/programme_code = 'HEPE-TPRS'/);
+    expect(source).toContain("import 'server-only'");
+    expect(source).toContain('staff_user_id');
+    expect(source).toContain('FACILITATOR');
+    expect(source).toContain('ASSESSOR');
+    expect(source).toContain('sa.synthetic = false');
+    expect(source).toContain('l.synthetic = false');
+    expect(source).toContain('e.synthetic = false');
+    expect(source).toContain("programme_code = 'HEPE-TPRS'");
   });
 
   it('keeps the staff page dynamic and read-only', () => {
-    expect(page).toMatch(/dynamic = 'force-dynamic'/);
-    expect(page).toMatch(/revalidate = 0/);
-    expect(page).toMatch(/Read-only/);
-    expect(page).toMatch(/cannot verify, reject, certify, or grant Human Academic Clearance/);
+    expect(page).toContain("dynamic = 'force-dynamic'");
+    expect(page).toContain('revalidate = 0');
+    expect(page).toContain('Read-only');
+    expect(page).toContain('cannot verify, reject, certify, or grant Human Academic Clearance');
   });
 });
