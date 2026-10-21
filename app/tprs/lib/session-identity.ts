@@ -13,11 +13,11 @@ export type TprsSessionIdentity = {
  */
 export async function readTprsSessionIdentity(): Promise<TprsSessionIdentity | null> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !anonKey) return null;
+  const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+  if (!url || !publishableKey) return null;
 
   const cookieStore = await cookies();
-  const supabase = createServerClient(url, anonKey, {
+  const supabase = createServerClient(url, publishableKey, {
     cookies: {
       getAll() {
         return cookieStore.getAll();
