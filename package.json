@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test:tprs-vnext": "vitest run app/tprs/lib/learning-events.test.ts app/tprs/lib/learning-event-persistence.test.ts app/tprs/lib/cohort-operations.test.ts app/tprs/lib/pilot-persistence-scope.test.ts app/tprs/lib/staff-workspace.test.ts"
+    "test:tprs-vnext": "vitest run app/tprs/lib/learning-events.test.ts app/tprs/lib/learning-event-persistence.test.ts app/tprs/lib/cohort-operations.test.ts app/tprs/lib/pilot-persistence-scope.test.ts app/tprs/lib/staff-workspace.test.ts app/tprs/lib/evidence-persistence.test.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.0.2",
